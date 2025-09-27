@@ -1,0 +1,3 @@
+date	size'/'remotesize	flags(request:Update,Range state:File response:Modified,Chunked,gZipped)	statuscode	status ('servermsg')	MIME	Etag|Date	URL	localfile	(from URL)
+22:56:55	93/-1	---M--	403	error ('Forbidden')	text/html		https://cnp.com.co/robots.txt		(from )
+22:56:56	93/-1	---M--	403	error ('Forbidden')	text/html		https://cnp.com.co/	C:/Users/ferne/Desktop/CNP/CNP/cnp.com.co/index.html	(from )
