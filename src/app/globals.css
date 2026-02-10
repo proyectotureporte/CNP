@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Open Sans", Arial, Helvetica, sans-serif;
+  color: #3e3e3e;
+  background: #ffffff;
+  overflow-x: hidden;
+}
+
+/* Client carousel animation */
+@keyframes slideClients {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-slide-clients {
+  animation: slideClients 25s linear infinite;
+}
