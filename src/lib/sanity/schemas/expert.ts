@@ -1,0 +1,101 @@
+export const expertSchema = {
+  name: 'expert',
+  title: 'Perito',
+  type: 'document',
+  fields: [
+    {
+      name: 'user',
+      title: 'Usuario',
+      type: 'reference',
+      to: [{ type: 'crmUser' }],
+    },
+    {
+      name: 'disciplines',
+      title: 'Disciplinas',
+      type: 'array',
+      of: [{ type: 'string' }],
+      options: {
+        list: [
+          { title: 'Financiero', value: 'financiero' },
+          { title: 'Medico', value: 'medico' },
+          { title: 'Grafologia', value: 'grafologia' },
+          { title: 'Ingenieria', value: 'ingenieria' },
+          { title: 'Arquitectura', value: 'arquitectura' },
+          { title: 'Contable', value: 'contable' },
+          { title: 'Ambiental', value: 'ambiental' },
+          { title: 'Informatico', value: 'informatico' },
+          { title: 'Valuacion', value: 'valuacion' },
+          { title: 'Otro', value: 'otro' },
+        ],
+      },
+    },
+    { name: 'specialization', title: 'Especializacion', type: 'string' },
+    { name: 'experienceYears', title: 'Anos de Experiencia', type: 'number' },
+    { name: 'professionalCard', title: 'Tarjeta Profesional', type: 'string' },
+    {
+      name: 'cvFile',
+      title: 'Hoja de Vida',
+      type: 'file',
+    },
+    {
+      name: 'certificationFiles',
+      title: 'Certificaciones',
+      type: 'array',
+      of: [{ type: 'file' }],
+    },
+    { name: 'city', title: 'Ciudad', type: 'string' },
+    { name: 'region', title: 'Region/Departamento', type: 'string' },
+    { name: 'baseFee', title: 'Tarifa Base (COP)', type: 'number' },
+    { name: 'feeCurrency', title: 'Moneda', type: 'string', initialValue: 'COP' },
+    {
+      name: 'availability',
+      title: 'Disponibilidad',
+      type: 'string',
+      initialValue: 'disponible',
+      options: {
+        list: [
+          { title: 'Disponible', value: 'disponible' },
+          { title: 'Ocupado', value: 'ocupado' },
+          { title: 'No Disponible', value: 'no_disponible' },
+        ],
+      },
+    },
+    { name: 'rating', title: 'Calificacion', type: 'number', initialValue: 0 },
+    { name: 'totalCases', title: 'Casos Totales', type: 'number', initialValue: 0 },
+    { name: 'completedCases', title: 'Casos Completados', type: 'number', initialValue: 0 },
+    {
+      name: 'validationStatus',
+      title: 'Estado de Validacion',
+      type: 'string',
+      initialValue: 'pendiente',
+      options: {
+        list: [
+          { title: 'Pendiente', value: 'pendiente' },
+          { title: 'Aprobado', value: 'aprobado' },
+          { title: 'Rechazado', value: 'rechazado' },
+        ],
+      },
+    },
+    {
+      name: 'validatedBy',
+      title: 'Validado Por',
+      type: 'reference',
+      to: [{ type: 'crmUser' }],
+    },
+    { name: 'validationNotes', title: 'Notas de Validacion', type: 'text' },
+    { name: 'bankName', title: 'Banco', type: 'string' },
+    {
+      name: 'bankAccountType',
+      title: 'Tipo de Cuenta',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Ahorros', value: 'ahorros' },
+          { title: 'Corriente', value: 'corriente' },
+        ],
+      },
+    },
+    { name: 'bankAccountNumber', title: 'Numero de Cuenta', type: 'string' },
+    { name: 'taxId', title: 'NIT/Cedula', type: 'string' },
+  ],
+};

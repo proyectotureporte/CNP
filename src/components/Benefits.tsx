@@ -1,13 +1,13 @@
 import Image from "next/image";
 
 const benefits = [
-  "Precisi\u00f3n en pretensiones y liquidaciones, clave para fortalecer su caso.",
-  "Preparaci\u00f3n de interrogatorios con sustento t\u00e9cnico.",
-  "An\u00e1lisis t\u00e9cnico de dict\u00e1menes aplicados a procesos judiciales.",
-  "Definici\u00f3n de estrategias probatorias que generen ventajas competitivas.",
-  "Valoraci\u00f3n del juramento estimatorio con enfoque financiero y probatorio.",
-  "Estructuraci\u00f3n de argumentos t\u00e9cnicos que contribuyan a persuadir con claridad.",
-  "Capacitaci\u00f3n especializada en temas financieros y contables para abogados y equipos jur\u00eddicos.",
+  "Precisión en pretensiones y liquidaciones, clave para fortalecer su caso.",
+  "Preparación de interrogatorios con sustento técnico.",
+  "Análisis técnico de dictámenes aplicados a procesos judiciales.",
+  "Definición de estrategias probatorias que generen ventajas competitivas.",
+  "Valoración del juramento estimatorio con enfoque financiero y probatorio.",
+  "Estructuración de argumentos técnicos que contribuyan a persuadir con claridad.",
+  "Capacitación especializada en temas financieros y contables para abogados y equipos jurídicos.",
 ];
 
 export default function Benefits() {

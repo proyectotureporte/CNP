@@ -1,0 +1,47 @@
+export const caseDocumentSchema = {
+  name: 'caseDocument',
+  title: 'Documento de Caso',
+  type: 'document',
+  fields: [
+    {
+      name: 'case',
+      title: 'Caso',
+      type: 'reference',
+      to: [{ type: 'case' }],
+    },
+    {
+      name: 'uploadedBy',
+      title: 'Subido Por',
+      type: 'reference',
+      to: [{ type: 'crmUser' }],
+    },
+    { name: 'uploadedByName', title: 'Nombre del que Subio', type: 'string' },
+    {
+      name: 'category',
+      title: 'Categoria',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Demanda', value: 'demanda' },
+          { title: 'Soporte Tecnico', value: 'soporte_tecnico' },
+          { title: 'Contrato', value: 'contrato' },
+          { title: 'Cotizacion', value: 'cotizacion' },
+          { title: 'Plan de Trabajo', value: 'plan_trabajo' },
+          { title: 'Entrega Parcial', value: 'entrega_parcial' },
+          { title: 'Dictamen Final', value: 'dictamen_final' },
+          { title: 'Audiencia', value: 'audiencia' },
+          { title: 'Pago', value: 'pago' },
+          { title: 'Otro', value: 'otro' },
+        ],
+      },
+      initialValue: 'otro',
+    },
+    { name: 'file', title: 'Archivo', type: 'file' },
+    { name: 'fileName', title: 'Nombre del Archivo', type: 'string' },
+    { name: 'fileSize', title: 'Tamano (bytes)', type: 'number' },
+    { name: 'mimeType', title: 'Tipo MIME', type: 'string' },
+    { name: 'version', title: 'Version', type: 'number', initialValue: 1 },
+    { name: 'isVisibleToClient', title: 'Visible para Cliente', type: 'boolean', initialValue: false },
+    { name: 'description', title: 'Descripcion', type: 'text' },
+  ],
+};

@@ -1,0 +1,35 @@
+export const workPlanSchema = {
+  name: 'workPlan',
+  title: 'Plan de Trabajo',
+  type: 'document',
+  fields: [
+    { name: 'case', title: 'Caso', type: 'reference', to: [{ type: 'case' }] },
+    { name: 'assignedExpert', title: 'Perito Asignado', type: 'reference', to: [{ type: 'crmUser' }] },
+    { name: 'methodology', title: 'Metodologia', type: 'text' },
+    { name: 'objectives', title: 'Objetivos', type: 'text' },
+    { name: 'startDate', title: 'Fecha Inicio', type: 'datetime' },
+    { name: 'endDate', title: 'Fecha Fin', type: 'datetime' },
+    { name: 'estimatedDays', title: 'Dias Estimados', type: 'number' },
+    { name: 'deliverablesDescription', title: 'Descripcion de Entregas', type: 'text' },
+    {
+      name: 'status',
+      title: 'Estado',
+      type: 'string',
+      initialValue: 'borrador',
+      options: {
+        list: [
+          { title: 'Borrador', value: 'borrador' },
+          { title: 'Enviado', value: 'enviado' },
+          { title: 'En Revision', value: 'en_revision' },
+          { title: 'Aprobado', value: 'aprobado' },
+          { title: 'Rechazado', value: 'rechazado' },
+        ],
+      },
+    },
+    { name: 'submittedAt', title: 'Enviado En', type: 'datetime' },
+    { name: 'reviewedBy', title: 'Revisado Por', type: 'reference', to: [{ type: 'crmUser' }] },
+    { name: 'committeeApprovedBy', title: 'Aprobado por Comite', type: 'reference', to: [{ type: 'crmUser' }] },
+    { name: 'rejectionComments', title: 'Comentarios de Rechazo', type: 'text' },
+    { name: 'createdBy', title: 'Creado Por', type: 'reference', to: [{ type: 'crmUser' }] },
+  ],
+};

@@ -3,21 +3,21 @@ import Image from "next/image";
 const services = [
   {
     image: "/images/dictamen-pericial.jpg",
-    title: "Elaboraci\u00f3n de Dictámenes Periciales",
+    title: "Elaboración de Dictámenes Periciales",
     description:
-      "Brindamos asesor\u00eda en la elaboraci\u00f3n, revisi\u00f3n, controversia y sustentaci\u00f3n de este tipo de pruebas ante despachos judiciales.",
+      "Brindamos asesoría en la elaboración, revisión, controversia y sustentación de este tipo de pruebas ante despachos judiciales.",
   },
   {
     image: "/images/lawyers-office.jpg",
-    title: "C\u00e1lculos de Perjuicios",
+    title: "Cálculos de Perjuicios",
     description:
       "Calculamos el valor de sus pretensiones, eliminando el riesgo a incurrir en sanciones pecuniarias.",
   },
   {
     image: "/images/liquidaciones.jpg",
-    title: "Realizaci\u00f3n de Liquidaciones",
+    title: "Realización de Liquidaciones",
     description:
-      "Elaboramos liquidaciones t\u00e9cnicas con sustento contable para fortalecer su demanda.",
+      "Elaboramos liquidaciones técnicas con sustento contable para fortalecer su demanda.",
   },
 ];
 
