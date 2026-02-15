@@ -1,12 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { LogOut } from 'lucide-react';
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  if (pathname === '/portal/login') {
+    return <>{children}</>;
+  }
+
+  return <PortalAuthLayout>{children}</PortalAuthLayout>;
+}
+
+function PortalAuthLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [checked, setChecked] = useState(false);

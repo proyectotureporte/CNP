@@ -118,9 +118,22 @@ export async function POST(request: NextRequest) {
       { success: false, error: 'Tipo de login invalido' },
       { status: 400 }
     );
-  } catch {
+  } catch (err) {
+    const missing = [
+      !process.env.JWT_SECRET && 'JWT_SECRET',
+      !process.env.NEXT_PUBLIC_SANITY_PROJECT_ID && 'NEXT_PUBLIC_SANITY_PROJECT_ID',
+      !process.env.NEXT_PUBLIC_SANITY_DATASET && 'NEXT_PUBLIC_SANITY_DATASET',
+    ].filter(Boolean);
+
+    console.error('[auth/login] Error:', err);
+
     return NextResponse.json(
-      { success: false, error: 'Error interno del servidor' },
+      {
+        success: false,
+        error: missing.length
+          ? `Variables de entorno faltantes: ${missing.join(', ')}`
+          : 'Error interno del servidor',
+      },
       { status: 500 }
     );
   }
