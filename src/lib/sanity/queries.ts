@@ -29,7 +29,10 @@ export const countUsersByRoleQuery = `count(*[_type == "crmUser" && role == $rol
 // ============================================
 // CLIENTS
 // ============================================
-export const listClientsQuery = `*[_type == "crmClient" && ($search == "" || name match $search + "*" || email match $search + "*" || company match $search + "*")] | order(_createdAt desc)`;
+export const listClientsQuery = `*[_type == "crmClient"
+  && ($search == "" || name match $search + "*" || email match $search + "*" || company match $search + "*")
+  && ($brand == "" || brand == $brand)
+] | order(_createdAt desc)`;
 
 export const getClientByIdQuery = `*[_type == "crmClient" && _id == $id][0]`;
 
@@ -55,42 +58,43 @@ export const searchCompaniesQuery = `*[_type == "company" && (name match $search
 export const listCasesQuery = `*[_type == "case"
   && ($status == "" || status == $status)
   && ($discipline == "" || discipline == $discipline)
+  && ($brand == "" || ($brand == "CNP" && (!defined(brand) || brand == "CNP")) || brand == $brand)
   && ($search == "" || title match $search + "*" || caseCode match $search + "*" || city match $search + "*")
+  && ($deadlineFilter == "" || (defined(deadlineDate) && deadlineDate <= $deadlineThreshold && !(status in ["cancelado"])))
+  && ($financieroId == "" || assignedFinanciero._ref == $financieroId)
 ] | order(_createdAt desc) [$start...$end] {
-  _id, _createdAt, _updatedAt, caseCode, title, discipline, status, complexity, priority,
-  estimatedAmount, hearingDate, deadlineDate, city, courtName, caseNumber,
-  "client": client->{ _id, name, email, company },
+  _id, _createdAt, _updatedAt, brand, caseCode, title, discipline, status, statusChangedByRole, complexity, priority,
+  estimatedAmount, hasHearing, hearingDate, hearingLink, deadlineDate, city, courtName, caseNumber,
+  "client": client->{ _id, name, email, company, brand },
   "commercial": commercial->{ _id, displayName, email },
-  "assignedExpert": assignedExpert->{ _id, displayName, email }
+  "assignedExpert": assignedExpert->{ _id, displayName, email },
+  "assignedFinanciero": assignedFinanciero->{ _id, displayName, email }
 }`;
 
 export const countCasesQuery = `count(*[_type == "case"
   && ($status == "" || status == $status)
   && ($discipline == "" || discipline == $discipline)
+  && ($brand == "" || ($brand == "CNP" && (!defined(brand) || brand == "CNP")) || brand == $brand)
   && ($search == "" || title match $search + "*" || caseCode match $search + "*" || city match $search + "*")
+  && ($deadlineFilter == "" || (defined(deadlineDate) && deadlineDate <= $deadlineThreshold && !(status in ["cancelado"])))
+  && ($financieroId == "" || assignedFinanciero._ref == $financieroId)
 ])`;
 
 export const getCaseByIdQuery = `*[_type == "case" && _id == $id][0] {
-  _id, _createdAt, _updatedAt, caseCode, title, description, discipline, status, complexity, priority,
-  estimatedAmount, hearingDate, deadlineDate, city, courtName, caseNumber, riskScore,
-  "client": client->{ _id, name, email, company, phone },
+  _id, _createdAt, _updatedAt, brand, caseCode, title, description, discipline, status, statusChangedByRole, complexity, priority,
+  estimatedAmount, hasHearing, hearingDate, hearingLink, deadlineDate, city, courtName, caseNumber, riskScore,
+  "client": client->{ _id, name, email, company, phone, brand },
   "commercial": commercial->{ _id, displayName, email },
   "technicalAnalyst": technicalAnalyst->{ _id, displayName, email },
   "assignedExpert": assignedExpert->{ _id, displayName, email },
+  "assignedFinanciero": assignedFinanciero->{ _id, displayName, email },
   "createdBy": createdBy->{ _id, displayName }
 }`;
 
 export const countCasesByStatusQuery = `{
   "creado": count(*[_type == "case" && status == "creado"]),
-  "en_cotizacion": count(*[_type == "case" && status == "en_cotizacion"]),
-  "pendiente_aprobacion": count(*[_type == "case" && status == "pendiente_aprobacion"]),
-  "aprobado": count(*[_type == "case" && status == "aprobado"]),
-  "en_asignacion": count(*[_type == "case" && status == "en_asignacion"]),
-  "en_produccion": count(*[_type == "case" && status == "en_produccion"]),
-  "en_revision": count(*[_type == "case" && status == "en_revision"]),
-  "finalizado": count(*[_type == "case" && status == "finalizado"]),
-  "archivado": count(*[_type == "case" && status == "archivado"]),
-  "rechazado": count(*[_type == "case" && status == "rechazado"]),
+  "gestionado": count(*[_type == "case" && status == "gestionado"]),
+  "cancelado": count(*[_type == "case" && status == "cancelado"]),
   "total": count(*[_type == "case"])
 }`;
 
@@ -123,17 +127,19 @@ export const countCaseEventsQuery = `count(*[_type == "caseEvent" && case._ref =
 // ============================================
 
 export const listCaseQuotesQuery = `*[_type == "quote" && case._ref == $caseId] | order(version desc) {
-  _id, _createdAt, version, estimatedHours, hourlyRate, baseValue, expenses,
-  marginPercentage, totalValue, discountPercentage, finalValue, status,
+  _id, _createdAt, version, totalPrice, discountPercentage, finalValue, status,
   validUntil, sentAt, approvedAt, rejectionReason, notes,
+  firstPaymentDate, lastPaymentDate, firstPaymentPercentage, customSplit,
+  "quoteDocumentUrl": quoteDocument.asset->url,
   "approvedBy": approvedBy->{ _id, displayName },
   "createdBy": createdBy->{ _id, displayName }
 }`;
 
 export const getQuoteByIdQuery = `*[_type == "quote" && _id == $id][0] {
-  _id, _createdAt, version, estimatedHours, hourlyRate, baseValue, expenses,
-  marginPercentage, totalValue, discountPercentage, finalValue, status,
+  _id, _createdAt, version, totalPrice, discountPercentage, finalValue, status,
   validUntil, sentAt, approvedAt, rejectionReason, notes,
+  firstPaymentDate, lastPaymentDate, firstPaymentPercentage, customSplit,
+  "quoteDocumentUrl": quoteDocument.asset->url,
   "approvedBy": approvedBy->{ _id, displayName },
   "createdBy": createdBy->{ _id, displayName },
   "case": case->{ _id, caseCode, title }
@@ -142,9 +148,10 @@ export const getQuoteByIdQuery = `*[_type == "quote" && _id == $id][0] {
 export const countCaseQuotesQuery = `count(*[_type == "quote" && case._ref == $caseId])`;
 
 export const listAllQuotesQuery = `*[_type == "quote" && ($status == "" || status == $status)] | order(_createdAt desc) [$start...$end] {
-  _id, _createdAt, version, estimatedHours, hourlyRate, baseValue, expenses,
-  marginPercentage, totalValue, discountPercentage, finalValue, status,
+  _id, _createdAt, version, totalPrice, discountPercentage, finalValue, status,
   validUntil, sentAt, approvedAt, rejectionReason, notes,
+  firstPaymentDate, lastPaymentDate, firstPaymentPercentage, customSplit,
+  "quoteDocumentUrl": quoteDocument.asset->url,
   "approvedBy": approvedBy->{ _id, displayName },
   "createdBy": createdBy->{ _id, displayName },
   "case": case->{ _id, caseCode, title }
@@ -173,6 +180,14 @@ export const getCaseDocumentByIdQuery = `*[_type == "caseDocument" && _id == $id
 }`;
 
 export const countCaseDocumentsQuery = `count(*[_type == "caseDocument" && case._ref == $caseId])`;
+
+export const listClientIdsForFinancieroQuery = `*[_type == "case" && assignedFinanciero._ref == $userId && defined(client)].client._ref`;
+
+export const listClientsForFinancieroQuery = `*[_type == "crmClient"
+  && _id in *[_type == "case" && assignedFinanciero._ref == $userId && defined(client)].client._ref
+  && ($search == "" || name match $search + "*" || email match $search + "*" || company match $search + "*")
+  && ($brand == "" || brand == $brand)
+] | order(_createdAt desc)`;
 
 export const listCasesByClientQuery = `*[_type == "case" && client._ref == $clientId] | order(_createdAt desc) {
   _id, _createdAt, caseCode, title, discipline, status, complexity, priority,
@@ -263,6 +278,25 @@ export const getWorkPlanByIdQuery = `*[_type == "workPlan" && _id == $id][0] {
 }`;
 
 // ============================================
+// WORK PLAN ACTIVITIES
+// ============================================
+
+export const listWorkPlanActivitiesQuery = `*[_type == "workPlanActivity" && case._ref == $caseId] | order(_createdAt asc) {
+  _id, _createdAt, title, description, dueDate, status, startedAt, completedAt,
+  "fileUrl": file.asset->url,
+  "fileName": file.asset->originalFilename,
+  "assignedTo": assignedTo->{ _id, displayName, role },
+  "createdBy": createdBy->{ _id, displayName }
+}`;
+
+export const countActivitiesByStatusQuery = `{
+  "total": count(*[_type == "workPlanActivity" && case._ref == $caseId]),
+  "completadas": count(*[_type == "workPlanActivity" && case._ref == $caseId && status == "completada"]),
+  "en_progreso": count(*[_type == "workPlanActivity" && case._ref == $caseId && status == "en_progreso"]),
+  "pendientes": count(*[_type == "workPlanActivity" && case._ref == $caseId && status == "pendiente"])
+}`;
+
+// ============================================
 // DELIVERABLES
 // ============================================
 
@@ -333,25 +367,62 @@ export const getHearingByIdQuery = `*[_type == "hearing" && _id == $id][0] {
 // PAYMENTS
 // ============================================
 
-export const listCasePaymentsQuery = `*[_type == "payment" && case._ref == $caseId] | order(_createdAt desc) {
-  _id, _createdAt, amount, paymentDate, paymentMethod, status, transactionReference, notes,
+export const listCasePaymentsQuery = `*[_type == "payment" && case._ref == $caseId] | order(paymentNumber asc) {
+  _id, _createdAt, paymentNumber, amount, percentage, dueDate, paymentDate, paymentMethod, status, transactionReference, notes,
+  "receiptUrl": receiptFile.asset->url,
+  "quoteRef": quote->{ _id, version },
   "createdBy": createdBy->{ _id, displayName }
 }`;
 
 export const listAllPaymentsQuery = `*[_type == "payment"
   && ($status == "" || status == $status)
 ] | order(_createdAt desc) [$start...$end] {
-  _id, _createdAt, amount, paymentDate, paymentMethod, status, transactionReference, notes,
+  _id, _createdAt, paymentNumber, amount, percentage, dueDate, paymentDate, paymentMethod, status, transactionReference, notes,
+  "receiptUrl": receiptFile.asset->url,
   "caseRef": case->{ _id, caseCode, title },
+  "quoteRef": quote->{ _id, version },
+  "clientName": case->client->name,
   "createdBy": createdBy->{ _id, displayName }
 }`;
 
 export const countAllPaymentsQuery = `count(*[_type == "payment" && ($status == "" || status == $status)])`;
 
 export const getPaymentByIdQuery = `*[_type == "payment" && _id == $id][0] {
-  _id, _createdAt, amount, paymentDate, paymentMethod, status, transactionReference, notes,
+  _id, _createdAt, paymentNumber, amount, percentage, dueDate, paymentDate, paymentMethod, status, transactionReference, notes,
+  "receiptUrl": receiptFile.asset->url,
   "caseRef": case->{ _id, caseCode, title },
+  "quoteRef": quote->{ _id, version },
+  "clientName": case->client->name,
   "createdBy": createdBy->{ _id, displayName }
+}`;
+
+export const listQuotePaymentsQuery = `*[_type == "payment" && quote._ref == $quoteId] | order(paymentNumber asc) {
+  _id, _createdAt, paymentNumber, amount, percentage, dueDate, paymentDate, status,
+  "receiptUrl": receiptFile.asset->url
+}`;
+
+export const listMonthPaymentsQuery = `*[_type == "payment" && dueDate >= $startDate && dueDate < $endDate] | order(dueDate asc) {
+  _id, _createdAt, paymentNumber, amount, percentage, dueDate, paymentDate, status,
+  "receiptUrl": receiptFile.asset->url,
+  "caseRef": case->{ _id, caseCode, title },
+  "quoteRef": quote->{ _id, version },
+  "clientName": case->client->name
+}`;
+
+export const listUpcomingPaymentsQuery = `*[_type == "payment" && status == "pendiente" && dueDate >= $now && dueDate <= $fiveDaysLater] | order(dueDate asc) {
+  _id, paymentNumber, amount, dueDate, status,
+  "caseRef": case->{ _id, caseCode, title },
+  "clientName": case->client->name
+}`;
+
+export const listOverduePaymentsQuery = `*[_type == "payment" && status == "pendiente" && dueDate < $now] | order(dueDate asc) {
+  _id, paymentNumber, amount, dueDate, status,
+  "caseRef": case->{ _id, caseCode, title },
+  "clientName": case->client->name
+}`;
+
+export const listPaymentsLast12MonthsQuery = `*[_type == "payment" && dueDate >= $twelveMonthsAgo] | order(dueDate asc) {
+  _id, amount, dueDate, status
 }`;
 
 // ============================================
@@ -416,26 +487,21 @@ export const getSystemSettingQuery = `*[_type == "systemSetting" && key == $key]
 
 export const getDashboardStatsQuery = `{
   "totalCases": count(*[_type == "case"]),
-  "activeCases": count(*[_type == "case" && status in ["en_cotizacion", "pendiente_aprobacion", "aprobado", "en_asignacion", "en_produccion", "en_revision"]]),
+  "activeCases": count(*[_type == "case" && status == "gestionado"]),
   "totalClients": count(*[_type == "crmClient"]),
   "totalExperts": count(*[_type == "expert" && validationStatus == "aprobado"]),
   "pendingPayments": count(*[_type == "payment" && status == "pendiente"]),
   "casesByStatus": {
     "creado": count(*[_type == "case" && status == "creado"]),
-    "en_cotizacion": count(*[_type == "case" && status == "en_cotizacion"]),
-    "pendiente_aprobacion": count(*[_type == "case" && status == "pendiente_aprobacion"]),
-    "aprobado": count(*[_type == "case" && status == "aprobado"]),
-    "en_asignacion": count(*[_type == "case" && status == "en_asignacion"]),
-    "en_produccion": count(*[_type == "case" && status == "en_produccion"]),
-    "en_revision": count(*[_type == "case" && status == "en_revision"]),
-    "finalizado": count(*[_type == "case" && status == "finalizado"])
+    "gestionado": count(*[_type == "case" && status == "gestionado"]),
+    "cancelado": count(*[_type == "case" && status == "cancelado"])
   },
   "recentCases": *[_type == "case"] | order(_createdAt desc) [0...5] {
     _id, caseCode, title, status, discipline, _createdAt,
     "client": client->{ _id, name }
   },
-  "totalRevenue": math::sum(*[_type == "payment" && status == "completado"].amount),
-  "pendingActions": count(*[_type == "case" && status in ["pendiente_aprobacion", "en_revision"]])
+  "totalRevenue": math::sum(*[_type == "payment" && status == "validado"].amount),
+  "pendingActions": count(*[_type == "case" && status == "creado"])
 }`;
 
 // ============================================
@@ -459,10 +525,51 @@ export const reportExpertsPerformanceQuery = `*[_type == "expert" && validationS
   "user": user->{ _id, displayName, email }
 }`;
 
-export const reportRevenueQuery = `*[_type == "payment" && status == "completado"
+export const reportRevenueQuery = `*[_type == "payment" && status == "validado"
   && ($startDate == "" || paymentDate >= $startDate)
   && ($endDate == "" || paymentDate <= $endDate)
 ] | order(paymentDate desc) {
   _id, amount, paymentDate, paymentMethod,
   "caseRef": case->{ _id, caseCode, title, discipline }
 }`;
+
+// ============================================
+// ALERT QUERIES
+// ============================================
+
+export const casesNeedingHearingAlertQuery = `*[_type == "case"
+  && hasHearing != true
+  && !(status in ["cancelado"])
+] {
+  _id, caseCode, title,
+  "commercialId": commercial._ref,
+  "technicalAnalystId": technicalAnalyst._ref,
+  "assignedExpertId": assignedExpert._ref
+}`;
+
+export const casesWithUrgentDeadlineQuery = `*[_type == "case"
+  && defined(deadlineDate)
+  && deadlineDate <= $threshold
+  && deadlineDate >= $today
+  && !(status in ["cancelado"])
+] {
+  _id, caseCode, title, deadlineDate,
+  "commercialId": commercial._ref,
+  "technicalAnalystId": technicalAnalyst._ref,
+  "assignedExpertId": assignedExpert._ref
+}`;
+
+export const recentHearingAlertTitlesQuery = `*[_type == "notification"
+  && title match "Alerta de Audiencia:*"
+  && _createdAt >= $since
+].title`;
+
+export const recentDeadlineAlertTitlesQuery = `*[_type == "notification"
+  && title match "Caso Proximo a Vencer:*"
+  && _createdAt >= $since
+].title`;
+
+export const listAdminUserIdsQuery = `*[_type == "crmUser"
+  && role == "admin"
+  && active == true
+]._id`;

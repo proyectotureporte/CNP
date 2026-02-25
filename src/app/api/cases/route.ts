@@ -4,9 +4,10 @@ import { listCasesQuery, countCasesQuery, getLatestCaseCodeQuery } from '@/lib/s
 import { CASE_STATUSES, CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES } from '@/lib/types';
 import type { CaseExpanded } from '@/lib/types';
 
-function generateCaseCode(latestCode: string | null): string {
+function generateCaseCode(latestCode: string | null, brand: string): string {
   const year = new Date().getFullYear();
-  const prefix = `CNP-${year}-`;
+  const brandPrefix = brand === 'Peritus' ? 'PER' : 'CNP';
+  const prefix = `${brandPrefix}-${year}-`;
 
   if (!latestCode || !latestCode.startsWith(prefix)) {
     return `${prefix}0001`;
@@ -20,17 +21,38 @@ function generateCaseCode(latestCode: string | null): string {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    const userRole = request.headers.get('x-user-role') || '';
+    const userId = request.headers.get('x-user-id') || '';
     const status = searchParams.get('status') || '';
     const discipline = searchParams.get('discipline') || '';
+    const brand = searchParams.get('brand') || '';
     const search = searchParams.get('search') || '';
+    const deadlineFilter = searchParams.get('deadlineFilter') || '';
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const start = (page - 1) * limit;
     const end = start + limit;
 
+    // Financiero users can only see cases assigned to them
+    const financieroId = userRole === 'financiero' ? userId : '';
+
+    // Calculate deadline threshold based on filter
+    let deadlineThreshold = '';
+    if (deadlineFilter === 'proximos') {
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      deadlineThreshold = d.toISOString().split('T')[0];
+    } else if (deadlineFilter === 'urgente') {
+      const d = new Date();
+      d.setDate(d.getDate() + 7);
+      deadlineThreshold = d.toISOString().split('T')[0];
+    }
+
+    const queryParams = { status, discipline, brand, search, deadlineFilter, deadlineThreshold, start, end, financieroId };
+
     const [cases, total] = await Promise.all([
-      client.fetch<CaseExpanded[]>(listCasesQuery, { status, discipline, search, start, end }),
-      client.fetch<number>(countCasesQuery, { status, discipline, search }),
+      client.fetch<CaseExpanded[]>(listCasesQuery, queryParams),
+      client.fetch<number>(countCasesQuery, queryParams),
     ]);
 
     return NextResponse.json({
@@ -57,8 +79,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       title, description, discipline, complexity, priority,
-      clientId, estimatedAmount, hearingDate, deadlineDate,
-      city, courtName, caseNumber,
+      clientId, estimatedAmount, hasHearing, hearingDate, hearingLink, deadlineDate,
+      city, courtName, caseNumber, brand: bodyBrand,
     } = body;
 
     if (!title) {
@@ -89,14 +111,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate case code
+    const caseBrand = bodyBrand === 'Peritus' ? 'Peritus' : 'CNP';
+
+    // Generate case code with brand prefix
     const year = new Date().getFullYear();
-    const prefix = `CNP-${year}-`;
+    const brandPrefix = caseBrand === 'Peritus' ? 'PER' : 'CNP';
+    const prefix = `${brandPrefix}-${year}-`;
     const latest = await client.fetch<{ caseCode: string } | null>(getLatestCaseCodeQuery, { prefix });
-    const caseCode = generateCaseCode(latest?.caseCode || null);
+    const caseCode = generateCaseCode(latest?.caseCode || null, caseBrand);
 
     const doc: { _type: 'case'; [key: string]: unknown } = {
       _type: 'case',
+      brand: caseBrand,
       caseCode,
       title,
       description: description || '',
@@ -105,7 +131,9 @@ export async function POST(request: NextRequest) {
       complexity: complexity || 'media',
       priority: priority || 'normal',
       estimatedAmount: estimatedAmount || 0,
+      hasHearing: hasHearing || false,
       hearingDate: hearingDate || undefined,
+      hearingLink: hearingLink || '',
       deadlineDate: deadlineDate || undefined,
       city: city || '',
       courtName: courtName || '',

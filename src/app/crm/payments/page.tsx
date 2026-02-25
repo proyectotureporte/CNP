@@ -56,7 +56,7 @@ export default function PaymentsPage() {
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="pendiente">Pendiente</SelectItem>
-            <SelectItem value="completado">Completado</SelectItem>
+            <SelectItem value="validado">Validado</SelectItem>
             <SelectItem value="anulado">Anulado</SelectItem>
           </SelectContent>
         </Select>

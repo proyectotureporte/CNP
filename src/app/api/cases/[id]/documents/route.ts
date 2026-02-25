@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { listCaseDocumentsQuery, getCaseByIdQuery } from '@/lib/sanity/queries';
-import { DOCUMENT_CATEGORIES, type DocumentCategory, type CaseExpanded } from '@/lib/types';
+import { DOCUMENT_CATEGORIES, DOCUMENT_CATEGORY_LABELS, type DocumentCategory, type CaseExpanded } from '@/lib/types';
+import { logCaseEvent } from '@/lib/sanity/logEvent';
+
+const paymentReceiptsQuery = `*[_type == "payment" && case._ref == $caseId && defined(receiptFile.asset)] | order(paymentNumber asc) {
+  _id, _createdAt, paymentNumber,
+  "fileUrl": receiptFile.asset->url,
+  "fileSize": receiptFile.asset->size,
+  "mimeType": receiptFile.asset->mimeType
+}`;
 
 export async function GET(
   request: NextRequest,
@@ -13,6 +21,40 @@ export async function GET(
     const category = searchParams.get('category') || '';
 
     const documents = await client.fetch(listCaseDocumentsQuery, { caseId: id, category });
+
+    // Also fetch payment receipts directly from payments to ensure they always show
+    if (!category || category === 'pago') {
+      const paymentReceipts = await client.fetch<{
+        _id: string; _createdAt: string; paymentNumber: number;
+        fileUrl: string; fileSize: number; mimeType: string;
+      }[]>(paymentReceiptsQuery, { caseId: id });
+
+      // Deduplicate: check which payment receipts already have a caseDocument
+      const existingPaymentDocNames = new Set(
+        documents
+          .filter((d: { category: string }) => d.category === 'pago')
+          .map((d: { fileName: string }) => d.fileName)
+      );
+
+      const virtualDocs = paymentReceipts
+        .filter(p => !existingPaymentDocNames.has(`Justificante Pago ${p.paymentNumber}`))
+        .map(p => ({
+          _id: `payment-receipt-${p._id}`,
+          _createdAt: p._createdAt,
+          category: 'pago',
+          fileName: `Justificante Pago ${p.paymentNumber}`,
+          fileSize: p.fileSize || 0,
+          mimeType: p.mimeType || 'application/octet-stream',
+          version: 1,
+          isVisibleToClient: true,
+          description: `Justificante Pago ${p.paymentNumber}`,
+          fileUrl: p.fileUrl,
+          uploadedByName: 'Sistema',
+        }));
+
+      documents.push(...virtualDocs);
+    }
+
     return NextResponse.json({ success: true, data: documents });
   } catch {
     return NextResponse.json(
@@ -98,6 +140,15 @@ export async function POST(
     }
 
     const created = await writeClient.create(doc);
+
+    const catLabel = DOCUMENT_CATEGORY_LABELS[category as DocumentCategory] || category;
+    logCaseEvent({
+      caseId: id,
+      eventType: 'document_uploaded',
+      description: `Documento subido: "${file.name}" (${catLabel})`,
+      userId, userName,
+    });
+
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {
     return NextResponse.json(

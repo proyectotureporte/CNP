@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate role if provided
-    const userRole = role || 'comercial';
+    const userRole = role || 'juridico';
     if (!USER_ROLES.includes(userRole)) {
       return NextResponse.json(
         { success: false, error: 'Rol invalido' },

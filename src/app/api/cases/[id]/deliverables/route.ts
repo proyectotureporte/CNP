@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { listCaseDeliverablesQuery, countCaseDeliverablesQuery } from '@/lib/sanity/queries';
+import { logCaseEvent } from '@/lib/sanity/logEvent';
 
 export async function GET(
   _request: NextRequest,
@@ -22,6 +23,7 @@ export async function POST(
   try {
     const { id } = await params;
     const userId = request.headers.get('x-user-id');
+    const userName = request.headers.get('x-user-name');
     const body = await request.json();
 
     if (!body.phase) {
@@ -47,6 +49,14 @@ export async function POST(
     }
 
     const created = await writeClient.create(doc);
+
+    logCaseEvent({
+      caseId: id,
+      eventType: 'deliverable_submitted',
+      description: `Entrega enviada: fase "${body.phase}", v${doc.version}`,
+      userId, userName,
+    });
+
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {
     return NextResponse.json({ success: false, error: 'Error creando entrega' }, { status: 500 });

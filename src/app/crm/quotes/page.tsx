@@ -19,8 +19,9 @@ interface QuoteWithCase extends Quote {
   case?: { _id: string; caseCode: string; title: string };
 }
 
-function formatCurrency(v: number) {
-  return `$${v.toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+function formatCurrency(v: number | null | undefined) {
+  if (v == null) return "$0";
+  return `${v.toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function formatDate(d?: string) {
@@ -113,7 +114,7 @@ export default function QuotesPage() {
                       <span className="text-xs text-muted-foreground">v{q.version}</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {q.case?.caseCode} - {q.case?.title} | {q.estimatedHours}h x {formatCurrency(q.hourlyRate)}/h | {formatDate(q._createdAt)}
+                      {q.case?.caseCode} - {q.case?.title} | {formatCurrency(q.totalPrice)} | Dcto: {q.discountPercentage}% | {formatDate(q._createdAt)}
                     </p>
                     {q.createdBy && (
                       <p className="text-xs text-muted-foreground">Por: {q.createdBy.displayName}</p>

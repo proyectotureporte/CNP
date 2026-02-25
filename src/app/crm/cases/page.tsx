@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, Search, Filter, Briefcase } from "lucide-react";
+import { Plus, Search, Filter, Briefcase, Clock, AlertTriangle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,6 +34,27 @@ import {
   type CaseStatus,
   type CaseDiscipline,
 } from "@/lib/types";
+import { useAuth } from "@/hooks/useAuth";
+
+function getDeadlineInfo(deadlineDate?: string) {
+  if (!deadlineDate) return null;
+  const target = new Date(deadlineDate);
+  const now = new Date();
+  target.setHours(0, 0, 0, 0);
+  now.setHours(0, 0, 0, 0);
+  const days = Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const day = target.getDate();
+  const monthNames = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const formatted = `${day} ${monthNames[target.getMonth()]}`;
+
+  if (days <= 7) {
+    return { days, formatted, color: "bg-red-100 text-red-800", label: "Urgente" };
+  }
+  if (days <= 30) {
+    return { days, formatted, color: "bg-yellow-100 text-yellow-800", label: "Proximo" };
+  }
+  return { days, formatted, color: "bg-green-100 text-green-800", label: "Normal" };
+}
 
 function CasesTableSkeleton() {
   return (
@@ -53,11 +74,14 @@ function CasesTableSkeleton() {
 }
 
 export default function CrmCasesPage() {
+  const { user } = useAuth();
   const [cases, setCases] = useState<CaseExpanded[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [disciplineFilter, setDisciplineFilter] = useState("");
+  const [brandFilter, setBrandFilter] = useState("");
+  const [deadlineFilter, setDeadlineFilter] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -69,6 +93,8 @@ export default function CrmCasesPage() {
       if (search) params.set("search", search);
       if (statusFilter) params.set("status", statusFilter);
       if (disciplineFilter) params.set("discipline", disciplineFilter);
+      if (brandFilter) params.set("brand", brandFilter);
+      if (deadlineFilter) params.set("deadlineFilter", deadlineFilter);
       params.set("page", String(page));
       params.set("limit", "15");
 
@@ -85,11 +111,16 @@ export default function CrmCasesPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, disciplineFilter, page]);
+  }, [search, statusFilter, disciplineFilter, brandFilter, deadlineFilter, page]);
 
   useEffect(() => {
     fetchCases();
   }, [fetchCases]);
+
+  // Fire-and-forget alert check on page load
+  useEffect(() => {
+    fetch("/api/cron/check-alerts", { method: "POST" }).catch(() => {});
+  }, []);
 
   function handleSearch() {
     setPage(1);
@@ -104,6 +135,8 @@ export default function CrmCasesPage() {
     setSearch("");
     setStatusFilter("");
     setDisciplineFilter("");
+    setBrandFilter("");
+    setDeadlineFilter("");
     setPage(1);
   }
 
@@ -127,6 +160,33 @@ export default function CrmCasesPage() {
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Caso
           </Link>
+        </Button>
+      </div>
+
+      {/* Brand filter tabs */}
+      <div className="mb-4 flex gap-2">
+        <Button
+          variant={brandFilter === "" ? "default" : "outline"}
+          size="sm"
+          onClick={() => { setBrandFilter(""); setPage(1); }}
+        >
+          Todos
+        </Button>
+        <Button
+          variant={brandFilter === "CNP" ? "default" : "outline"}
+          size="sm"
+          onClick={() => { setBrandFilter(brandFilter === "CNP" ? "" : "CNP"); setPage(1); }}
+          className={brandFilter === "CNP" ? "bg-sky-600 hover:bg-sky-700" : ""}
+        >
+          CNP
+        </Button>
+        <Button
+          variant={brandFilter === "Peritus" ? "default" : "outline"}
+          size="sm"
+          onClick={() => { setBrandFilter(brandFilter === "Peritus" ? "" : "Peritus"); setPage(1); }}
+          className={brandFilter === "Peritus" ? "bg-violet-600 hover:bg-violet-700" : ""}
+        >
+          Peritus
         </Button>
       </div>
 
@@ -165,11 +225,77 @@ export default function CrmCasesPage() {
             ))}
           </SelectContent>
         </Select>
-        {(search || statusFilter || disciplineFilter) && (
+        {(search || statusFilter || disciplineFilter || brandFilter || deadlineFilter) && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
             Limpiar filtros
           </Button>
         )}
+      </div>
+
+      {/* Deadline filter buttons */}
+      <div className="mb-4 flex gap-2">
+        <Button
+          variant={deadlineFilter === "proximos" ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setDeadlineFilter(deadlineFilter === "proximos" ? "" : "proximos");
+            setPage(1);
+          }}
+          className={deadlineFilter === "proximos" ? "bg-yellow-600 hover:bg-yellow-700" : ""}
+        >
+          <Clock className="mr-1.5 h-4 w-4" />
+          Proximos a vencer
+        </Button>
+        <Button
+          variant={deadlineFilter === "urgente" ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setDeadlineFilter(deadlineFilter === "urgente" ? "" : "urgente");
+            setPage(1);
+          }}
+          className={deadlineFilter === "urgente" ? "bg-red-600 hover:bg-red-700" : ""}
+        >
+          <AlertTriangle className="mr-1.5 h-4 w-4" />
+          Urgente
+        </Button>
+        <Button
+          variant={statusFilter === "creado" ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setStatusFilter(statusFilter === "creado" ? "" : "creado");
+            setDeadlineFilter("");
+            setPage(1);
+          }}
+          className={statusFilter === "creado" ? "bg-gray-600 hover:bg-gray-700" : ""}
+        >
+          Creado
+        </Button>
+        <Button
+          variant={statusFilter === "gestionado" ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setStatusFilter(statusFilter === "gestionado" ? "" : "gestionado");
+            setDeadlineFilter("");
+            setPage(1);
+          }}
+          className={statusFilter === "gestionado" ? "bg-violet-600 hover:bg-violet-700" : "border-violet-300 text-violet-700 hover:bg-violet-50"}
+        >
+          <CheckCircle className="mr-1.5 h-4 w-4" />
+          Gestionado
+        </Button>
+        <Button
+          variant={statusFilter === "cancelado" ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setStatusFilter(statusFilter === "cancelado" ? "" : "cancelado");
+            setDeadlineFilter("");
+            setPage(1);
+          }}
+          className={statusFilter === "cancelado" ? "bg-red-600 hover:bg-red-700" : "border-red-300 text-red-700 hover:bg-red-50"}
+        >
+          <AlertTriangle className="mr-1.5 h-4 w-4" />
+          Cancelado
+        </Button>
       </div>
 
       {/* Table */}
@@ -184,39 +310,56 @@ export default function CrmCasesPage() {
         </div>
       ) : (
         <>
-          <div className="rounded-lg border">
-            <Table>
+          <div className="rounded-lg border overflow-hidden">
+            <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[130px]">Codigo</TableHead>
-                  <TableHead>Titulo</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Disciplina</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Prioridad</TableHead>
-                  <TableHead className="text-right">Monto Est.</TableHead>
+                  <TableHead className="w-[7%] text-center">Marca</TableHead>
+                  <TableHead className="w-[10%]">Codigo</TableHead>
+                  <TableHead className="w-[17%]">Titulo</TableHead>
+                  <TableHead className="w-[11%]">Cliente</TableHead>
+                  <TableHead className="w-[10%]">Disciplina</TableHead>
+                  <TableHead className="w-[11%]">Estado</TableHead>
+                  <TableHead className="w-[7%]">Prior.</TableHead>
+                  <TableHead className="w-[8%] text-right">Monto</TableHead>
+                  <TableHead className="w-[5%] text-center">Juz.</TableHead>
+                  <TableHead className="w-[5%] text-center">Aud.</TableHead>
+                  <TableHead className="w-[9%] text-center">F. Entrega</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {cases.map((c) => {
                   const statusColor = CASE_STATUS_COLORS[c.status as CaseStatus];
                   const priorityColor = PRIORITY_COLORS[c.priority];
+                  const caseBrand = c.brand || "CNP";
                   return (
                     <TableRow key={c._id}>
-                      <TableCell className="font-mono text-xs">
+                      <TableCell className="text-center">
+                        <Badge
+                          variant="outline"
+                          className={`text-xs border-0 ${
+                            caseBrand === "Peritus"
+                              ? "bg-violet-100 text-violet-700"
+                              : "bg-sky-100 text-sky-700"
+                          }`}
+                        >
+                          {caseBrand}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs truncate">
                         <Link href={`/crm/cases/${c._id}`} className="text-primary hover:underline">
                           {c.caseCode}
                         </Link>
                       </TableCell>
-                      <TableCell className="max-w-[250px] truncate font-medium">
+                      <TableCell className="truncate font-medium text-sm">
                         <Link href={`/crm/cases/${c._id}`} className="hover:underline">
                           {c.title}
                         </Link>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-muted-foreground truncate">
                         {c.client?.name || "-"}
                       </TableCell>
-                      <TableCell className="text-sm">
+                      <TableCell className="text-sm truncate">
                         {DISCIPLINE_LABELS[c.discipline as CaseDiscipline] || c.discipline}
                       </TableCell>
                       <TableCell>
@@ -234,6 +377,23 @@ export default function CrmCasesPage() {
                         {c.estimatedAmount
                           ? `$${c.estimatedAmount.toLocaleString("es-CO")}`
                           : "-"}
+                      </TableCell>
+                      <TableCell className="text-center text-sm">
+                        {c.courtName ? "Si" : "No"}
+                      </TableCell>
+                      <TableCell className="text-center text-sm">
+                        {c.hasHearing ? "Si" : "No"}
+                      </TableCell>
+                      <TableCell className="text-center text-sm">
+                        {(() => {
+                          const info = getDeadlineInfo(c.deadlineDate);
+                          if (!info) return "-";
+                          return (
+                            <Badge variant="outline" className={`${info.color} border-0`}>
+                              {info.formatted}
+                            </Badge>
+                          );
+                        })()}
                       </TableCell>
                     </TableRow>
                   );

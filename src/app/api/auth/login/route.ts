@@ -90,14 +90,14 @@ export async function POST(request: NextRequest) {
 
       const token = await signToken({
         sub: user._id,
-        role: user.role || 'comercial',
+        role: user.role || 'juridico',
         displayName: user.displayName,
       });
 
       const response = NextResponse.json({
         success: true,
         data: {
-          role: user.role || 'comercial',
+          role: user.role || 'juridico',
           displayName: user.displayName,
           userId: user._id,
         },

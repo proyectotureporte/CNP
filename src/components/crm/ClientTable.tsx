@@ -121,8 +121,8 @@ export default function ClientTable({
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="min-w-full">
+      <div>
+        <table className="w-full table-fixed">
           <thead className="bg-gray-50/80">
             <tr>
               <th scope="col" className={thClass}>
@@ -155,16 +155,16 @@ export default function ClientTable({
                   key={client._id}
                   className="border-b border-gray-50 transition-all duration-200 hover:bg-gray-50/50"
                 >
-                  <td className="whitespace-nowrap px-4 py-3.5 text-sm font-medium text-gray-900">
+                  <td className="truncate px-4 py-3.5 text-sm font-medium text-gray-900">
                     {client.name}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3.5 text-sm text-gray-600">
+                  <td className="truncate px-4 py-3.5 text-sm text-gray-600">
                     {client.email}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3.5 text-sm text-gray-600">
+                  <td className="truncate px-4 py-3.5 text-sm text-gray-600">
                     {client.company}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3.5 text-sm">
+                  <td className="truncate px-4 py-3.5 text-sm">
                     <span
                       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${status.bgClass} ${status.textClass}`}
                     >
@@ -174,11 +174,11 @@ export default function ClientTable({
                       {status.label}
                     </span>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3.5 text-sm text-gray-500">
+                  <td className="truncate px-4 py-3.5 text-sm text-gray-500">
                     {formatDate(client._createdAt)}
                   </td>
                   {showActions && (
-                    <td className="whitespace-nowrap px-4 py-3.5 text-sm">
+                    <td className="truncate px-4 py-3.5 text-sm">
                       <div className="flex items-center gap-1">
                         <Link
                           href={`/crm/clients/${client._id}`}

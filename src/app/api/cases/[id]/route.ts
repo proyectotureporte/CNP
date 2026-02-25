@@ -8,30 +8,33 @@ import {
 
 // Valid state transitions map
 const VALID_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
-  creado: ['en_cotizacion', 'rechazado', 'archivado'],
-  en_cotizacion: ['pendiente_aprobacion', 'rechazado', 'archivado'],
-  pendiente_aprobacion: ['aprobado', 'rechazado', 'en_cotizacion'],
-  aprobado: ['en_asignacion', 'archivado'],
-  en_asignacion: ['en_produccion', 'archivado'],
-  en_produccion: ['en_revision', 'archivado'],
-  en_revision: ['finalizado', 'en_produccion', 'archivado'],
-  finalizado: ['archivado'],
-  archivado: [],
-  rechazado: ['creado'],
+  creado: ['gestionado', 'cancelado'],
+  gestionado: ['creado', 'cancelado'],
+  cancelado: ['creado'],
 };
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const userRole = request.headers.get('x-user-role') || '';
+    const userId = request.headers.get('x-user-id') || '';
     const caseData = await client.fetch<CaseExpanded | null>(getCaseByIdQuery, { id });
 
     if (!caseData) {
       return NextResponse.json(
         { success: false, error: 'Caso no encontrado' },
         { status: 404 }
+      );
+    }
+
+    // Financiero users can only access cases assigned to them
+    if (userRole === 'financiero' && caseData.assignedFinanciero?._id !== userId) {
+      return NextResponse.json(
+        { success: false, error: 'No tiene acceso a este caso' },
+        { status: 403 }
       );
     }
 
@@ -50,6 +53,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+    const userRole = request.headers.get('x-user-role') || '';
     const body = await request.json();
 
     const existing = await client.fetch<CaseExpanded | null>(getCaseByIdQuery, { id });
@@ -57,6 +61,14 @@ export async function PUT(
       return NextResponse.json(
         { success: false, error: 'Caso no encontrado' },
         { status: 404 }
+      );
+    }
+
+    // Juridico cannot edit cases that are already gestionado (read-only unless returned)
+    if (userRole === 'juridico' && existing.status !== 'creado') {
+      return NextResponse.json(
+        { success: false, error: 'No puede editar este caso. Solo puede editar casos en estado Creado.' },
+        { status: 403 }
       );
     }
 
@@ -69,7 +81,16 @@ export async function PUT(
     if (body.courtName !== undefined) updates.courtName = body.courtName;
     if (body.caseNumber !== undefined) updates.caseNumber = body.caseNumber;
     if (body.estimatedAmount !== undefined) updates.estimatedAmount = body.estimatedAmount;
+    if (body.hasHearing !== undefined) {
+      updates.hasHearing = body.hasHearing;
+      // When unchecked, clear hearing fields
+      if (!body.hasHearing) {
+        updates.hearingDate = '';
+        updates.hearingLink = '';
+      }
+    }
     if (body.hearingDate !== undefined) updates.hearingDate = body.hearingDate;
+    if (body.hearingLink !== undefined) updates.hearingLink = body.hearingLink;
     if (body.deadlineDate !== undefined) updates.deadlineDate = body.deadlineDate;
     if (body.riskScore !== undefined) updates.riskScore = body.riskScore;
 
@@ -122,6 +143,9 @@ export async function PUT(
     }
     if (body.assignedExpertId !== undefined) {
       updates.assignedExpert = body.assignedExpertId ? { _type: 'reference', _ref: body.assignedExpertId } : undefined;
+    }
+    if (body.assignedFinancieroId !== undefined) {
+      updates.assignedFinanciero = body.assignedFinancieroId ? { _type: 'reference', _ref: body.assignedFinancieroId } : undefined;
     }
 
     const updated = await writeClient.patch(id).set(updates).commit();

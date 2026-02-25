@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -16,22 +17,26 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
-  Plus, Send, CheckCircle, XCircle, DollarSign,
-  Loader2, Clock, FileText, Pencil,
+  Plus, CheckCircle, XCircle, DollarSign,
+  Loader2, Clock, FileText, Pencil, Upload, ExternalLink,
+  AlertTriangle, Info,
 } from "lucide-react";
 import {
   QUOTE_STATUS_LABELS, QUOTE_STATUS_COLORS,
-  type Quote, type QuoteStatus,
+  PAYMENT_STATUS_LABELS, PAYMENT_STATUS_COLORS,
+  type Quote, type Payment,
 } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import QuoteForm from "./QuoteForm";
 
 interface QuoteListProps {
   caseId: string;
+  userRole?: string;
 }
 
-function formatCurrency(value: number) {
-  return `$${value.toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+function formatCurrency(value: number | null | undefined) {
+  if (value == null) return "$0";
+  return `${value.toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function formatDate(dateStr?: string) {
@@ -48,55 +53,53 @@ function formatDateTime(dateStr?: string) {
   });
 }
 
-export default function QuoteList({ caseId }: QuoteListProps) {
+export default function QuoteList({ caseId, userRole }: QuoteListProps) {
   const { user } = useAuth();
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [quotePayments, setQuotePayments] = useState<Record<string, Payment[]>>({});
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectDialogQuote, setRejectDialogQuote] = useState<Quote | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [uploadingPaymentId, setUploadingPaymentId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  const canManageQuotes = user && ["admin", "comercial", "tecnico"].includes(user.role);
-  const canApproveQuotes = user && ["admin", "cliente", "comite"].includes(user.role);
+  const role = userRole || user?.role || '';
+  const canManageQuotes = user && ["admin", "juridico", "financiero"].includes(role);
+  const canApproveQuotes = user && ["admin", "cliente"].includes(role);
+  const isFinanciero = role === "financiero";
 
-  async function loadQuotes() {
+  const loadQuotes = useCallback(async () => {
     try {
       const res = await fetch(`/api/cases/${caseId}/quotes`);
       const data = await res.json();
       if (data.success) {
         setQuotes(data.data);
+        // Load payments for each quote
+        const paymentMap: Record<string, Payment[]> = {};
+        await Promise.all(
+          data.data.map(async (q: Quote) => {
+            const pRes = await fetch(`/api/payments/${q._id}/quote`);
+            const pData = await pRes.json();
+            if (pData.success) {
+              paymentMap[q._id] = pData.data;
+            }
+          })
+        );
+        setQuotePayments(paymentMap);
       }
     } catch {
       setError("Error al cargar cotizaciones");
     } finally {
       setLoading(false);
     }
-  }
+  }, [caseId]);
 
   useEffect(() => {
     loadQuotes();
-  }, [caseId]);
-
-  async function handleSend(quoteId: string) {
-    setActionLoading(quoteId);
-    setError("");
-    try {
-      const res = await fetch(`/api/quotes/${quoteId}/send`, { method: "POST" });
-      const data = await res.json();
-      if (data.success) {
-        await loadQuotes();
-      } else {
-        setError(data.error);
-      }
-    } catch {
-      setError("Error de conexion");
-    } finally {
-      setActionLoading(null);
-    }
-  }
+  }, [loadQuotes]);
 
   async function handleApprove(quoteId: string) {
     setActionLoading(quoteId);
@@ -140,6 +143,30 @@ export default function QuoteList({ caseId }: QuoteListProps) {
       setActionLoading(null);
     }
   }
+
+  async function handleUploadReceipt(paymentId: string, file: File) {
+    setUploadingPaymentId(paymentId);
+    setError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/payments/${paymentId}/receipt`, {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      if (data.success) {
+        await loadQuotes();
+      } else {
+        setError(data.error || "Error subiendo justificante");
+      }
+    } catch {
+      setError("Error de conexion");
+    } finally {
+      setUploadingPaymentId(null);
+    }
+  }
+
 
   function handleFormSuccess() {
     setShowForm(false);
@@ -204,7 +231,7 @@ export default function QuoteList({ caseId }: QuoteListProps) {
           {quotes.map((quote) => {
             const statusColor = QUOTE_STATUS_COLORS[quote.status];
             const isLoading = actionLoading === quote._id;
-
+            const payments = quotePayments[quote._id] || [];
             return (
               <Card key={quote._id}>
                 <CardHeader className="pb-3">
@@ -221,18 +248,14 @@ export default function QuoteList({ caseId }: QuoteListProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Values Summary */}
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                     <div>
-                      <p className="text-xs text-muted-foreground">Horas</p>
-                      <p className="text-sm font-medium">{quote.estimatedHours} hrs</p>
+                      <p className="text-xs text-muted-foreground">Precio Total</p>
+                      <p className="text-sm font-medium">{formatCurrency(quote.totalPrice)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Tarifa/Hora</p>
-                      <p className="text-sm font-medium">{formatCurrency(quote.hourlyRate)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Subtotal</p>
-                      <p className="text-sm font-medium">{formatCurrency(quote.totalValue)}</p>
+                      <p className="text-xs text-muted-foreground">Descuento</p>
+                      <p className="text-sm font-medium">{quote.discountPercentage}%</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Valor Final</p>
@@ -240,29 +263,85 @@ export default function QuoteList({ caseId }: QuoteListProps) {
                     </div>
                   </div>
 
-                  {/* Detail breakdown */}
-                  <div className="rounded-lg bg-muted/50 p-3 space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Base ({quote.estimatedHours}h x {formatCurrency(quote.hourlyRate)})</span>
-                      <span>{formatCurrency(quote.baseValue)}</span>
+                  {/* Quote Document */}
+                  {quote.quoteDocumentUrl && (
+                    <a
+                      href={quote.quoteDocumentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Ver Documento de Cotizacion
+                    </a>
+                  )}
+
+                  {/* Payments Section */}
+                  {payments.length > 0 && (
+                    <div className="rounded-lg border p-3 space-y-3">
+                      <p className="text-sm font-medium">Pagos</p>
+                      {payments.map((payment) => {
+                        const pColor = PAYMENT_STATUS_COLORS[payment.status];
+                        const isUploading = uploadingPaymentId === payment._id;
+                        return (
+                          <div key={payment._id} className="flex items-center justify-between gap-2 rounded-md bg-muted/50 p-2">
+                            <div className="space-y-0.5 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">
+                                  Pago {payment.paymentNumber}: {formatCurrency(payment.amount)}
+                                </span>
+                                <Badge className={`${pColor?.bg} ${pColor?.text} border-0 text-xs`}>
+                                  <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${pColor?.dot}`} />
+                                  {PAYMENT_STATUS_LABELS[payment.status]}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {payment.percentage}% | Vence: {formatDate(payment.dueDate)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {/* Upload receipt button - only for pending payments when user can manage */}
+                              {payment.status === "pendiente" && canManageQuotes && (
+                                <div className="relative">
+                                  <Input
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                    onChange={(e) => {
+                                      const f = e.target.files?.[0];
+                                      if (f) handleUploadReceipt(payment._id, f);
+                                    }}
+                                    disabled={isUploading}
+                                  />
+                                  <Button variant="outline" size="sm" disabled={isUploading} className="pointer-events-none">
+                                    {isUploading ? (
+                                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Upload className="mr-1.5 h-3.5 w-3.5" />
+                                    )}
+                                    Subir Pago {payment.paymentNumber}
+                                  </Button>
+                                </div>
+                              )}
+                              {/* View receipt link - only for validated payments */}
+                              {payment.status === "validado" && payment.receiptUrl && (
+                                <a
+                                  href={payment.receiptUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <Button variant="outline" size="sm" type="button">
+                                    <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                                    Ver Justificante {payment.paymentNumber}
+                                  </Button>
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    {quote.expenses > 0 && (
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Gastos</span>
-                        <span>+ {formatCurrency(quote.expenses)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Margen ({quote.marginPercentage}%)</span>
-                      <span>+ {formatCurrency(quote.baseValue * quote.marginPercentage / 100)}</span>
-                    </div>
-                    {quote.discountPercentage > 0 && (
-                      <div className="flex justify-between text-xs text-red-600">
-                        <span>Descuento ({quote.discountPercentage}%)</span>
-                        <span>- {formatCurrency(quote.totalValue * quote.discountPercentage / 100)}</span>
-                      </div>
-                    )}
-                  </div>
+                  )}
 
                   {/* Metadata */}
                   <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
@@ -308,29 +387,15 @@ export default function QuoteList({ caseId }: QuoteListProps) {
                   {/* Actions */}
                   <div className="flex justify-end gap-2">
                     {quote.status === "borrador" && canManageQuotes && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setEditingQuote(quote)}
-                          disabled={isLoading}
-                        >
-                          <Pencil className="mr-2 h-3.5 w-3.5" />
-                          Editar
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleSend(quote._id)}
-                          disabled={isLoading}
-                        >
-                          {isLoading ? (
-                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Send className="mr-2 h-3.5 w-3.5" />
-                          )}
-                          Enviar
-                        </Button>
-                      </>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingQuote(quote)}
+                        disabled={isLoading}
+                      >
+                        <Pencil className="mr-2 h-3.5 w-3.5" />
+                        Editar
+                      </Button>
                     )}
                     {quote.status === "enviada" && canApproveQuotes && (
                       <>
@@ -363,6 +428,7 @@ export default function QuoteList({ caseId }: QuoteListProps) {
                       </>
                     )}
                   </div>
+
                 </CardContent>
               </Card>
             );

@@ -9,6 +9,10 @@ export default function CrmNewClientPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [portalCredentials, setPortalCredentials] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
 
   async function handleSubmit(formData: Record<string, string>) {
     setIsLoading(true);
@@ -28,7 +32,15 @@ export default function CrmNewClientPage() {
         return;
       }
 
-      router.push("/crm/clients");
+      // Show portal credentials if auto-created
+      if (data.portalPassword) {
+        setPortalCredentials({
+          email: formData.email,
+          password: data.portalPassword,
+        });
+      } else {
+        router.push("/crm/clients");
+      }
     } catch {
       setError("Error de conexion. Intente nuevamente.");
     } finally {
@@ -93,10 +105,68 @@ export default function CrmNewClientPage() {
           </div>
         )}
 
+        {/* Portal credentials modal */}
+        {portalCredentials && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+                  <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Cliente Creado</h2>
+                  <p className="text-sm text-gray-500">Se genero acceso al portal automaticamente</p>
+                </div>
+              </div>
+
+              <div className="mb-5 space-y-3 rounded-lg border border-blue-100 bg-blue-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+                  Credenciales del Portal
+                </p>
+                <div>
+                  <p className="text-xs text-gray-500">Email</p>
+                  <p className="font-mono text-sm font-medium text-gray-900">{portalCredentials.email}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Contrasena temporal</p>
+                  <p className="font-mono text-lg font-bold text-gray-900">{portalCredentials.password}</p>
+                </div>
+                <p className="text-xs text-amber-700">
+                  El cliente debera cambiar su contrasena en el primer inicio de sesion.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      `Portal: ${window.location.origin}/portal/login\nEmail: ${portalCredentials.email}\nContrasena: ${portalCredentials.password}`
+                    );
+                  }}
+                  className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  Copiar credenciales
+                </button>
+                <button
+                  onClick={() => router.push("/crm/clients")}
+                  className="flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-sm"
+                  style={{ background: 'linear-gradient(135deg, #2969b0, #1b5697)' }}
+                >
+                  Continuar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Form card */}
-        <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-          <ClientForm onSubmit={handleSubmit} isLoading={isLoading} />
-        </div>
+        {!portalCredentials && (
+          <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+            <ClientForm onSubmit={handleSubmit} isLoading={isLoading} />
+          </div>
+        )}
     </>
   );
 }

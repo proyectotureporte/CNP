@@ -38,9 +38,9 @@ function formatDate(d?: string) {
   });
 }
 
-function formatCurrency(v?: number) {
-  if (!v) return '-';
-  return `$${v.toLocaleString('es-CO')}`;
+function formatCurrency(v?: number | null) {
+  if (v == null) return '$0';
+  return `${v.toLocaleString('es-CO')}`;
 }
 
 export default function PortalCaseDetailPage({
@@ -249,7 +249,7 @@ export default function PortalCaseDetailPage({
                             <span className="text-xs text-muted-foreground">v{q.version}</span>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            {q.estimatedHours}h | Tarifa: {formatCurrency(q.hourlyRate)}/h |{' '}
+                            Precio: {formatCurrency(q.totalPrice)} | Dcto: {q.discountPercentage}% |{' '}
                             {formatDate(q._createdAt)}
                           </p>
                           {q.notes && (

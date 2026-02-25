@@ -51,9 +51,11 @@ export async function proxy(request: NextRequest) {
       return response;
     }
 
-    // Check role-based route access
+    // Check role-based route access - if role is invalid/removed, clear cookie and redirect to login
     if (!canAccessRoute(payload.role, pathname)) {
-      return NextResponse.redirect(new URL('/crm', request.url));
+      const response = NextResponse.redirect(new URL('/crm/login', request.url));
+      response.cookies.delete('crm-token');
+      return response;
     }
 
     // Inject user info into headers for downstream use

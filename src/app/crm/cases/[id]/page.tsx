@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Calendar, MapPin, Gavel, FileText, Users, Clock, DollarSign,
-  Pencil, ArrowLeft, AlertTriangle,
+  Pencil, ArrowLeft, AlertTriangle, UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,27 +25,60 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   CASE_STATUS_LABELS, CASE_STATUS_COLORS,
   DISCIPLINE_LABELS,
   COMPLEXITY_LABELS, COMPLEXITY_COLORS,
   PRIORITY_LABELS, PRIORITY_COLORS,
   CASE_EVENT_LABELS,
+  ROLE_CASE_TABS,
   type CaseExpanded, type CaseStatus, type CaseComplexity, type CasePriority,
   type CaseEvent, type CaseEventType,
 } from "@/lib/types";
+import { useAuth } from "@/hooks/useAuth";
 
 const VALID_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
-  creado: ['en_cotizacion', 'rechazado', 'archivado'],
-  en_cotizacion: ['pendiente_aprobacion', 'rechazado', 'archivado'],
-  pendiente_aprobacion: ['aprobado', 'rechazado', 'en_cotizacion'],
-  aprobado: ['en_asignacion', 'archivado'],
-  en_asignacion: ['en_produccion', 'archivado'],
-  en_produccion: ['en_revision', 'archivado'],
-  en_revision: ['finalizado', 'en_produccion', 'archivado'],
-  finalizado: ['archivado'],
-  archivado: [],
-  rechazado: ['creado'],
+  creado: ['gestionado', 'cancelado'],
+  gestionado: ['creado', 'cancelado'],
+  cancelado: ['creado'],
 };
+
+// Returns available transitions based on role and chain
+function getAvailableTransitions(
+  status: CaseStatus,
+  role: string,
+  statusChangedByRole?: string
+): CaseStatus[] {
+  const transitions = VALID_TRANSITIONS[status] || [];
+  if (role === 'admin') return transitions;
+
+  // Juridico: only when case is in creado and no one changed it yet (or financiero returned it)
+  if (role === 'juridico') {
+    if (status === 'creado' && (!statusChangedByRole || statusChangedByRole === 'financiero')) {
+      return ['gestionado', 'cancelado'];
+    }
+    return [];
+  }
+
+  // Financiero: only when juridico changed it (case is gestionado, changed by juridico)
+  if (role === 'financiero') {
+    if (statusChangedByRole === 'juridico') {
+      // Can return to creado (devolver) or cancel
+      if (status === 'gestionado') return ['creado', 'cancelado'];
+    }
+    return [];
+  }
+
+  return [];
+}
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return "-";
@@ -74,11 +107,27 @@ export default function CrmCaseDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
   const [caseData, setCaseData] = useState<CaseExpanded | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusChanging, setStatusChanging] = useState(false);
   const [events, setEvents] = useState<CaseEvent[]>([]);
+  const [activeTab, setActiveTab] = useState("summary");
+  const [showFinancieroDialog, setShowFinancieroDialog] = useState(false);
+  const [financieroUsers, setFinancieroUsers] = useState<{ _id: string; displayName: string; role: string }[]>([]);
+  const [selectedFinancieroId, setSelectedFinancieroId] = useState("");
+
+  const userRole = user?.role || 'admin';
+  const visibleTabs = ROLE_CASE_TABS[userRole] || ROLE_CASE_TABS.admin;
+
+  async function loadEvents() {
+    try {
+      const eventsRes = await fetch(`/api/cases/${id}/events`);
+      const eventsJson = await eventsRes.json();
+      if (eventsJson.success) setEvents(eventsJson.data);
+    } catch { /* ignore */ }
+  }
 
   useEffect(() => {
     async function loadCase() {
@@ -106,17 +155,59 @@ export default function CrmCaseDetailPage({
     loadCase();
   }, [id]);
 
+  // Recargar eventos al cambiar a la pestana Timeline
+  useEffect(() => {
+    if (activeTab === "timeline") loadEvents();
+  }, [activeTab]);
+
   async function handleStatusChange(newStatus: string) {
+    // If juridico selects gestionado, show the financiero picker dialog
+    if (userRole === 'juridico' && newStatus === 'gestionado') {
+      // Load financiero users
+      try {
+        const res = await fetch('/api/users');
+        const data = await res.json();
+        if (data.success) {
+          const financieros = data.data.filter((u: { role: string }) => u.role === 'financiero');
+          setFinancieroUsers(financieros);
+        }
+      } catch { /* ignore */ }
+      setSelectedFinancieroId("");
+      setShowFinancieroDialog(true);
+      return;
+    }
+
+    await executeStatusChange(newStatus);
+  }
+
+  async function executeStatusChange(newStatus: string, assignedFinancieroId?: string) {
     setStatusChanging(true);
     try {
+      const bodyPayload: Record<string, string> = { status: newStatus };
+      if (assignedFinancieroId) {
+        bodyPayload.assignedFinancieroId = assignedFinancieroId;
+      }
+
       const res = await fetch(`/api/cases/${id}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(bodyPayload),
       });
       const data = await res.json();
       if (data.success) {
-        setCaseData((prev) => prev ? { ...prev, status: newStatus as CaseStatus } : null);
+        setCaseData((prev) => {
+          if (!prev) return null;
+          const updated = { ...prev, status: newStatus as CaseStatus };
+          // Update the assignedFinanciero display if we just assigned one
+          if (assignedFinancieroId) {
+            const fin = financieroUsers.find((u) => u._id === assignedFinancieroId);
+            if (fin) {
+              updated.assignedFinanciero = { _id: fin._id, displayName: fin.displayName, email: '' };
+            }
+          }
+          return updated;
+        });
+        setShowFinancieroDialog(false);
       } else {
         setError(data.error || "Error al cambiar estado");
       }
@@ -125,6 +216,14 @@ export default function CrmCaseDetailPage({
     } finally {
       setStatusChanging(false);
     }
+  }
+
+  function handleConfirmGestionado() {
+    if (!selectedFinancieroId) {
+      setError("Debe seleccionar un usuario financiero");
+      return;
+    }
+    executeStatusChange('gestionado', selectedFinancieroId);
   }
 
   if (loading) {
@@ -149,7 +248,8 @@ export default function CrmCaseDetailPage({
   const statusColor = CASE_STATUS_COLORS[caseData.status];
   const complexityColor = COMPLEXITY_COLORS[caseData.complexity as CaseComplexity];
   const priorityColor = PRIORITY_COLORS[caseData.priority as CasePriority];
-  const validNext = VALID_TRANSITIONS[caseData.status] || [];
+  const validNext = getAvailableTransitions(caseData.status, userRole, caseData.statusChangedByRole);
+  const isReadOnlyForJuridico = userRole === 'juridico' && caseData.status !== 'creado';
 
   return (
     <>
@@ -162,6 +262,14 @@ export default function CrmCaseDetailPage({
         <span className="text-foreground font-medium">{caseData.caseCode}</span>
       </nav>
 
+      {/* Read-only banner for juridico */}
+      {isReadOnlyForJuridico && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4" />
+          Este caso esta en estado <strong>{CASE_STATUS_LABELS[caseData.status]}</strong> y es de solo lectura. El financiero asignado puede devolverlo si necesita correccion.
+        </div>
+      )}
+
       {/* Error banner */}
       {error && (
         <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center gap-2">
@@ -173,7 +281,17 @@ export default function CrmCaseDetailPage({
       {/* Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Badge
+              variant="outline"
+              className={`text-xs border-0 ${
+                (caseData.brand || "CNP") === "Peritus"
+                  ? "bg-violet-100 text-violet-700"
+                  : "bg-sky-100 text-sky-700"
+              }`}
+            >
+              {caseData.brand || "CNP"}
+            </Badge>
             <h1 className="text-2xl font-bold tracking-tight">{caseData.title}</h1>
             <Badge className={`${statusColor?.bg} ${statusColor?.text} border-0`}>
               <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${statusColor?.dot}`} />
@@ -187,12 +305,14 @@ export default function CrmCaseDetailPage({
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
           </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/crm/cases/${id}/edit`}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Editar
-            </Link>
-          </Button>
+          {!isReadOnlyForJuridico && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/crm/cases/${id}/edit`}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Editar
+              </Link>
+            </Button>
+          )}
           {validNext.length > 0 && (
             <Select onValueChange={handleStatusChange} disabled={statusChanging}>
               <SelectTrigger className="w-[200px]">
@@ -201,7 +321,10 @@ export default function CrmCaseDetailPage({
               <SelectContent>
                 {validNext.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {CASE_STATUS_LABELS[s]}
+                    {/* When financiero returns case to creado, show "Devolver" */}
+                    {s === 'creado' && userRole === 'financiero'
+                      ? 'Devolver a Juridico'
+                      : CASE_STATUS_LABELS[s]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -211,14 +334,14 @@ export default function CrmCaseDetailPage({
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="summary">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="summary">Resumen</TabsTrigger>
-          <TabsTrigger value="documents">Documentos</TabsTrigger>
-          <TabsTrigger value="quotes">Cotizaciones</TabsTrigger>
-          <TabsTrigger value="work-plan">Plan de Trabajo</TabsTrigger>
-          <TabsTrigger value="deliverables">Entregas</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          {visibleTabs.includes('summary') && <TabsTrigger value="summary">Resumen</TabsTrigger>}
+          {visibleTabs.includes('documents') && <TabsTrigger value="documents">Documentos</TabsTrigger>}
+          {visibleTabs.includes('quotes') && <TabsTrigger value="quotes">Cotizaciones</TabsTrigger>}
+          {visibleTabs.includes('work-plan') && <TabsTrigger value="work-plan">Plan de Trabajo</TabsTrigger>}
+          {visibleTabs.includes('deliverables') && <TabsTrigger value="deliverables">Entregas</TabsTrigger>}
+          {visibleTabs.includes('timeline') && <TabsTrigger value="timeline">Timeline</TabsTrigger>}
         </TabsList>
 
         {/* Summary Tab */}
@@ -327,13 +450,31 @@ export default function CrmCaseDetailPage({
                   <CardTitle className="text-base">Fechas Clave</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Fecha de Audiencia</p>
-                      <p className="text-sm font-medium">{formatDateTime(caseData.hearingDate)}</p>
+                  {caseData.hearingDate && (
+                    <div className="flex items-center gap-3">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Fecha de Audiencia</p>
+                        <p className="text-sm font-medium">{formatDateTime(caseData.hearingDate)}</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
+                  {caseData.hearingLink && (
+                    <div className="flex items-center gap-3">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Enlace de Audiencia</p>
+                        <a
+                          href={caseData.hearingLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-primary hover:underline"
+                        >
+                          {caseData.hearingLink}
+                        </a>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center gap-3">
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -377,6 +518,10 @@ export default function CrmCaseDetailPage({
                     <p className="text-xs text-muted-foreground">Perito Asignado</p>
                     <p className="text-sm font-medium">{caseData.assignedExpert?.displayName || "-"}</p>
                   </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Financiero Asignado</p>
+                    <p className="text-sm font-medium">{caseData.assignedFinanciero?.displayName || "-"}</p>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -400,7 +545,7 @@ export default function CrmCaseDetailPage({
               <CardTitle className="text-base">Cotizaciones</CardTitle>
             </CardHeader>
             <CardContent>
-              <QuoteList caseId={id} />
+              <QuoteList caseId={id} userRole={userRole} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -411,7 +556,7 @@ export default function CrmCaseDetailPage({
               <CardTitle className="text-base">Plan de Trabajo</CardTitle>
             </CardHeader>
             <CardContent>
-              <WorkPlanTab caseId={id} />
+              <WorkPlanTab caseId={id} userRole={userRole} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -469,6 +614,53 @@ export default function CrmCaseDetailPage({
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Financiero assignment dialog */}
+      <Dialog open={showFinancieroDialog} onOpenChange={setShowFinancieroDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5" />
+              Asignar Usuario Financiero
+            </DialogTitle>
+            <DialogDescription>
+              Seleccione el usuario financiero que gestionara este caso. Solo este usuario podra ver el caso y su cliente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Usuario Financiero</Label>
+              {financieroUsers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay usuarios financieros disponibles</p>
+              ) : (
+                <Select value={selectedFinancieroId} onValueChange={setSelectedFinancieroId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar financiero..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {financieroUsers.map((u) => (
+                      <SelectItem key={u._id} value={u._id}>
+                        {u.displayName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFinancieroDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConfirmGestionado}
+              disabled={!selectedFinancieroId || statusChanging}
+            >
+              {statusChanging ? "Asignando..." : "Confirmar y Gestionar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

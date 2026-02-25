@@ -7,6 +7,7 @@ interface AuthUser {
   sub: string;
   role: UserRole;
   displayName: string;
+  mustChangePassword?: boolean;
 }
 
 export function useAuth(type: 'crm' | 'admin' = 'crm') {

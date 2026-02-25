@@ -45,5 +45,6 @@ export const adminNavItems: NavItem[] = [
   { label: 'Usuarios', href: '/admin/users', icon: Users, permission: 'users' },
   { label: 'Clientes', href: '/admin/clients', icon: Users, permission: 'clients' },
   { label: 'Audit Logs', href: '/admin/audit-logs', icon: Shield, permission: 'audit-logs' },
+  { label: 'Cartera', href: '/admin/cartera', icon: Wallet, permission: 'cartera' },
   { label: 'Configuracion', href: '/admin/settings', icon: Settings, permission: 'settings' },
 ];

@@ -9,7 +9,7 @@ import { LogOut } from 'lucide-react';
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  if (pathname === '/portal/login') {
+  if (pathname === '/portal/login' || pathname === '/portal/change-password') {
     return <>{children}</>;
   }
 
@@ -25,6 +25,8 @@ function PortalAuthLayout({ children }: { children: React.ReactNode }) {
     if (loading) return;
     if (!user || user.role !== 'cliente') {
       router.replace('/portal/login');
+    } else if (user.mustChangePassword) {
+      router.replace('/portal/change-password');
     } else {
       setChecked(true);
     }

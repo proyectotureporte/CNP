@@ -4,44 +4,44 @@
 
 export const USER_ROLES = [
   'admin',
-  'comercial',
-  'tecnico',
-  'perito',
+  'juridico',
+  'financiero',
+  'administrativo',
+  'mercadeo',
+  'postventa',
   'cliente',
-  'finanzas',
-  'comite',
 ] as const;
 
 export type UserRole = (typeof USER_ROLES)[number];
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Administrador',
-  comercial: 'Asesor Comercial',
-  tecnico: 'Analista Tecnico',
-  perito: 'Perito',
-  cliente: 'Cliente (Abogado)',
-  finanzas: 'Finanzas',
-  comite: 'Comite Tecnico',
+  juridico: 'Juridico',
+  financiero: 'Financiero',
+  administrativo: 'Administrativo',
+  mercadeo: 'Mercadeo',
+  postventa: 'Post Venta',
+  cliente: 'Cliente',
 };
 
 export const ROLE_COLORS: Record<UserRole, { bg: string; text: string; dot: string }> = {
   admin: { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' },
-  comercial: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
-  tecnico: { bg: 'bg-cyan-50', text: 'text-cyan-700', dot: 'bg-cyan-500' },
-  perito: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
+  juridico: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
+  financiero: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  administrativo: { bg: 'bg-cyan-50', text: 'text-cyan-700', dot: 'bg-cyan-500' },
+  mercadeo: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
+  postventa: { bg: 'bg-rose-50', text: 'text-rose-700', dot: 'bg-rose-500' },
   cliente: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
-  finanzas: { bg: 'bg-rose-50', text: 'text-rose-700', dot: 'bg-rose-500' },
-  comite: { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
 };
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  admin: ['dashboard', 'cases', 'experts', 'clients', 'users', 'quotes', 'deliverables', 'work-plans', 'evaluations', 'payments', 'commissions', 'reports', 'settings', 'notifications', 'profile', 'audit-logs'],
-  comercial: ['dashboard', 'cases', 'clients', 'quotes', 'notifications', 'profile'],
-  tecnico: ['dashboard', 'cases', 'experts', 'deliverables', 'work-plans', 'notifications', 'profile'],
-  perito: ['dashboard', 'my-cases', 'deliverables', 'work-plans', 'notifications', 'profile'],
+  admin: ['dashboard', 'cases', 'experts', 'clients', 'users', 'quotes', 'deliverables', 'work-plans', 'evaluations', 'payments', 'commissions', 'reports', 'settings', 'notifications', 'profile', 'audit-logs', 'cartera'],
+  juridico: ['dashboard', 'cases', 'clients', 'notifications', 'profile'],
+  financiero: ['dashboard', 'cases', 'quotes', 'payments', 'notifications', 'profile', 'cartera'],
+  administrativo: ['dashboard', 'cases', 'work-plans', 'notifications', 'profile'],
+  mercadeo: ['dashboard', 'cases', 'notifications', 'profile'],
+  postventa: ['dashboard', 'cases', 'notifications', 'profile'],
   cliente: ['dashboard', 'my-cases', 'quotes', 'notifications', 'profile'],
-  finanzas: ['dashboard', 'payments', 'commissions', 'reports', 'notifications', 'profile'],
-  comite: ['dashboard', 'cases', 'experts', 'deliverables', 'work-plans', 'evaluations', 'notifications', 'profile'],
 };
 
 // ============================================
@@ -67,30 +67,21 @@ export const DISCIPLINE_LABELS: Record<CaseDiscipline, string> = {
 // ============================================
 
 export const CASE_STATUSES = [
-  'creado', 'en_cotizacion', 'pendiente_aprobacion', 'aprobado',
-  'en_asignacion', 'en_produccion', 'en_revision', 'finalizado',
-  'archivado', 'rechazado',
+  'creado', 'gestionado', 'cancelado',
 ] as const;
 
 export type CaseStatus = (typeof CASE_STATUSES)[number];
 
 export const CASE_STATUS_LABELS: Record<CaseStatus, string> = {
-  creado: 'Creado', en_cotizacion: 'En Cotizacion', pendiente_aprobacion: 'Pendiente Aprobacion',
-  aprobado: 'Aprobado', en_asignacion: 'En Asignacion', en_produccion: 'En Produccion',
-  en_revision: 'En Revision', finalizado: 'Finalizado', archivado: 'Archivado', rechazado: 'Rechazado',
+  creado: 'Creado',
+  gestionado: 'Gestionado',
+  cancelado: 'Cancelado',
 };
 
 export const CASE_STATUS_COLORS: Record<CaseStatus, { bg: string; text: string; dot: string }> = {
   creado: { bg: 'bg-gray-50', text: 'text-gray-700', dot: 'bg-gray-500' },
-  en_cotizacion: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
-  pendiente_aprobacion: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
-  aprobado: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
-  en_asignacion: { bg: 'bg-cyan-50', text: 'text-cyan-700', dot: 'bg-cyan-500' },
-  en_produccion: { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
-  en_revision: { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500' },
-  finalizado: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
-  archivado: { bg: 'bg-slate-50', text: 'text-slate-700', dot: 'bg-slate-500' },
-  rechazado: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+  gestionado: { bg: 'bg-violet-50', text: 'text-violet-700', dot: 'bg-violet-500' },
+  cancelado: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
 };
 
 // ============================================
@@ -150,11 +141,13 @@ export interface CrmUser extends SanityDocument {
   role: UserRole;
   active: boolean;
   avatarUrl?: string;
+  mustChangePassword?: boolean;
   companyRef?: { _ref: string; _type: 'reference' };
 }
 
 export interface CrmClient extends SanityDocument {
   _type: 'crmClient';
+  brand: 'CNP' | 'Peritus';
   name: string;
   email: string;
   phone: string;
@@ -182,6 +175,7 @@ export interface Company extends SanityDocument {
 
 export interface Case extends SanityDocument {
   _type: 'case';
+  brand: 'CNP' | 'Peritus';
   caseCode: string;
   title: string;
   description?: string;
@@ -189,12 +183,16 @@ export interface Case extends SanityDocument {
   commercial?: { _ref: string; _type: 'reference' };
   technicalAnalyst?: { _ref: string; _type: 'reference' };
   assignedExpert?: { _ref: string; _type: 'reference' };
+  assignedFinanciero?: { _ref: string; _type: 'reference' };
   discipline: CaseDiscipline;
   status: CaseStatus;
+  statusChangedByRole?: string;
   complexity: CaseComplexity;
   priority: CasePriority;
   estimatedAmount?: number;
+  hasHearing?: boolean;
   hearingDate?: string;
+  hearingLink?: string;
   deadlineDate?: string;
   city?: string;
   courtName?: string;
@@ -207,15 +205,19 @@ export interface CaseExpanded {
   _id: string;
   _createdAt: string;
   _updatedAt: string;
+  brand: 'CNP' | 'Peritus';
   caseCode: string;
   title: string;
   description?: string;
   discipline: CaseDiscipline;
   status: CaseStatus;
+  statusChangedByRole?: string;
   complexity: CaseComplexity;
   priority: CasePriority;
   estimatedAmount?: number;
+  hasHearing?: boolean;
   hearingDate?: string;
+  hearingLink?: string;
   deadlineDate?: string;
   city?: string;
   courtName?: string;
@@ -225,6 +227,7 @@ export interface CaseExpanded {
   commercial?: { _id: string; displayName: string; email: string };
   technicalAnalyst?: { _id: string; displayName: string; email: string };
   assignedExpert?: { _id: string; displayName: string; email: string };
+  assignedFinanciero?: { _id: string; displayName: string; email: string };
   createdBy?: { _id: string; displayName: string };
 }
 
@@ -279,12 +282,7 @@ export interface Quote {
   _id: string;
   _createdAt: string;
   version: number;
-  estimatedHours: number;
-  hourlyRate: number;
-  baseValue: number;
-  expenses: number;
-  marginPercentage: number;
-  totalValue: number;
+  totalPrice: number;
   discountPercentage: number;
   finalValue: number;
   status: QuoteStatus;
@@ -295,6 +293,11 @@ export interface Quote {
   rejectionReason?: string;
   notes?: string;
   createdBy?: { _id: string; displayName: string };
+  quoteDocumentUrl?: string;
+  firstPaymentDate?: string;
+  lastPaymentDate?: string;
+  firstPaymentPercentage: number;
+  customSplit: boolean;
 }
 
 // ============================================
@@ -460,6 +463,40 @@ export interface WorkPlan {
 }
 
 // ============================================
+// ACTIVIDADES DE PLAN DE TRABAJO
+// ============================================
+
+export const ACTIVITY_STATUSES = ['pendiente', 'en_progreso', 'completada'] as const;
+export type ActivityStatus = (typeof ACTIVITY_STATUSES)[number];
+
+export const ACTIVITY_STATUS_LABELS: Record<ActivityStatus, string> = {
+  pendiente: 'Pendiente',
+  en_progreso: 'En Progreso',
+  completada: 'Completada',
+};
+
+export const ACTIVITY_STATUS_COLORS: Record<ActivityStatus, { bg: string; text: string; dot: string }> = {
+  pendiente: { bg: 'bg-gray-50', text: 'text-gray-700', dot: 'bg-gray-500' },
+  en_progreso: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
+  completada: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+};
+
+export interface WorkPlanActivity {
+  _id: string;
+  _createdAt: string;
+  title: string;
+  description?: string;
+  dueDate?: string;
+  status: ActivityStatus;
+  startedAt?: string;
+  completedAt?: string;
+  fileUrl?: string;
+  fileName?: string;
+  assignedTo?: { _id: string; displayName: string; role: string };
+  createdBy?: { _id: string; displayName: string };
+}
+
+// ============================================
 // ENTREGAS
 // ============================================
 
@@ -552,25 +589,37 @@ export interface Hearing {
 export const PAYMENT_METHODS = ['transferencia', 'cheque', 'efectivo', 'tarjeta', 'otro'] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
-export const PAYMENT_STATUSES = ['pendiente', 'completado', 'anulado'] as const;
+export const PAYMENT_STATUSES = ['pendiente', 'validado', 'anulado'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  pendiente: 'Pendiente',
+  validado: 'Validado',
+  anulado: 'Anulado',
+};
 
 export const PAYMENT_STATUS_COLORS: Record<PaymentStatus, { bg: string; text: string; dot: string }> = {
   pendiente: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
-  completado: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+  validado: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
   anulado: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
 };
 
 export interface Payment {
   _id: string;
   _createdAt: string;
+  paymentNumber: number;
   amount: number;
+  percentage: number;
+  dueDate?: string;
   paymentDate?: string;
   paymentMethod?: PaymentMethod;
   status: PaymentStatus;
   transactionReference?: string;
+  receiptUrl?: string;
   notes?: string;
   caseRef?: { _id: string; caseCode: string; title: string };
+  quoteRef?: { _id: string; version: number };
+  clientName?: string;
   createdBy?: { _id: string; displayName: string };
 }
 
@@ -644,3 +693,44 @@ export interface SystemSetting {
   dataType: string;
   description?: string;
 }
+
+// ============================================
+// OBSERVACIONES DE PLAN DE TRABAJO
+// ============================================
+
+export const OBSERVATION_TYPES = [
+  'observacion', 'notificacion', 'retraso', 'cliente', 'entidad', 'otro',
+] as const;
+
+export type ObservationType = (typeof OBSERVATION_TYPES)[number];
+
+export const OBSERVATION_TYPE_LABELS: Record<ObservationType, string> = {
+  observacion: 'Observacion',
+  notificacion: 'Notificacion',
+  retraso: 'Informar Retraso',
+  cliente: 'Cliente',
+  entidad: 'Entidad',
+  otro: 'Otro',
+};
+
+export interface WorkPlanObservation {
+  _id: string;
+  _createdAt: string;
+  activityId: string;
+  type: ObservationType;
+  comment: string;
+  createdBy?: { _id: string; displayName: string };
+}
+
+// ============================================
+// TABS POR ROL (CASO DETALLE)
+// ============================================
+
+export const ROLE_CASE_TABS: Record<string, string[]> = {
+  admin: ['summary', 'documents', 'quotes', 'work-plan', 'deliverables', 'timeline'],
+  juridico: ['summary', 'documents'],
+  financiero: ['summary', 'documents', 'quotes', 'work-plan', 'deliverables', 'timeline'],
+  administrativo: ['summary', 'work-plan'],
+  mercadeo: ['summary'],
+  postventa: ['summary'],
+};

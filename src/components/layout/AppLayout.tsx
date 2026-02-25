@@ -52,9 +52,9 @@ export default function AppLayout({ children, variant = 'crm' }: AppLayoutProps)
         userName={user.displayName}
         variant={variant}
       />
-      <SidebarInset>
+      <SidebarInset className="min-w-0 overflow-hidden">
         <AppHeader userName={user.displayName} userRole={user.role as UserRole} />
-        <main className="flex-1 overflow-auto p-6 bg-gray-50/50">
+        <main className="flex-1 overflow-auto p-6 bg-gray-50/50 min-w-0">
           {children}
         </main>
       </SidebarInset>

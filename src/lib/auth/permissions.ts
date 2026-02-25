@@ -26,6 +26,7 @@ const ROUTE_PERMISSION_MAP: Record<string, string> = {
   '/admin/clients': 'clients',
   '/admin/audit-logs': 'audit-logs',
   '/admin/settings': 'settings',
+  '/admin/cartera': 'cartera',
 };
 
 export function canAccessRoute(role: UserRole, pathname: string): boolean {
@@ -45,11 +46,19 @@ export function canManageUsers(role: UserRole): boolean {
 }
 
 export function canCreateCase(role: UserRole): boolean {
-  return ['admin', 'comercial', 'cliente'].includes(role);
+  return ['admin', 'juridico'].includes(role);
+}
+
+export function canCreateClient(role: UserRole): boolean {
+  return ['admin', 'juridico'].includes(role);
+}
+
+export function canCreateQuote(role: UserRole): boolean {
+  return ['admin', 'financiero'].includes(role);
 }
 
 export function canAssignExpert(role: UserRole): boolean {
-  return ['admin', 'tecnico', 'comite'].includes(role);
+  return role === 'admin';
 }
 
 export function canApproveQuote(role: UserRole): boolean {
@@ -57,9 +66,13 @@ export function canApproveQuote(role: UserRole): boolean {
 }
 
 export function canReviewDeliverable(role: UserRole): boolean {
-  return ['admin', 'tecnico', 'comite'].includes(role);
+  return role === 'admin';
 }
 
 export function canAccessFinances(role: UserRole): boolean {
-  return ['admin', 'finanzas'].includes(role);
+  return ['admin', 'financiero'].includes(role);
+}
+
+export function canManageWorkPlanActions(role: UserRole): boolean {
+  return ['admin', 'administrativo'].includes(role);
 }

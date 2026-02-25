@@ -11,7 +11,7 @@ export default function AdminNewUserPage() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [role, setRole] = useState<UserRole>("comercial");
+  const [role, setRole] = useState<UserRole>("juridico");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -211,7 +211,7 @@ export default function AdminNewUserPage() {
                 onChange={(e) => setRole(e.target.value as UserRole)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-[#2969b0] focus:outline-none focus:ring-2 focus:ring-[#2969b0]/20"
               >
-                {USER_ROLES.filter((r) => r !== "admin").map((r) => (
+                {USER_ROLES.filter((r) => r !== "admin" && r !== "cliente").map((r) => (
                   <option key={r} value={r}>
                     {ROLE_LABELS[r]}
                   </option>

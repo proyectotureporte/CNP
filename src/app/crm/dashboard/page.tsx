@@ -218,9 +218,9 @@ export default function ExecutiveDashboardPage() {
               icon={<Briefcase className="h-5 w-5" />}
             />
             <KpiCard
-              title="Casos Activos"
+              title="Casos Gestionados"
               value={stats.activeCases}
-              description="En produccion, revision o asignacion"
+              description="Casos en gestion activa"
               icon={<Activity className="h-5 w-5" />}
             />
             <KpiCard
@@ -398,15 +398,8 @@ export default function ExecutiveDashboardPage() {
 function getBarColor(status: CaseStatus): string {
   const colorMap: Record<CaseStatus, string> = {
     creado: "#6b7280",
-    en_cotizacion: "#3b82f6",
-    pendiente_aprobacion: "#f59e0b",
-    aprobado: "#22c55e",
-    en_asignacion: "#06b6d4",
-    en_produccion: "#6366f1",
-    en_revision: "#f97316",
-    finalizado: "#10b981",
-    archivado: "#64748b",
-    rechazado: "#ef4444",
+    gestionado: "#8b5cf6",
+    cancelado: "#ef4444",
   };
   return colorMap[status] || "#6b7280";
 }

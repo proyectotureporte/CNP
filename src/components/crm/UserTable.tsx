@@ -57,7 +57,7 @@ function EmptyUsersIcon() {
 }
 
 function RoleBadge({ role }: { role: CrmUser["role"] }) {
-  const colors = ROLE_COLORS[role] || ROLE_COLORS.comercial;
+  const colors = ROLE_COLORS[role] || ROLE_COLORS.juridico;
   const label = ROLE_LABELS[role] || role;
   return (
     <span

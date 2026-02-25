@@ -39,15 +39,19 @@ export default function CrmClientsPage() {
   const router = useRouter();
   const [clients, setClients] = useState<CrmClient[]>([]);
   const [search, setSearch] = useState("");
+  const [brandFilter, setBrandFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchClients = useCallback(async (query: string) => {
+  const fetchClients = useCallback(async (query: string, brand?: string) => {
     setLoading(true);
     setError("");
 
     try {
-      const params = query ? `?search=${encodeURIComponent(query)}` : "";
+      const sp = new URLSearchParams();
+      if (query) sp.set("search", query);
+      if (brand) sp.set("brand", brand);
+      const params = sp.toString() ? `?${sp}` : "";
       const res = await fetch(`/api/clients${params}`);
       const data = await res.json();
 
@@ -81,8 +85,12 @@ export default function CrmClientsPage() {
     init();
   }, [router, fetchClients]);
 
+  useEffect(() => {
+    fetchClients(search, brandFilter);
+  }, [brandFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleSearch() {
-    fetchClients(search);
+    fetchClients(search, brandFilter);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -129,6 +137,29 @@ export default function CrmClientsPage() {
         <Button variant="secondary" onClick={handleSearch}>
           Buscar
         </Button>
+      </div>
+
+      {/* Brand filter */}
+      <div className="mb-6 flex gap-2">
+        <Button
+          variant={brandFilter === "CNP" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setBrandFilter(brandFilter === "CNP" ? "" : "CNP")}
+        >
+          CNP
+        </Button>
+        <Button
+          variant={brandFilter === "Peritus" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setBrandFilter(brandFilter === "Peritus" ? "" : "Peritus")}
+        >
+          Peritus
+        </Button>
+        {brandFilter && (
+          <Button variant="ghost" size="sm" onClick={() => setBrandFilter("")}>
+            Limpiar
+          </Button>
+        )}
       </div>
 
       {/* Error */}

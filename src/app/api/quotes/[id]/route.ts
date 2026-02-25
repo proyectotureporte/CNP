@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
-import { getQuoteByIdQuery, listAllQuotesQuery, countAllQuotesQuery } from '@/lib/sanity/queries';
-import type { Quote } from '@/lib/types';
+import { getQuoteByIdQuery, listAllQuotesQuery, countAllQuotesQuery, listQuotePaymentsQuery } from '@/lib/sanity/queries';
+import type { Quote, Payment } from '@/lib/types';
 
 export async function GET(
   request: NextRequest,
@@ -41,7 +41,6 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const body = await request.json();
 
     const existing = await client.fetch<Quote | null>(getQuoteByIdQuery, { id });
     if (!existing) {
@@ -55,36 +54,78 @@ export async function PUT(
       );
     }
 
-    const { estimatedHours, hourlyRate, expenses, marginPercentage, discountPercentage, notes, validUntil } = body;
+    const formData = await request.formData();
 
-    const hours = estimatedHours ?? existing.estimatedHours;
-    const rate = hourlyRate ?? existing.hourlyRate;
-    const exp = expenses ?? existing.expenses;
-    const margin = marginPercentage ?? existing.marginPercentage;
-    const discount = discountPercentage ?? existing.discountPercentage;
+    const totalPrice = parseFloat(formData.get('totalPrice') as string) || existing.totalPrice;
+    const discountPercentage = parseFloat(formData.get('discountPercentage') as string) ?? existing.discountPercentage;
+    const notes = (formData.get('notes') as string) ?? existing.notes;
+    const validUntil = (formData.get('validUntil') as string) || existing.validUntil;
+    const firstPaymentDate = (formData.get('firstPaymentDate') as string) || existing.firstPaymentDate;
+    const lastPaymentDate = (formData.get('lastPaymentDate') as string) || existing.lastPaymentDate;
+    const customSplit = formData.get('customSplit') === 'true';
+    const firstPaymentPercentage = customSplit
+      ? parseFloat(formData.get('firstPaymentPercentage') as string) || existing.firstPaymentPercentage
+      : 50;
 
-    const baseValue = hours * rate;
-    const totalValue = baseValue + exp + (baseValue * margin / 100);
-    const finalValue = totalValue - (totalValue * discount / 100);
+    const quoteFile = formData.get('quoteDocument') as File | null;
+
+    const finalValue = totalPrice - (totalPrice * discountPercentage / 100);
+
+    // Upload new file if provided
+    const patchOps: Record<string, unknown> = {
+      totalPrice,
+      discountPercentage,
+      finalValue,
+      notes,
+      validUntil: validUntil || undefined,
+      firstPaymentDate: firstPaymentDate || undefined,
+      lastPaymentDate: lastPaymentDate || undefined,
+      customSplit,
+      firstPaymentPercentage,
+    };
+
+    if (quoteFile && quoteFile.size > 0) {
+      const buffer = Buffer.from(await quoteFile.arrayBuffer());
+      const asset = await writeClient.assets.upload('file', buffer, {
+        filename: quoteFile.name,
+        contentType: quoteFile.type,
+      });
+      patchOps.quoteDocument = { _type: 'file', asset: { _type: 'reference', _ref: asset._id } };
+    }
 
     const updated = await writeClient
       .patch(id)
-      .set({
-        estimatedHours: hours,
-        hourlyRate: rate,
-        baseValue,
-        expenses: exp,
-        marginPercentage: margin,
-        totalValue,
-        discountPercentage: discount,
-        finalValue,
-        notes: notes ?? existing.notes,
-        validUntil: validUntil ?? existing.validUntil,
-      })
+      .set(patchOps)
       .commit();
 
+    // Update linked payments (amounts and dates)
+    const payments = await client.fetch<Payment[]>(listQuotePaymentsQuery, { quoteId: id });
+    const secondPercentage = 100 - firstPaymentPercentage;
+    const payment1Amount = Math.round(finalValue * firstPaymentPercentage / 100);
+    const payment2Amount = finalValue - payment1Amount;
+
+    const paymentUpdates = payments.map((p) => {
+      if (p.paymentNumber === 1) {
+        return writeClient.patch(p._id).set({
+          amount: payment1Amount,
+          percentage: firstPaymentPercentage,
+          dueDate: firstPaymentDate || undefined,
+        }).commit();
+      } else if (p.paymentNumber === 2) {
+        return writeClient.patch(p._id).set({
+          amount: payment2Amount,
+          percentage: secondPercentage,
+          dueDate: lastPaymentDate || undefined,
+        }).commit();
+      }
+      return Promise.resolve();
+    });
+
+    await Promise.all(paymentUpdates);
+
     return NextResponse.json({ success: true, data: updated });
-  } catch {
+  } catch (err) {
+    console.error('Error updating quote:', err);
     return NextResponse.json(
       { success: false, error: 'Error actualizando cotizacion' },
       { status: 500 }

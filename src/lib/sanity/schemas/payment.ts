@@ -5,7 +5,10 @@ export const paymentSchema = {
   fields: [
     { name: 'case', title: 'Caso', type: 'reference', to: [{ type: 'case' }] },
     { name: 'quote', title: 'Cotizacion', type: 'reference', to: [{ type: 'quote' }] },
+    { name: 'paymentNumber', title: 'Numero de Pago', type: 'number' },
     { name: 'amount', title: 'Monto', type: 'number' },
+    { name: 'percentage', title: 'Porcentaje', type: 'number' },
+    { name: 'dueDate', title: 'Fecha de Vencimiento', type: 'datetime' },
     { name: 'paymentDate', title: 'Fecha de Pago', type: 'datetime' },
     {
       name: 'paymentMethod',
@@ -29,7 +32,7 @@ export const paymentSchema = {
       options: {
         list: [
           { title: 'Pendiente', value: 'pendiente' },
-          { title: 'Completado', value: 'completado' },
+          { title: 'Validado', value: 'validado' },
           { title: 'Anulado', value: 'anulado' },
         ],
       },

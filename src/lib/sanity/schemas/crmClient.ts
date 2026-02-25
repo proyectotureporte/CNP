@@ -3,6 +3,13 @@ export const crmClientSchema = {
   title: 'Cliente CRM',
   type: 'document',
   fields: [
+    {
+      name: 'brand',
+      title: 'Marca',
+      type: 'string',
+      options: { list: ['CNP', 'Peritus'] },
+      initialValue: 'CNP',
+    },
     { name: 'name', title: 'Nombre', type: 'string' },
     { name: 'email', title: 'Email', type: 'string' },
     { name: 'phone', title: 'Teléfono', type: 'string' },

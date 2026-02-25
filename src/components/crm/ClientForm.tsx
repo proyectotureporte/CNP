@@ -159,6 +159,7 @@ export default function ClientForm({
   isLoading = false,
 }: ClientFormProps) {
   const [formData, setFormData] = useState({
+    brand: initialData?.brand ?? "CNP",
     name: initialData?.name ?? "",
     email: initialData?.email ?? "",
     phone: initialData?.phone ?? "",
@@ -185,6 +186,39 @@ export default function ClientForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        {/* Brand */}
+        <div className="sm:col-span-2">
+          <label
+            className="mb-1.5 block text-sm font-medium text-gray-700"
+          >
+            Marca <span className="text-red-500">*</span>
+          </label>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setFormData((prev) => ({ ...prev, brand: "CNP" }))}
+              className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                formData.brand === "CNP"
+                  ? "border-[#2969b0] bg-[#2969b0]/10 text-[#1b5697]"
+                  : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+              }`}
+            >
+              CNP
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormData((prev) => ({ ...prev, brand: "Peritus" }))}
+              className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                formData.brand === "Peritus"
+                  ? "border-[#2969b0] bg-[#2969b0]/10 text-[#1b5697]"
+                  : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+              }`}
+            >
+              Peritus
+            </button>
+          </div>
+        </div>
+
         {/* Name - full width */}
         <div className="sm:col-span-2">
           <label

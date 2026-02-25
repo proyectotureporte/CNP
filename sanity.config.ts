@@ -13,6 +13,7 @@ import { caseDocumentSchema } from './src/lib/sanity/schemas/caseDocument'
 import { quoteSchema } from './src/lib/sanity/schemas/quote'
 import { expertSchema } from './src/lib/sanity/schemas/expert'
 import { workPlanSchema } from './src/lib/sanity/schemas/workPlan'
+import { workPlanActivitySchema } from './src/lib/sanity/schemas/workPlanActivity'
 import { deliverableSchema } from './src/lib/sanity/schemas/deliverable'
 import { evaluationSchema } from './src/lib/sanity/schemas/evaluation'
 import { hearingSchema } from './src/lib/sanity/schemas/hearing'
@@ -41,6 +42,7 @@ export default defineConfig({
       quoteSchema,
       expertSchema,
       workPlanSchema,
+      workPlanActivitySchema,
       deliverableSchema,
       evaluationSchema,
       hearingSchema,
