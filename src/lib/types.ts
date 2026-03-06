@@ -333,6 +333,7 @@ export interface CaseDocument {
   uploadedByName?: string;
   uploadedBy?: { _id: string; displayName: string };
   file?: { asset: { _ref: string; url?: string } };
+  fileUrl?: string;
 }
 
 export interface AdminConfig extends SanityDocument {

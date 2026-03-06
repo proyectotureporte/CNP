@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
-import { listCaseDocumentsQuery, getCaseByIdQuery } from '@/lib/sanity/queries';
+import { listCaseDocumentsQuery, listClientVisibleDocumentsQuery, getCaseByIdQuery } from '@/lib/sanity/queries';
+import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
 import { DOCUMENT_CATEGORIES, DOCUMENT_CATEGORY_LABELS, type DocumentCategory, type CaseExpanded } from '@/lib/types';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 
@@ -17,8 +18,23 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const userRole = request.headers.get('x-user-role') || '';
+    const userId = request.headers.get('x-user-id') || '';
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category') || '';
+
+    // Portal clients: verify ownership and only return visible documents
+    if (userRole === 'cliente') {
+      const { owns } = await verifyClientOwnsCase(userId, id);
+      if (!owns) {
+        return NextResponse.json(
+          { success: false, error: 'No tiene acceso a este caso' },
+          { status: 403 }
+        );
+      }
+      const documents = await client.fetch(listClientVisibleDocumentsQuery, { caseId: id });
+      return NextResponse.json({ success: true, data: documents });
+    }
 
     const documents = await client.fetch(listCaseDocumentsQuery, { caseId: id, category });
 
@@ -72,6 +88,18 @@ export async function POST(
     const { id } = await params;
     const userId = request.headers.get('x-user-id');
     const userName = request.headers.get('x-user-name');
+    const userRole = request.headers.get('x-user-role') || '';
+
+    // Portal clients: verify ownership before uploading
+    if (userRole === 'cliente') {
+      const { owns } = await verifyClientOwnsCase(userId || '', id);
+      if (!owns) {
+        return NextResponse.json(
+          { success: false, error: 'No tiene acceso a este caso' },
+          { status: 403 }
+        );
+      }
+    }
 
     // Verify case exists
     const existing = await client.fetch<CaseExpanded | null>(getCaseByIdQuery, { id });
@@ -84,9 +112,12 @@ export async function POST(
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const category = (formData.get('category') as string) || 'otro';
+
+    // Clients always upload as 'soporte_tecnico' with isVisibleToClient=true
+    const isClientUpload = userRole === 'cliente';
+    const category = isClientUpload ? 'soporte_tecnico' : ((formData.get('category') as string) || 'otro');
     const description = (formData.get('description') as string) || '';
-    const isVisibleToClient = formData.get('isVisibleToClient') === 'true';
+    const isVisibleToClient = isClientUpload ? true : formData.get('isVisibleToClient') === 'true';
 
     if (!file) {
       return NextResponse.json(

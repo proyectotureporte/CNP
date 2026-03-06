@@ -98,11 +98,19 @@ export async function PUT(
     }
 
     // When returning to creado (devolver), clear the chain so juridico can act
+    // and remove the financiero assignment so the case no longer appears in their list
     if (status === 'creado' && userRole === 'financiero') {
       patch.statusChangedByRole = 'financiero';
     }
 
-    const updated = await writeClient.patch(id).set(patch).commit();
+    let patchOp = writeClient.patch(id).set(patch);
+
+    // Clear assignedFinanciero when returning case to creado
+    if (status === 'creado' && userRole === 'financiero') {
+      patchOp = patchOp.unset(['assignedFinanciero']);
+    }
+
+    const updated = await patchOp.commit();
 
     const fromLabel = CASE_STATUS_LABELS[existing.status] || existing.status;
     const toLabel = CASE_STATUS_LABELS[status as CaseStatus] || status;
@@ -112,6 +120,32 @@ export async function PUT(
       description: `Estado cambiado de "${fromLabel}" a "${toLabel}" por ${userName || userRole}`,
       userId, userName,
     });
+
+    // When financiero returns case to creado, notify the juridico team (commercial + createdBy)
+    if (status === 'creado' && userRole === 'financiero') {
+      const recipients = new Set<string>();
+      if (existing.commercial?._id) recipients.add(existing.commercial._id);
+      if (existing.createdBy?._id) recipients.add(existing.createdBy._id);
+
+      if (recipients.size > 0) {
+        const transaction = writeClient.transaction();
+        for (const recipientId of recipients) {
+          transaction.create({
+            _type: 'notification',
+            type: 'warning',
+            priority: 'alta',
+            title: `Caso Devuelto: ${existing.caseCode}`,
+            message: `El caso "${existing.title}" fue devuelto por el area financiera y requiere su atencion.`,
+            linkUrl: `/crm/cases/${id}`,
+            isRead: false,
+            user: { _type: 'reference', _ref: recipientId },
+          });
+        }
+        transaction.commit().catch((err: unknown) =>
+          console.error('[status] Error creating return notifications:', err)
+        );
+      }
+    }
 
     return NextResponse.json({ success: true, data: updated });
   } catch {

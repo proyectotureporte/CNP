@@ -3,6 +3,7 @@ import { client, writeClient } from '@/lib/sanity/client';
 import { listClientsQuery, listClientsForFinancieroQuery } from '@/lib/sanity/queries';
 import { verifyToken } from '@/lib/auth/jwt';
 import { hashPassword } from '@/lib/auth/passwords';
+import { sendCredentialsEmail } from '@/lib/email';
 import type { CrmClient } from '@/lib/types';
 
 export async function GET(request: NextRequest) {
@@ -87,6 +88,14 @@ export async function POST(request: NextRequest) {
         active: true,
         mustChangePassword: true,
       });
+
+      // Fire-and-forget: send credentials email
+      sendCredentialsEmail({
+        to: email,
+        clientName: name,
+        username: email,
+        password: portalPassword,
+      }).catch((err) => console.error('[clients] Email send failed:', err));
     }
 
     return NextResponse.json({

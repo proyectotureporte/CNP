@@ -1,15 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { listCaseQuotesQuery, countCaseQuotesQuery, getCaseByIdQuery } from '@/lib/sanity/queries';
+import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
 import type { Quote, CaseExpanded } from '@/lib/types';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const userRole = request.headers.get('x-user-role') || '';
+    const userId = request.headers.get('x-user-id') || '';
+
+    // Portal clients can only view quotes for their own cases
+    if (userRole === 'cliente') {
+      const { owns } = await verifyClientOwnsCase(userId, id);
+      if (!owns) {
+        return NextResponse.json(
+          { success: false, error: 'No tiene acceso a este caso' },
+          { status: 403 }
+        );
+      }
+    }
+
     const quotes = await client.fetch<Quote[]>(listCaseQuotesQuery, { caseId: id });
     return NextResponse.json({ success: true, data: quotes });
   } catch {
@@ -26,6 +41,16 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+    const userRole = request.headers.get('x-user-role') || '';
+
+    // Clients cannot create quotes
+    if (userRole === 'cliente') {
+      return NextResponse.json(
+        { success: false, error: 'Acceso denegado' },
+        { status: 403 }
+      );
+    }
+
     const userId = request.headers.get('x-user-id');
     const userName = request.headers.get('x-user-name');
     const formData = await request.formData();

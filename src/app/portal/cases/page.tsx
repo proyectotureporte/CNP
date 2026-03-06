@@ -4,9 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Briefcase, Plus, ChevronRight } from 'lucide-react';
+import { Briefcase, ChevronRight } from 'lucide-react';
 import {
   CASE_STATUS_LABELS,
   CASE_STATUS_COLORS,
@@ -23,7 +22,7 @@ export default function PortalCasesPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch('/api/cases/list?scope=my');
+        const res = await fetch('/api/cases');
         const data = await res.json();
         if (data.success) setCases(data.data || []);
       } catch {
@@ -37,19 +36,11 @@ export default function PortalCasesPage() {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Mis Casos</h1>
-          <p className="text-sm text-muted-foreground">
-            Seguimiento de tus dictamenes periciales
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/portal/new-case">
-            <Plus className="mr-2 h-4 w-4" />
-            Solicitar Caso
-          </Link>
-        </Button>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight">Mis Casos</h1>
+        <p className="text-sm text-muted-foreground">
+          Seguimiento de tus dictamenes periciales
+        </p>
       </div>
 
       {loading ? (
@@ -62,10 +53,7 @@ export default function PortalCasesPage() {
         <Card>
           <CardContent className="flex flex-col items-center py-12">
             <Briefcase className="mb-3 h-8 w-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">No tienes casos aun</p>
-            <Button asChild className="mt-4" variant="outline">
-              <Link href="/portal/new-case">Solicitar tu primer caso</Link>
-            </Button>
+            <p className="text-sm text-muted-foreground">No tienes casos asignados</p>
           </CardContent>
         </Card>
       ) : (

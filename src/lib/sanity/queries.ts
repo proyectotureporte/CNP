@@ -56,6 +56,7 @@ export const searchCompaniesQuery = `*[_type == "company" && (name match $search
 // ============================================
 
 export const listCasesQuery = `*[_type == "case"
+  && status != "archivado"
   && ($status == "" || status == $status)
   && ($discipline == "" || discipline == $discipline)
   && ($brand == "" || ($brand == "CNP" && (!defined(brand) || brand == "CNP")) || brand == $brand)
@@ -72,6 +73,7 @@ export const listCasesQuery = `*[_type == "case"
 }`;
 
 export const countCasesQuery = `count(*[_type == "case"
+  && status != "archivado"
   && ($status == "" || status == $status)
   && ($discipline == "" || discipline == $discipline)
   && ($brand == "" || ($brand == "CNP" && (!defined(brand) || brand == "CNP")) || brand == $brand)
@@ -100,7 +102,7 @@ export const countCasesByStatusQuery = `{
 
 export const getLatestCaseCodeQuery = `*[_type == "case" && caseCode match $prefix + "*"] | order(caseCode desc) [0] { caseCode }`;
 
-export const listCasesByUserQuery = `*[_type == "case" && (
+export const listCasesByUserQuery = `*[_type == "case" && status != "archivado" && (
   commercial._ref == $userId ||
   technicalAnalyst._ref == $userId ||
   assignedExpert._ref == $userId ||
@@ -189,9 +191,28 @@ export const listClientsForFinancieroQuery = `*[_type == "crmClient"
   && ($brand == "" || brand == $brand)
 ] | order(_createdAt desc)`;
 
-export const listCasesByClientQuery = `*[_type == "case" && client._ref == $clientId] | order(_createdAt desc) {
+export const listCasesByClientQuery = `*[_type == "case" && client._ref == $clientId && status != "archivado"] | order(_createdAt desc) {
   _id, _createdAt, caseCode, title, discipline, status, complexity, priority,
   "commercial": commercial->{ _id, displayName }
+}`;
+
+// ============================================
+// PORTAL CLIENT QUERIES
+// ============================================
+
+export const listCasesForClientQuery = `*[_type == "case" && client._ref == $clientId && status != "archivado"] | order(_createdAt desc) {
+  _id, _createdAt, _updatedAt, brand, caseCode, title, discipline, status, complexity, priority,
+  estimatedAmount, hasHearing, hearingDate, deadlineDate, city, courtName, caseNumber,
+  "client": client->{ _id, name, email, company, brand },
+  "commercial": commercial->{ _id, displayName, email },
+  "assignedExpert": assignedExpert->{ _id, displayName, email }
+}`;
+
+export const listClientVisibleDocumentsQuery = `*[_type == "caseDocument" && case._ref == $caseId && isVisibleToClient == true] | order(_createdAt desc) {
+  _id, _createdAt, category, fileName, fileSize, mimeType, version, isVisibleToClient, description,
+  uploadedByName,
+  "uploadedBy": uploadedBy->{ _id, displayName },
+  "fileUrl": file.asset->url
 }`;
 
 // ============================================

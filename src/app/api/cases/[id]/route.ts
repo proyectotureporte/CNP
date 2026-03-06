@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { getCaseByIdQuery } from '@/lib/sanity/queries';
+import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
 import {
   CASE_STATUSES, CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES,
   type CaseStatus, type CaseExpanded,
@@ -38,6 +39,17 @@ export async function GET(
       );
     }
 
+    // Portal clients can only access their own cases
+    if (userRole === 'cliente') {
+      const { owns } = await verifyClientOwnsCase(userId, id);
+      if (!owns) {
+        return NextResponse.json(
+          { success: false, error: 'No tiene acceso a este caso' },
+          { status: 403 }
+        );
+      }
+    }
+
     return NextResponse.json({ success: true, data: caseData });
   } catch {
     return NextResponse.json(
@@ -54,6 +66,15 @@ export async function PUT(
   try {
     const { id } = await params;
     const userRole = request.headers.get('x-user-role') || '';
+
+    // Clients cannot edit cases
+    if (userRole === 'cliente') {
+      return NextResponse.json(
+        { success: false, error: 'Acceso denegado' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
     const existing = await client.fetch<CaseExpanded | null>(getCaseByIdQuery, { id });
@@ -159,11 +180,21 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const userRole = request.headers.get('x-user-role') || '';
+
+    // Clients cannot delete cases
+    if (userRole === 'cliente') {
+      return NextResponse.json(
+        { success: false, error: 'Acceso denegado' },
+        { status: 403 }
+      );
+    }
+
     const existing = await client.fetch<CaseExpanded | null>(getCaseByIdQuery, { id });
     if (!existing) {
       return NextResponse.json(

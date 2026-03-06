@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { use } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Calendar, MapPin, Scale, Clock } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Scale, Clock, Download, FileText } from 'lucide-react';
+import PortalDocumentUpload from '@/components/portal/PortalDocumentUpload';
 import {
   CASE_STATUS_LABELS,
   CASE_STATUS_COLORS,
@@ -17,6 +18,7 @@ import {
   PRIORITY_LABELS,
   QUOTE_STATUS_LABELS,
   QUOTE_STATUS_COLORS,
+  DOCUMENT_CATEGORY_LABELS,
   type CaseExpanded,
   type CaseStatus,
   type CaseDiscipline,
@@ -25,6 +27,8 @@ import {
   type Quote,
   type QuoteStatus,
   type CaseEvent,
+  type CaseDocument,
+  type DocumentCategory,
   CASE_EVENT_LABELS,
   type CaseEventType,
 } from '@/lib/types';
@@ -43,6 +47,13 @@ function formatCurrency(v?: number | null) {
   return `${v.toLocaleString('es-CO')}`;
 }
 
+function formatFileSize(bytes?: number) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function PortalCaseDetailPage({
   params,
 }: {
@@ -52,23 +63,37 @@ export default function PortalCaseDetailPage({
   const [caseData, setCaseData] = useState<CaseExpanded | null>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [events, setEvents] = useState<CaseEvent[]>([]);
+  const [documents, setDocuments] = useState<CaseDocument[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const loadDocuments = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/cases/${id}/documents`);
+      const data = await res.json();
+      if (data.success) setDocuments(data.data || []);
+    } catch {
+      /* ignore */
+    }
+  }, [id]);
 
   useEffect(() => {
     async function load() {
       try {
-        const [caseRes, quotesRes, eventsRes] = await Promise.all([
+        const [caseRes, quotesRes, eventsRes, docsRes] = await Promise.all([
           fetch(`/api/cases/${id}`),
           fetch(`/api/cases/${id}/quotes`),
           fetch(`/api/cases/${id}/events`),
+          fetch(`/api/cases/${id}/documents`),
         ]);
         const caseJson = await caseRes.json();
         const quotesJson = await quotesRes.json();
         const eventsJson = await eventsRes.json();
+        const docsJson = await docsRes.json();
 
         if (caseJson.success) setCaseData(caseJson.data);
         if (quotesJson.success) setQuotes(quotesJson.data || []);
         if (eventsJson.success) setEvents(eventsJson.data || []);
+        if (docsJson.success) setDocuments(docsJson.data || []);
       } catch {
         /* ignore */
       } finally {
@@ -124,6 +149,7 @@ export default function PortalCaseDetailPage({
         <TabsList>
           <TabsTrigger value="info">Informacion</TabsTrigger>
           <TabsTrigger value="quotes">Cotizaciones ({quotes.length})</TabsTrigger>
+          <TabsTrigger value="documents">Documentos ({documents.length})</TabsTrigger>
           <TabsTrigger value="timeline">Historial ({events.length})</TabsTrigger>
         </TabsList>
 
@@ -295,6 +321,61 @@ export default function PortalCaseDetailPage({
               })}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="documents">
+          <div className="space-y-4">
+            <Card>
+              <CardContent className="pt-6">
+                <h3 className="text-sm font-medium mb-3">Subir Documento</h3>
+                <PortalDocumentUpload caseId={id} onUploadComplete={loadDocuments} />
+              </CardContent>
+            </Card>
+
+            {documents.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <FileText className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">No hay documentos disponibles</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {documents.map((doc) => (
+                  <Card key={doc._id}>
+                    <CardContent className="flex items-center justify-between pt-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{doc.fileName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {DOCUMENT_CATEGORY_LABELS[doc.category as DocumentCategory] || doc.category}
+                            {doc.fileSize ? ` | ${formatFileSize(doc.fileSize)}` : ''}
+                            {' | '}{formatDate(doc._createdAt)}
+                          </p>
+                          {doc.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{doc.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      {doc.fileUrl && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0"
+                          asChild
+                        >
+                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" download>
+                            <Download className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="timeline">

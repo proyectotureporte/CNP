@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
-import { listCasesQuery, countCasesQuery, getLatestCaseCodeQuery } from '@/lib/sanity/queries';
+import { listCasesQuery, countCasesQuery, getLatestCaseCodeQuery, listCasesForClientQuery } from '@/lib/sanity/queries';
+import { getClientIdForUser } from '@/lib/auth/clientAccess';
 import { CASE_STATUSES, CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES } from '@/lib/types';
 import type { CaseExpanded } from '@/lib/types';
 
@@ -32,6 +33,16 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const start = (page - 1) * limit;
     const end = start + limit;
+
+    // Portal clients can only see their own cases
+    if (userRole === 'cliente') {
+      const clientId = await getClientIdForUser(userId);
+      if (!clientId) {
+        return NextResponse.json({ success: true, data: [], meta: { total: 0, page: 1, limit, totalPages: 0 } });
+      }
+      const cases = await client.fetch<CaseExpanded[]>(listCasesForClientQuery, { clientId });
+      return NextResponse.json({ success: true, data: cases, meta: { total: cases.length, page: 1, limit: cases.length, totalPages: 1 } });
+    }
 
     // Financiero users can only see cases assigned to them
     const financieroId = userRole === 'financiero' ? userId : '';

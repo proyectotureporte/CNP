@@ -1,14 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { listCaseEventsQuery, getCaseByIdQuery } from '@/lib/sanity/queries';
+import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
 import { CASE_EVENT_TYPES, type CaseEvent, type CaseEventType, type CaseExpanded } from '@/lib/types';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const userRole = request.headers.get('x-user-role') || '';
+    const userId = request.headers.get('x-user-id') || '';
+
+    // Portal clients can only view events for their own cases
+    if (userRole === 'cliente') {
+      const { owns } = await verifyClientOwnsCase(userId, id);
+      if (!owns) {
+        return NextResponse.json(
+          { success: false, error: 'No tiene acceso a este caso' },
+          { status: 403 }
+        );
+      }
+    }
+
     const events = await client.fetch<CaseEvent[]>(listCaseEventsQuery, { caseId: id });
     return NextResponse.json({ success: true, data: events });
   } catch {
