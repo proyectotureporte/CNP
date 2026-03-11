@@ -298,6 +298,24 @@ export const getWorkPlanByIdQuery = `*[_type == "workPlan" && _id == $id][0] {
   "case": case->{ _id, caseCode, title }
 }`;
 
+export const listAllWorkPlansQuery = `*[_type == "workPlan"
+  && ($status == "" || status == $status)
+] | order(_createdAt desc) [$start...$end] {
+  _id, _createdAt, methodology, objectives, startDate, endDate, estimatedDays,
+  deliverablesDescription, status, submittedAt, rejectionComments,
+  "assignedExpert": assignedExpert->{ _id, displayName },
+  "createdBy": createdBy->{ _id, displayName },
+  "case": case->{ _id, caseCode, title },
+  "activityCounts": {
+    "total": count(*[_type == "workPlanActivity" && workPlan._ref == ^._id]),
+    "completadas": count(*[_type == "workPlanActivity" && workPlan._ref == ^._id && status == "completada"])
+  }
+}`;
+
+export const countAllWorkPlansQuery = `count(*[_type == "workPlan"
+  && ($status == "" || status == $status)
+])`;
+
 // ============================================
 // WORK PLAN ACTIVITIES
 // ============================================
@@ -340,6 +358,23 @@ export const getDeliverableByIdQuery = `*[_type == "deliverable" && _id == $id][
 
 export const countCaseDeliverablesQuery = `count(*[_type == "deliverable" && case._ref == $caseId])`;
 
+export const listAllDeliverablesQuery = `*[_type == "deliverable"
+  && ($status == "" || status == $status)
+  && ($phase == "" || phase == $phase)
+] | order(_createdAt desc) [$start...$end] {
+  _id, _createdAt, phase, phaseNumber, fileName, status, comments, rejectionReason, version,
+  "fileUrl": file.asset->url,
+  "submittedBy": submittedBy->{ _id, displayName },
+  "reviewedBy": reviewedBy->{ _id, displayName },
+  "approvedBy": approvedBy->{ _id, displayName },
+  "case": case->{ _id, caseCode, title }
+}`;
+
+export const countAllDeliverablesQuery = `count(*[_type == "deliverable"
+  && ($status == "" || status == $status)
+  && ($phase == "" || phase == $phase)
+])`;
+
 export const getCaseDeliverableProgressQuery = `{
   "marco_conceptual": count(*[_type == "deliverable" && case._ref == $caseId && phase == "marco_conceptual" && status == "aprobado"]) > 0,
   "desarrollo_tecnico": count(*[_type == "deliverable" && case._ref == $caseId && phase == "desarrollo_tecnico" && status == "aprobado"]) > 0,
@@ -368,6 +403,16 @@ export const getExpertAverageRatingQuery = `{
   "avgRating": math::avg(*[_type == "evaluation" && expert._ref == $expertId].finalScore),
   "totalEvaluations": count(*[_type == "evaluation" && expert._ref == $expertId])
 }`;
+
+export const listAllEvaluationsQuery = `*[_type == "evaluation"] | order(_createdAt desc) [$start...$end] {
+  _id, _createdAt, punctualityScore, qualityScore, serviceScore, finalScore,
+  clientFeedback, technicalFeedback,
+  "expert": expert->{ _id, displayName },
+  "evaluatedBy": evaluatedBy->{ _id, displayName },
+  "case": case->{ _id, caseCode, title }
+}`;
+
+export const countAllEvaluationsQuery = `count(*[_type == "evaluation"])`;
 
 // ============================================
 // HEARINGS
