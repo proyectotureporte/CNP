@@ -26,7 +26,6 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/crm', icon: LayoutDashboard, permission: 'dashboard' },
   { label: 'Casos', href: '/crm/cases', icon: Briefcase, permission: 'cases' },
-  { label: 'Mis Casos', href: '/crm/my-cases', icon: Briefcase, permission: 'my-cases' },
   { label: 'Clientes', href: '/crm/clients', icon: Users, permission: 'clients' },
   { label: 'Peritos', href: '/crm/experts', icon: UserSearch, permission: 'experts' },
   { label: 'Cotizaciones', href: '/crm/quotes', icon: FileText, permission: 'quotes' },

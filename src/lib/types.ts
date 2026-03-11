@@ -41,7 +41,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   administrativo: ['dashboard', 'cases', 'work-plans', 'notifications', 'profile'],
   mercadeo: ['dashboard', 'cases', 'notifications', 'profile'],
   postventa: ['dashboard', 'cases', 'notifications', 'profile'],
-  cliente: ['dashboard', 'my-cases', 'quotes', 'notifications', 'profile'],
+  cliente: ['notifications', 'profile'],
 };
 
 // ============================================

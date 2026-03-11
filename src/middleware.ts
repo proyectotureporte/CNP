@@ -51,6 +51,11 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
+    // Clients must use /portal, not /crm
+    if (payload.role === 'cliente') {
+      return NextResponse.redirect(new URL('/portal', request.url));
+    }
+
     // Check role-based route access - if role is invalid/removed, clear cookie and redirect to login
     if (!canAccessRoute(payload.role, pathname)) {
       const response = NextResponse.redirect(new URL('/crm/login', request.url));
