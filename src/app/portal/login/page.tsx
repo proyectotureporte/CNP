@@ -21,17 +21,12 @@ export default function PortalLoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'crm', email: email.trim().toLowerCase(), password: password.trim() }),
+        body: JSON.stringify({ type: 'portal', email: email.trim().toLowerCase(), password: password.trim() }),
       });
       const data = await res.json();
 
       if (!data.success) {
         setError(data.error || 'Credenciales invalidas');
-        return;
-      }
-
-      if (data.data?.role !== 'cliente') {
-        setError('Acceso solo para clientes. Usa /crm/login para otros roles.');
         return;
       }
 

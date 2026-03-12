@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const { email, password: rawPassword, type } = body as {
       email?: string;
       password: string;
-      type: 'admin' | 'crm';
+      type: 'admin' | 'crm' | 'portal';
     };
 
     const password = rawPassword?.trim();
@@ -90,6 +90,14 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Block clients from logging in through the CRM login form
+      if (user.role === 'cliente') {
+        return NextResponse.json(
+          { success: false, error: 'Acceso solo para personal interno. Los clientes deben usar el Portal Cliente.' },
+          { status: 403 }
+        );
+      }
+
       const token = await signToken({
         sub: user._id,
         role: user.role || 'juridico',
@@ -100,6 +108,65 @@ export async function POST(request: NextRequest) {
         success: true,
         data: {
           role: user.role || 'juridico',
+          displayName: user.displayName,
+          userId: user._id,
+        },
+      });
+
+      response.cookies.set('crm-token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+      });
+
+      return response;
+    }
+
+    // Portal login - clients only
+    if (type === 'portal') {
+      if (!email) {
+        return NextResponse.json(
+          { success: false, error: 'Email requerido' },
+          { status: 400 }
+        );
+      }
+
+      const user = await client.fetch<CrmUser | null>(getCrmUserByEmailQuery, { email: email.trim().toLowerCase() });
+      if (!user) {
+        return NextResponse.json(
+          { success: false, error: 'Email o contrasena incorrectos' },
+          { status: 401 }
+        );
+      }
+
+      const validPassword = await comparePassword(password, user.passwordHash);
+      if (!validPassword) {
+        return NextResponse.json(
+          { success: false, error: 'Email o contrasena incorrectos' },
+          { status: 401 }
+        );
+      }
+
+      // Only allow clients through portal login
+      if (user.role !== 'cliente') {
+        return NextResponse.json(
+          { success: false, error: 'Este acceso es solo para clientes. Use /crm/login para personal interno.' },
+          { status: 403 }
+        );
+      }
+
+      const token = await signToken({
+        sub: user._id,
+        role: user.role,
+        displayName: user.displayName,
+      });
+
+      const response = NextResponse.json({
+        success: true,
+        data: {
+          role: user.role,
           displayName: user.displayName,
           userId: user._id,
         },
