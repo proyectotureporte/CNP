@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
 
     const clients = await client.fetch<CrmClient[]>(listClientsQuery, { search, brand });
     return NextResponse.json({ success: true, data: clients });
-  } catch {
+  } catch (err) {
+    console.error('[clients] GET error:', err);
     return NextResponse.json(
       { success: false, error: 'Error obteniendo clientes' },
       { status: 500 }
@@ -50,6 +51,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Normalize email
+    const normalizedEmail = email?.trim().toLowerCase() || '';
+
     // Get user info from token
     const crmToken = request.cookies.get('crm-token')?.value;
     const adminToken = request.cookies.get('admin-token')?.value;
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest) {
       _type: 'crmClient',
       brand: brand || 'CNP',
       name,
-      email: email || '',
+      email: normalizedEmail,
       phone: phone || '',
       company: company || '',
       position: position || '',
@@ -71,29 +75,40 @@ export async function POST(request: NextRequest) {
 
     // Auto-create portal user for the client if email is provided
     let portalPassword: string | undefined;
-    if (email) {
+    if (normalizedEmail) {
+      // Check if a crmUser with this email already exists
+      const existingUser = await client.fetch<{ _id: string } | null>(
+        `*[_type == "crmUser" && email == $email && active == true][0]{ _id }`,
+        { email: normalizedEmail }
+      );
+
       // Generate a generic password: CNP + last 4 chars of client ID
       const clientIdSuffix = newClient._id.slice(-4);
       portalPassword = `CNP${clientIdSuffix}`;
       const passwordHash = await hashPassword(portalPassword);
 
-      await writeClient.create({
-        _type: 'crmUser',
-        username: email,
-        email,
-        displayName: name,
-        phone: phone || '',
-        passwordHash,
-        role: 'cliente',
-        active: true,
-        mustChangePassword: true,
-      });
+      if (existingUser) {
+        // Update existing user's password instead of creating a duplicate
+        await writeClient.patch(existingUser._id).set({ passwordHash, mustChangePassword: true }).commit();
+      } else {
+        await writeClient.create({
+          _type: 'crmUser',
+          username: normalizedEmail,
+          email: normalizedEmail,
+          displayName: name,
+          phone: phone || '',
+          passwordHash,
+          role: 'cliente',
+          active: true,
+          mustChangePassword: true,
+        });
+      }
 
       // Fire-and-forget: send credentials email
       sendCredentialsEmail({
-        to: email,
+        to: normalizedEmail,
         clientName: name,
-        username: email,
+        username: normalizedEmail,
         password: portalPassword,
       }).catch((err) => console.error('[clients] Email send failed:', err));
     }
@@ -103,7 +118,8 @@ export async function POST(request: NextRequest) {
       data: newClient,
       portalPassword: portalPassword || null,
     }, { status: 201 });
-  } catch {
+  } catch (err) {
+    console.error('[clients] POST error:', err);
     return NextResponse.json(
       { success: false, error: 'Error creando cliente' },
       { status: 500 }

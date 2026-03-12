@@ -8,11 +8,13 @@ import type { AdminConfig, CrmUser } from '@/lib/types';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, type } = body as {
+    const { email, password: rawPassword, type } = body as {
       email?: string;
       password: string;
       type: 'admin' | 'crm';
     };
+
+    const password = rawPassword?.trim();
 
     if (!password) {
       return NextResponse.json(
@@ -72,7 +74,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const user = await client.fetch<CrmUser | null>(getCrmUserByEmailQuery, { email });
+      const user = await client.fetch<CrmUser | null>(getCrmUserByEmailQuery, { email: email.trim().toLowerCase() });
       if (!user) {
         return NextResponse.json(
           { success: false, error: 'Email o contrasena incorrectos' },

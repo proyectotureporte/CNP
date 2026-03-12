@@ -1,95 +1,99 @@
+"use client";
+
 import Image from "next/image";
+import { useReveal } from "@/hooks/useReveal";
 
 export default function Hero() {
+  const ref = useReveal();
+
   return (
     <section
       id="inicio"
       style={{
         position: "relative",
-        minHeight: "100vh",
+        height: "calc(100vh - 80px)",
         display: "flex",
         alignItems: "center",
         overflow: "hidden",
       }}
     >
-      <Image src="/images/hero-bg.jpg" alt="Background" fill style={{ objectFit: "cover", objectPosition: "center top" }} priority />
-      <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0, 43, 137, 0.5)" }} />
-
-      {/* Content aligned to the RIGHT */}
+      <Image
+        src="/images/hero-bg.jpg"
+        alt="Background"
+        fill
+        style={{ objectFit: "cover", objectPosition: "center top", transform: "scaleX(-1)" }}
+        priority
+      />
       <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundColor: "rgba(10, 42, 110, 0.70)",
+        }}
+      />
+
+      <div
+        ref={ref}
         style={{
           position: "relative",
           zIndex: 10,
-          maxWidth: "1100px",
+          maxWidth: "1200px",
           margin: "0 auto",
-          padding: "0 30px",
+          padding: "60px 30px",
           width: "100%",
-          display: "flex",
-          justifyContent: "flex-end",
         }}
       >
-        <div style={{ maxWidth: "540px" }}>
-          <p
-            style={{
-              fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-              fontSize: "17px",
-              fontStyle: "italic",
-              color: "rgba(255, 255, 255, 0.8)",
-              marginBottom: "14px",
-            }}
-          >
-            El respaldo que su proceso necesita
-          </p>
+        <div style={{ maxWidth: "620px" }}>
           <h1
+            className="reveal-left"
             style={{
               fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-              fontSize: "44px",
+              fontSize: "clamp(32px, 5vw, 48px)",
               fontWeight: 800,
               color: "#ffffff",
               lineHeight: 1.15,
               marginBottom: "24px",
             }}
           >
-            Centro Nacional de Pruebas
+            Expertos en dict&aacute;menes financieros.
           </h1>
           <p
+            className="reveal-left"
             style={{
               fontFamily: "'Open Sans', sans-serif",
-              fontSize: "18.4px",
+              fontSize: "17px",
               fontWeight: 400,
-              color: "rgba(255, 255, 255, 0.92)",
+              color: "rgba(255, 255, 255, 0.9)",
               lineHeight: 1.8,
               marginBottom: "36px",
-              textAlign: "justify" as const,
+              maxWidth: "560px",
             }}
           >
-            En CNP nos especializamos en la elaboraci&oacute;n de dict&aacute;menes financieros y
-            pruebas t&eacute;cnicas que respaldan procesos judiciales complejos.
-            Acompa&ntilde;amos a jueces, abogados y empresas del sector real con an&aacute;lisis
-            contable, tributario y econ&oacute;mico, aportando claridad, sustento t&eacute;cnico
-            y confiabilidad en la valoraci&oacute;n de la prueba financiera.
+            Acompa&ntilde;amos a jueces, abogados y empresas del sector real con
+            an&aacute;lisis contable, tributario y econ&oacute;mico, aportando
+            claridad, sustento t&eacute;cnico y confiabilidad en la
+            valoraci&oacute;n de la prueba financiera.
           </p>
-          <a
-            href="https://api.whatsapp.com/send/?phone=573164071992"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: "inline-block",
-              fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-              fontSize: "15px",
-              fontWeight: 700,
-              backgroundColor: "#ffffff",
-              color: "#1b5697",
-              borderRadius: "60px",
-              padding: "14px 36px",
-              textDecoration: "none",
-              letterSpacing: "0.5px",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-              transition: "transform 0.2s ease",
-            }}
-          >
-            CONT&Aacute;CTANOS
-          </a>
+          <div className="reveal">
+            <a
+              href="#contacto"
+              style={{
+                display: "inline-block",
+                fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
+                fontSize: "15px",
+                fontWeight: 700,
+                backgroundColor: "#1a3a7a",
+                color: "#ffffff",
+                borderRadius: "8px",
+                padding: "14px 32px",
+                textDecoration: "none",
+                letterSpacing: "0.3px",
+                transition: "background-color 0.2s ease",
+              }}
+            >
+              Asesor especialista
+            </a>
+          </div>
         </div>
       </div>
     </section>

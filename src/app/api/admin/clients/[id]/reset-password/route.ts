@@ -32,7 +32,7 @@ export async function POST(
 
     // Find the associated crmUser
     const crmUser = await client.fetch<{ _id: string } | null>(
-      `*[_type == "crmUser" && email == $email && role == "cliente"][0]{ _id }`,
+      `*[_type == "crmUser" && email == $email && role == "cliente" && active == true][0]{ _id }`,
       { email: crmClient.email }
     );
 
@@ -70,7 +70,8 @@ export async function POST(
         password: newPassword,
       },
     });
-  } catch {
+  } catch (err) {
+    console.error('[reset-password] Error:', err);
     return NextResponse.json(
       { success: false, error: 'Error reseteando contraseña' },
       { status: 500 }

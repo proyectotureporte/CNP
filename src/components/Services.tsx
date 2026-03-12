@@ -1,112 +1,89 @@
+"use client";
+
 import Image from "next/image";
+import { useReveal } from "@/hooks/useReveal";
 
 const services = [
   {
+    title: "ELABORACI\u00D3N DE DICT\u00C1MENES FINANCIEROS",
     image: "/images/dictamen-pericial.jpg",
-    title: "Elaboración de Dictámenes Periciales",
-    description:
-      "Brindamos asesoría en la elaboración, revisión, controversia y sustentación de este tipo de pruebas ante despachos judiciales.",
+    items: ["Fotograf\u00EDa", "Documentos con n\u00FAmeros"],
   },
   {
-    image: "/images/lawyers-office.jpg",
-    title: "Cálculos de Perjuicios",
-    description:
-      "Calculamos el valor de sus pretensiones, eliminando el riesgo a incurrir en sanciones pecuniarias.",
+    title: "C\u00C1LCULO DE PERJUICIOS",
+    image: "/images/gavel.jpg",
+    items: ["Fotograf\u00EDa", "Maso y calculadora"],
   },
   {
+    title: "REALIZACI\u00D3N DE LIQUIDACIONES",
     image: "/images/liquidaciones.jpg",
-    title: "Realización de Liquidaciones",
-    description:
-      "Elaboramos liquidaciones técnicas con sustento contable para fortalecer su demanda.",
+    items: ["Fotograf\u00EDa", "Documento con tabla de n\u00FAmeros"],
   },
 ];
 
 export default function Services() {
+  const ref = useReveal();
+
   return (
-    <section id="servicios" style={{ position: "relative", padding: "80px 0" }}>
-      <Image src="/images/lawyers-office.jpg" alt="Background" fill style={{ objectFit: "cover" }} />
-      <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0, 16, 40, 0.9)" }} />
-
-      <div style={{ position: "relative", zIndex: 10, maxWidth: "1100px", margin: "0 auto", padding: "0 30px" }}>
-        <h2
-          style={{
-            fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-            fontSize: "36px",
-            fontWeight: 800,
-            color: "#ffffff",
-            textAlign: "center",
-            marginBottom: "50px",
-          }}
-        >
-          Servicios
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: "24px" }}>
+    <section id="servicios" style={{ backgroundColor: "#1a3a7a", padding: "80px 0" }}>
+      <div ref={ref} style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 30px" }}>
+        <div className="grid grid-cols-1 md:grid-cols-3 reveal-stagger" style={{ gap: "24px" }}>
           {services.map((service, index) => (
             <div
               key={index}
               style={{
-                position: "relative",
+                backgroundColor: "rgba(255, 255, 255, 0.08)",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+                borderRadius: "12px",
                 overflow: "hidden",
-                borderRadius: "16px",
-                height: "420px",
+                display: "flex",
+                flexDirection: "column",
               }}
             >
-              <Image src={service.image} alt={service.title} fill style={{ objectFit: "cover" }} />
+              <div style={{ position: "relative", height: "200px" }}>
+                <Image
+                  src={service.image}
+                  alt={service.title}
+                  fill
+                  style={{ objectFit: "cover", objectPosition: index === 0 ? "center -10px" : "center top" }}
+                />
+              </div>
               <div
                 style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: "linear-gradient(180deg, rgba(3, 43, 87, 0.3) 0%, rgba(3, 43, 87, 0.85) 100%)",
+                  padding: "32px 24px",
+                  textAlign: "center",
+                  flex: 1,
                   display: "flex",
                   flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "flex-end",
-                  padding: "30px 24px",
-                  textAlign: "center",
+                  justifyContent: "center",
+                  gap: "16px",
                 }}
               >
                 <h3
                   style={{
                     fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                    fontSize: "20px",
-                    fontWeight: 700,
+                    fontSize: "16px",
+                    fontWeight: 800,
                     color: "#ffffff",
-                    marginBottom: "12px",
-                    lineHeight: 1.3,
+                    textTransform: "uppercase",
+                    letterSpacing: "1px",
+                    lineHeight: 1.4,
                   }}
                 >
                   {service.title}
                 </h3>
-                <p
-                  style={{
-                    fontSize: "14px",
-                    color: "rgba(255,255,255,0.8)",
-                    lineHeight: 1.6,
-                    marginBottom: "20px",
-                    maxWidth: "90%",
-                  }}
-                >
-                  {service.description}
-                </p>
-                <a
-                  href="#cotizador"
-                  style={{
-                    display: "inline-block",
-                    fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                    fontSize: "13px",
-                    fontWeight: 700,
-                    color: "#ffffff",
-                    background: "linear-gradient(135deg, #1b5697 0%, #008fde 100%)",
-                    borderRadius: "55px",
-                    padding: "11px 28px",
-                    textDecoration: "none",
-                    letterSpacing: "0.5px",
-                    transition: "transform 0.2s ease",
-                  }}
-                >
-                  VER M&Aacute;S
-                </a>
+                {service.items.map((item, i) => (
+                  <p
+                    key={i}
+                    style={{
+                      fontSize: "14px",
+                      color: "rgba(255, 255, 255, 0.8)",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {item}
+                  </p>
+                ))}
               </div>
             </div>
           ))}

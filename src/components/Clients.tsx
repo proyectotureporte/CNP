@@ -1,131 +1,97 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useReveal } from "@/hooks/useReveal";
 
 const clients = [
-  { src: "/images/corficolombiana.jpg", alt: "Corficolombiana" },
-  { src: "/images/banco-popular.png", alt: "Banco Popular" },
-  { src: "/images/bancolombia.png", alt: "Bancolombia" },
-  { src: "/images/davivienda.png", alt: "Davivienda" },
-  { src: "/images/cliente1.png", alt: "Cliente 1" },
-  { src: "/images/cliente2.png", alt: "Cliente 2" },
-  { src: "/images/cliente3.png", alt: "Cliente 3" },
-  { src: "/images/captura-logo.png", alt: "Cliente 4" },
+  { name: "EMCALI", image: "/images/EMCALI.png" },
+  { name: "RUTA N MEDELL\u00CDN", image: "/images/RUTANMEDELLIN.png" },
+  { name: "BANCOLOMBIA", image: "/images/bancolombia.png" },
+  { name: "METROVIA", image: "/images/METROVIA.png" },
+  { name: "DAVIVIENDA", image: "/images/davivienda.png" },
 ];
 
 export default function Clients() {
-  const [current, setCurrent] = useState(0);
+  const ref = useReveal();
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % clients.length);
-    }, 3000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const getVisible = (count: number) => {
-    const arr = [];
-    for (let i = 0; i < count; i++) {
-      arr.push(clients[(current + i) % clients.length]);
-    }
-    return arr;
-  };
+  // Duplicate for infinite loop
+  const doubled = [...clients, ...clients];
 
   return (
-    <section id="clientes" style={{ backgroundColor: "#ffffff", padding: "80px 0" }}>
-      <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 30px" }}>
+    <section id="clientes" style={{ backgroundColor: "#c8d8eb", padding: "100px 0" }}>
+      <div ref={ref} style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 30px" }}>
         <h2
+          className="reveal"
           style={{
             fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-            fontSize: "40px",
+            fontSize: "clamp(28px, 4vw, 36px)",
             fontWeight: 800,
-            color: "#1b5697",
+            color: "#0a2a6e",
             textAlign: "center",
-            marginBottom: "50px",
+            marginBottom: "60px",
           }}
         >
-          Nuestros Clientes
+          Confiaron en nosotros
         </h2>
 
-        {/* Desktop carousel: 3 logos - triple size */}
-        <div
-          className="hidden md:flex"
-          style={{
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "60px",
-          }}
-        >
-          {getVisible(3).map((client, index) => (
-            <div
-              key={`${current}-${index}`}
-              style={{
-                width: "300px",
-                height: "200px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "opacity 0.5s ease",
-              }}
-            >
-              <Image
-                src={client.src}
-                alt={client.alt}
-                width={300}
-                height={200}
-                style={{ objectFit: "contain", maxHeight: "180px", width: "auto", maxWidth: "280px" }}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Mobile: 1 logo - big */}
-        <div
-          className="md:hidden"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+        {/* Gallery carousel */}
+        <div style={{ overflow: "hidden" }}>
           <div
+            className="animate-slide-clients"
             style={{
-              width: "280px",
-              height: "180px",
               display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              gap: "48px",
+              width: "max-content",
             }}
           >
-            <Image
-              src={clients[current].src}
-              alt={clients[current].alt}
-              width={280}
-              height={180}
-              style={{ objectFit: "contain", maxHeight: "160px", width: "auto" }}
-            />
+            {doubled.map((client, index) => (
+              <div
+                key={index}
+                style={{
+                  flexShrink: 0,
+                  width: "200px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "16px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "200px",
+                    height: "120px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#ffffff",
+                    borderRadius: "12px",
+                    padding: "16px",
+                  }}
+                >
+                  <Image
+                    src={client.image}
+                    alt={client.name}
+                    width={180}
+                    height={100}
+                    style={{ objectFit: "contain", maxHeight: "88px", width: "auto" }}
+                  />
+                </div>
+                <p
+                  style={{
+                    fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
+                    fontSize: "14px",
+                    fontWeight: 700,
+                    color: "#0a2a6e",
+                    textAlign: "center",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  {client.name}
+                </p>
+              </div>
+            ))}
           </div>
-        </div>
-
-        {/* Navigation dots */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginTop: "36px", gap: "8px" }}>
-          {clients.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrent(index)}
-              style={{
-                width: current === index ? "28px" : "10px",
-                height: "10px",
-                borderRadius: "5px",
-                backgroundColor: current === index ? "#1b5697" : "#d0d8e4",
-                border: "none",
-                cursor: "pointer",
-                transition: "all 0.3s ease",
-              }}
-              aria-label={`Cliente ${index + 1}`}
-            />
-          ))}
         </div>
       </div>
     </section>

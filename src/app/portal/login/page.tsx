@@ -21,7 +21,7 @@ export default function PortalLoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'crm', email, password }),
+        body: JSON.stringify({ type: 'crm', email: email.trim().toLowerCase(), password: password.trim() }),
       });
       const data = await res.json();
 

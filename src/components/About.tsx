@@ -1,89 +1,102 @@
+"use client";
+
 import Image from "next/image";
+import { useReveal } from "@/hooks/useReveal";
 
 export default function About() {
-  return (
-    <section id="sobre-nosotros" style={{ backgroundColor: "#fdfdfd", padding: "80px 0" }}>
-      <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 30px" }}>
-        {/* Title */}
-        <h2
-          style={{
-            fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-            fontSize: "36px",
-            fontWeight: 800,
-            color: "#1b5697",
-            textAlign: "center",
-            marginBottom: "50px",
-          }}
-        >
-          Sobre Nosotros
-        </h2>
+  const ref = useReveal();
 
-        <div className="flex flex-col lg:flex-row" style={{ gap: "50px", alignItems: "flex-start" }}>
+  return (
+    <section id="equipo" style={{ backgroundColor: "#dce8f5", padding: "80px 0" }}>
+      <div ref={ref} style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 30px" }}>
+        <div className="flex flex-col lg:flex-row" style={{ gap: "50px", alignItems: "center" }}>
           {/* Text column */}
-          <div className="w-full lg:w-[55%]">
-            <p
+          <div className="w-full lg:w-[55%] reveal-left">
+            <h2
               style={{
-                fontSize: "16px",
-                color: "#444",
-                lineHeight: 1.85,
-                marginBottom: "20px",
+                fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
+                fontSize: "clamp(28px, 4vw, 36px)",
+                fontWeight: 800,
+                color: "#0a2a6e",
+                marginBottom: "24px",
               }}
             >
-              CNP es una entidad de car&aacute;cter privado con m&aacute;s de 10 a&ntilde;os de
-              experiencia en la elaboraci&oacute;n de dict&aacute;menes y pruebas financieras,
-              as&iacute; como en la asesor&iacute;a t&eacute;cnica a abogados, jueces, magistrados y
-              empresas del sector real en temas probatorios de car&aacute;cter contable,
-              tributario y econ&oacute;mico.
-            </p>
+              &iquest;Qui&eacute;nes somos?
+            </h2>
             <p
               style={{
                 fontSize: "16px",
-                color: "#444",
+                color: "#333",
                 lineHeight: 1.85,
                 marginBottom: "32px",
               }}
             >
-              Contamos con un equipo altamente calificado en auditor&iacute;a, an&aacute;lisis
-              financiero y valoraci&oacute;n de pruebas, que apoya la toma de decisiones
-              en controversias judiciales con sustento t&eacute;cnico y precisi&oacute;n
-              profesional.
+              CNP es una entidad de car&aacute;cter privado con m&aacute;s de 10
+              a&ntilde;os de experiencia en la elaboraci&oacute;n de
+              dict&aacute;menes, as&iacute; como en la asesor&iacute;a
+              t&eacute;cnica a abogados, jueces, magistrados y empresas del
+              sector real en temas probatorios de car&aacute;cter contable,
+              tributario y econ&oacute;mico. Contamos con un equipo altamente
+              calificado en auditor&iacute;a, an&aacute;lisis financiero y
+              valoraci&oacute;n de pruebas, que apoya la toma de decisiones en
+              controversias judiciales con sustento t&eacute;cnico y
+              precisi&oacute;n profesional.
             </p>
             <a
-              href="https://api.whatsapp.com/send/?phone=573164071992"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="#equipo"
               style={{
                 display: "inline-block",
                 fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
                 fontSize: "15px",
                 fontWeight: 700,
+                backgroundColor: "#0a2a6e",
                 color: "#ffffff",
-                background: "linear-gradient(135deg, #1b5697 0%, #008fde 100%)",
-                borderRadius: "55px",
+                borderRadius: "8px",
                 padding: "14px 32px",
                 textDecoration: "none",
-                boxShadow: "0 4px 20px rgba(27, 86, 151, 0.3)",
-                transition: "transform 0.2s ease",
+                transition: "background-color 0.2s ease",
               }}
             >
-              Cont&aacute;ctanos
+              Conozca el equipo
             </a>
           </div>
 
           {/* Image column */}
-          <div className="w-full lg:w-[42%]">
-            <Image
-              src="/images/about-team.jpg"
-              alt="Equipo CNP"
-              width={550}
-              height={380}
+          <div className="w-full lg:w-[42%] reveal-right" style={{ textAlign: "center" }}>
+            <div
               style={{
-                width: "100%",
-                height: "auto",
+                backgroundColor: "#c0d4ec",
                 borderRadius: "12px",
-                boxShadow: "0 12px 40px rgba(0,0,0,0.15)",
+                overflow: "hidden",
+                marginBottom: "16px",
               }}
-            />
+            >
+              <Image
+                src="/images/about-team.jpg"
+                alt="Mg. Freddy Oliveros"
+                width={500}
+                height={400}
+                style={{
+                  width: "100%",
+                  height: "auto",
+                  display: "block",
+                }}
+              />
+            </div>
+            <p
+              style={{
+                fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
+                fontSize: "16px",
+                fontWeight: 700,
+                color: "#0a2a6e",
+                marginBottom: "4px",
+              }}
+            >
+              Mg. Freddy Oliveros
+            </p>
+            <p style={{ fontSize: "14px", color: "#444" }}>
+              Director general
+            </p>
           </div>
         </div>
       </div>
