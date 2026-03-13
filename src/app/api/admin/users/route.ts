@@ -79,7 +79,8 @@ export async function POST(request: NextRequest) {
         active: true,
       },
     }, { status: 201 });
-  } catch {
+  } catch (error) {
+    console.error('Error POST /api/admin/users:', error);
     return NextResponse.json(
       { success: false, error: 'Error creando usuario' },
       { status: 500 }
