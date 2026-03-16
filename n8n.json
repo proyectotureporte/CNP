@@ -1,0 +1,479 @@
+{
+  "name": "Peritus Workflow - Sin Tools",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "check_final",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "[FINALIZADO]",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2032,
+        784
+      ],
+      "id": "78d26cd3-7977-4aa7-8d58-b9487f798db1",
+      "name": "¿Está Completo?"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1-_jzv29WREXphoUUKzvYjHej0tKP1yAE6nFJxJJfnL0",
+          "mode": "list",
+          "cachedResultName": "peritus_leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-_jzv29WREXphoUUKzvYjHej0tKP1yAE6nFJxJJfnL0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-_jzv29WREXphoUUKzvYjHej0tKP1yAE6nFJxJJfnL0/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "nombre": "={{ $json.nombre }}",
+            "ciudad": "={{ $json.ciudad }}",
+            "motivo": "={{ $json.motivo }}",
+            "telefono": "={{ $('Extraer Datos1').item.json.telefono }}",
+            "observacion": "={{ $json.observacion }}",
+            "mensaje": "={{ $json.texto_final_whatsapp }}",
+            "fecha": "={{ $now.setZone('America/Bogota').format('dd/MM/yyyy HH:mm') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ciudad",
+              "displayName": "ciudad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "motivo",
+              "displayName": "motivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "observacion",
+              "displayName": "observacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2432,
+        656
+      ],
+      "id": "96917c84-b171-4b63-ac95-d5243324aa63",
+      "name": "Guardar en Sheets",
+      "credentials": {
+        "googleApi": {
+          "id": "8G2YmgmaJtzZljOi",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "Peritosentrante",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1104,
+        784
+      ],
+      "id": "c7721c90-5eb9-4a97-8366-db651ebd4cdc",
+      "name": "Webhook1",
+      "webhookId": "e5e27b64-ecfd-431e-b742-b97ff4c89879"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "tel",
+              "name": "telefono",
+              "value": "={{ $json.body?.data?.key?.remoteJid?.split('@')[0] || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "msg",
+              "name": "mensaje",
+              "value": "={{ $json.body?.data?.message?.conversation || $json.body?.data?.message?.extendedTextMessage?.text || \"\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1536,
+        784
+      ],
+      "id": "0eff97ca-8a7d-4579-a74c-e76666710b4c",
+      "name": "Extraer Datos1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.mensaje }}",
+        "options": {
+          "systemMessage": "IDENTIDAD Y DISTINCIÓN DE MARCA:\nEres el Asistente Corporativo de un ecosistema legal de alta precisión. Debes identificar la naturaleza del caso para asignar la entidad correcta:\n\nPeritos Expertos ⚖️: Es la marca Generalista. Gestiona peritajes de CUALQUIER área (Medicina, Ingeniería, Arquitectura, Psicología, Accidentología, etc.). Es la opción por defecto para casos técnicos no financieros.\n\nCentro Nacional de Pruebas (CNP) 💙: Es la división Especializada en Finanzas e Insolvencia. Su portafolio es exclusivo:\n\nPeritajes y dictámenes financieros.\n\nLiquidaciones precisas.\n\nEvaluaciones de empresas y proyectos.\n\nValoración de intangibles.\n\nReconstrucción de contabilidades.\n\nAsesoría en insolvencia económica.\n\nDIRECTRICES DE COMUNICACIÓN:\n\nTono: Ejecutivo, sobrio y altamente formal 💼.\n\nLógica de Respuesta: Si el cliente menciona temas financieros o de insolvencia, preséntate y responde a nombre del Centro Nacional de Pruebas. Para cualquier otro tema (médico, estructural, etc.), hazlo a nombre de Peritos Expertos.\n\nBrevedad: No generes párrafos extensos. Sé directo.\n\n- Clasificación de Servicios: Si el motivo NO corresponde a ninguna labor pericial ni a los servicios financieros de CNP, clasifica el campo CNP como \"No aplica\".\n\nDATOS OBLIGATORIOS A RECAUDAR:\n\nNombre completo (Persona o Firma de Abogados) 📋.\n\nCiudad del requerimiento 📍.\n\nMotivo del peritaje (Descripción técnica del caso) ⚖️.\n\nClasificación interna: Determina si el caso es financiero (CNP) o general (Peritos Expertos).\n\nPROTOCOLO DE CIERRE (LA REGLA DE ORO):\nBajo ninguna circunstancia confirmes el registro si falta uno de los datos anteriores. Al finalizar, despídete indicando que un asesor senior contactará al usuario y cierra obligatoriamente con estas líneas técnicas:\n\n[FINALIZADO]\nDATOS_REGISTRO: Nombre: [Valor] | Ciudad: [Valor] | Motivo: [Valor] | CNP: [Sí/No]\n\nMUY IMPORTANTE: El tag [FINALIZADO] y la línea DATOS_REGISTRO se emiten UNA SOLA VEZ en toda la conversación. Si el usuario escribe después de haber finalizado (ej: \"gracias\", \"ok\", \"entendido\"), responde de manera amable y profesional, pero NO vuelvas a incluir ni el tag [FINALIZADO] ni la línea de DATOS_REGISTRO."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1760,
+        784
+      ],
+      "id": "f0de0556-6932-4046-834e-30034ca1471a",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1760,
+        976
+      ],
+      "id": "92fea231-b13c-40f6-b9ea-dc825c9c2dcb",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "zHAuOR6DtApAi3ij",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Extraer Datos1').item.json.telefono }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1856,
+        1120
+      ],
+      "id": "9770b0e8-ebe4-4d9c-9c32-115b048de37d",
+      "name": "Window Buffer Memory1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://autoperitus-evolution-api.anjfhi.easypanel.host/message/sendText/Peritus",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "429683C4C977415CAAFCCE10F7D57E11"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('Extraer Datos1').item.json.telefono }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $node[\"Code in JavaScript\"].isExecuted ? $node[\"Code in JavaScript\"].json.mensaje_limpio : $('AI Agent1').first().json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2624,
+        800
+      ],
+      "id": "0b320434-39e9-4e92-8b09-2fe76e8bdd95",
+      "name": "Responder WhatsApp1"
+    },
+    {
+      "parameters": {
+        "jsCode": "let text = $json.output;\n\n// 1. Limpiamos el mensaje que le llegará al WhatsApp del cliente\n// Quitamos la etiqueta [FINALIZADO] y todo lo que esté después de DATOS_REGISTRO\nlet mensajeWhatsApp = text.replace('[FINALIZADO]', '').split('DATOS_REGISTRO:')[0].trim();\n\n// 2. Extraemos la línea técnica para el Excel\nlet infoTecnica = text.split('DATOS_REGISTRO:')[1] || \"\";\n\n// 3. Picamos la información por los separadores \"|\"\nlet datosExtracted = {};\nif (infoTecnica) {\n    infoTecnica.split('|').forEach(item => {\n        let [clave, valor] = item.split(':');\n        if (clave && valor) {\n            datosExtracted[clave.trim().toLowerCase()] = valor.trim();\n        }\n    });\n}\n\nreturn {\n    texto_final_whatsapp: mensajeWhatsApp,\n    nombre: datosExtracted.nombre || \"No especificado\",\n    ciudad: datosExtracted.ciudad || \"No especificada\",\n    motivo: datosExtracted.motivo || \"No especificado\",\n    observacion: datosExtracted.cnp || \"Pendiente\"\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2272,
+        656
+      ],
+      "id": "a42ac6b2-41fe-4e89-a6b4-73d2e5b4886f",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "db0e7c84-aad8-4be1-9ff9-8bd1e388d21f",
+              "leftValue": "={{ $json.body?.data?.message?.conversation || $json.body?.data?.message?.extendedTextMessage?.text || \"\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "ecb254be-26b1-4352-be93-bf1b48f71d2a",
+              "leftValue": "={{ ($json.body?.data?.key?.fromMe === true) }}",
+              "rightValue": "false",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1104,
+        1024
+      ],
+      "id": "2093a117-803f-4cbd-94a6-7d8758c2928c",
+      "name": "If1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "¿Está Completo?": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder WhatsApp1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar en Sheets": {
+      "main": [
+        [
+          {
+            "node": "Responder WhatsApp1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Datos1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "¿Está Completo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Guardar en Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Extraer Datos1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "ebb14fc2-1791-4ad6-993f-b66648546caa",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4ffce022d0512b90e3903a3a25b257273c7d3254db85315055e564a0e32f9b64"
+  },
+  "id": "RIdH87XZTH6bXwMJ",
+  "tags": []
+}
