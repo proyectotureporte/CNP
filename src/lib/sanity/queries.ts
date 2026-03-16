@@ -639,3 +639,43 @@ export const listAdminUserIdsQuery = `*[_type == "crmUser"
   && role == "admin"
   && active == true
 ]._id`;
+
+// ============================================
+// WHATSAPP LEADS
+// ============================================
+
+export const listWhatsappLeadsQuery = `*[_type == "whatsappLead"
+  && ($brand == "" || brand == $brand)
+  && ($status == "" || status == $status)
+  && ($search == "" || name match $search + "*" || phone match $search + "*" || city match $search + "*")
+] | order(lastMessageAt desc) {
+  _id, _createdAt, _updatedAt, phone, name, city, motive, brand, status,
+  aiCompleted, aiSummary, notes, lastMessageAt, unreadCount,
+  "convertedClient": convertedClient->{ _id, name, email },
+  "documents": documents[]{ fileName, mimeType, "fileUrl": file.asset->url },
+  "lastMessage": *[_type == "whatsappMessage" && lead._ref == ^._id] | order(timestamp desc) [0] {
+    content, direction, sender, timestamp
+  }
+}`;
+
+export const getWhatsappLeadByIdQuery = `*[_type == "whatsappLead" && _id == $id][0] {
+  _id, _createdAt, _updatedAt, phone, name, city, motive, brand, status,
+  aiCompleted, aiSummary, notes, lastMessageAt, unreadCount,
+  "convertedClient": convertedClient->{ _id, name, email },
+  "documents": documents[]{ fileName, mimeType, "fileUrl": file.asset->url }
+}`;
+
+export const getWhatsappLeadByPhoneQuery = `*[_type == "whatsappLead" && phone == $phone && status != "descartado"] | order(_createdAt desc) [0] {
+  _id, _createdAt, phone, name, city, motive, brand, status, aiCompleted
+}`;
+
+export const listWhatsappMessagesQuery = `*[_type == "whatsappMessage" && lead._ref == $leadId] | order(timestamp asc) {
+  _id, _createdAt, direction, content, sender, agentName, timestamp,
+  mediaUrl, mediaType, fileName
+}`;
+
+export const countWhatsappLeadsByBrandQuery = `{
+  "cnp": count(*[_type == "whatsappLead" && brand == "CNP" && status != "descartado"]),
+  "peritus": count(*[_type == "whatsappLead" && brand == "Peritus" && status != "descartado"]),
+  "descartados": count(*[_type == "whatsappLead" && status == "descartado"])
+}`;

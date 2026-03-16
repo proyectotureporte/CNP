@@ -163,6 +163,45 @@ export async function POST(request: NextRequest) {
 
     const created = await writeClient.create(doc);
 
+    // Auto-transfer WhatsApp lead documents if client was converted from a lead
+    if (clientId) {
+      try {
+        const lead = await client.fetch<{
+          _id: string;
+          documents?: { fileName: string; mimeType: string; file?: { asset?: { _ref?: string } } }[];
+        } | null>(
+          `*[_type == "whatsappLead" && convertedClient._ref == $clientId && status == "convertido"][0]{
+            _id, documents[]{ fileName, mimeType, file{ asset{ _ref } } }
+          }`,
+          { clientId }
+        );
+
+        if (lead?.documents?.length) {
+          const userName = request.headers.get('x-user-name') || 'Sistema';
+          for (const leadDoc of lead.documents) {
+            if (leadDoc.file?.asset?._ref) {
+              await writeClient.create({
+                _type: 'caseDocument',
+                case: { _type: 'reference', _ref: created._id },
+                category: 'soporte_tecnico',
+                fileName: leadDoc.fileName || 'documento',
+                fileSize: 0,
+                mimeType: leadDoc.mimeType || 'application/octet-stream',
+                version: 1,
+                isVisibleToClient: true,
+                description: 'Documento recibido por WhatsApp',
+                uploadedByName: userName,
+                ...(userId && userId !== 'admin' ? { uploadedBy: { _type: 'reference', _ref: userId } } : {}),
+                file: { _type: 'file', asset: { _type: 'reference', _ref: leadDoc.file.asset._ref } },
+              });
+            }
+          }
+        }
+      } catch (docErr) {
+        console.error('[cases] Auto-transfer WhatsApp docs error:', docErr);
+      }
+    }
+
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {
     return NextResponse.json(

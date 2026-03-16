@@ -35,11 +35,11 @@ export const ROLE_COLORS: Record<UserRole, { bg: string; text: string; dot: stri
 };
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  admin: ['dashboard', 'cases', 'experts', 'clients', 'users', 'quotes', 'deliverables', 'work-plans', 'evaluations', 'payments', 'commissions', 'reports', 'settings', 'notifications', 'profile', 'audit-logs', 'cartera'],
-  juridico: ['dashboard', 'cases', 'clients', 'notifications', 'profile'],
+  admin: ['dashboard', 'cases', 'experts', 'clients', 'users', 'quotes', 'deliverables', 'work-plans', 'evaluations', 'payments', 'commissions', 'reports', 'settings', 'notifications', 'profile', 'audit-logs', 'cartera', 'mensajes'],
+  juridico: ['dashboard', 'cases', 'clients', 'notifications', 'profile', 'mensajes'],
   financiero: ['dashboard', 'cases', 'quotes', 'payments', 'notifications', 'profile', 'cartera'],
   administrativo: ['dashboard', 'cases', 'work-plans', 'notifications', 'profile'],
-  mercadeo: ['dashboard', 'cases', 'notifications', 'profile'],
+  mercadeo: ['dashboard', 'cases', 'notifications', 'profile', 'mensajes'],
   postventa: ['dashboard', 'cases', 'notifications', 'profile'],
   cliente: ['notifications', 'profile'],
 };
@@ -726,6 +726,66 @@ export interface WorkPlanObservation {
 // ============================================
 // TABS POR ROL (CASO DETALLE)
 // ============================================
+
+// ============================================
+// WHATSAPP LEADS
+// ============================================
+
+export const LEAD_STATUSES = ['nuevo', 'en_conversacion', 'completado', 'descartado', 'convertido'] as const;
+export type LeadStatus = (typeof LEAD_STATUSES)[number];
+
+export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
+  nuevo: 'Nuevo',
+  en_conversacion: 'En Conversacion',
+  completado: 'Completado',
+  descartado: 'Descartado',
+  convertido: 'Convertido',
+};
+
+export const LEAD_STATUS_COLORS: Record<LeadStatus, { bg: string; text: string; dot: string }> = {
+  nuevo: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
+  en_conversacion: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
+  completado: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+  descartado: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+  convertido: { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' },
+};
+
+export interface WhatsappLeadDocument {
+  fileName: string;
+  mimeType: string;
+  file?: { asset: { _ref: string; url?: string } };
+  fileUrl?: string;
+}
+
+export interface WhatsappLead extends SanityDocument {
+  _type: 'whatsappLead';
+  phone: string;
+  name: string;
+  city: string;
+  motive: string;
+  brand: 'CNP' | 'Peritus';
+  status: LeadStatus;
+  aiCompleted: boolean;
+  aiSummary?: string;
+  notes?: string;
+  convertedClient?: { _ref: string; _type: 'reference' };
+  documents?: WhatsappLeadDocument[];
+  lastMessageAt?: string;
+  unreadCount: number;
+}
+
+export interface WhatsappMessage {
+  _id: string;
+  _createdAt: string;
+  direction: 'incoming' | 'outgoing';
+  content: string;
+  sender: 'client' | 'ai' | 'agent';
+  agentName?: string;
+  timestamp: string;
+  mediaUrl?: string;
+  mediaType?: string;
+  fileName?: string;
+}
 
 export const ROLE_CASE_TABS: Record<string, string[]> = {
   admin: ['summary', 'documents', 'quotes', 'work-plan', 'deliverables', 'timeline'],

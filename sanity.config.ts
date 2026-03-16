@@ -22,6 +22,9 @@ import { commissionSchema } from './src/lib/sanity/schemas/commission'
 import { notificationSchema } from './src/lib/sanity/schemas/notification'
 import { auditLogSchema } from './src/lib/sanity/schemas/auditLog'
 import { systemSettingSchema } from './src/lib/sanity/schemas/systemSetting'
+import { whatsappLeadSchema } from './src/lib/sanity/schemas/whatsappLead'
+import { whatsappMessageSchema } from './src/lib/sanity/schemas/whatsappMessage'
+import { registroPeritusSchema } from './src/lib/sanity/schemas/registroPeritus'
 
 export default defineConfig({
   name: 'cnp-peritus',
@@ -51,6 +54,9 @@ export default defineConfig({
       notificationSchema,
       auditLogSchema,
       systemSettingSchema,
+      whatsappLeadSchema,
+      whatsappMessageSchema,
+      registroPeritusSchema,
     ],
   },
 })
