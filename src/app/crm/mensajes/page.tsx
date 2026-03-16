@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
 import {
   MessageSquare,
   Search,
@@ -59,7 +58,6 @@ interface LeadCounts {
 }
 
 export default function MensajesPage() {
-  const router = useRouter();
   const [leads, setLeads] = useState<LeadWithLastMessage[]>([]);
   const [counts, setCounts] = useState<LeadCounts>({ cnp: 0, peritus: 0, descartados: 0 });
   const [selectedLead, setSelectedLead] = useState<LeadWithLastMessage | null>(null);
@@ -84,12 +82,7 @@ export default function MensajesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auth check
-  useEffect(() => {
-    fetch("/api/auth/me").then((res) => {
-      if (!res.ok) router.push("/crm/login");
-    });
-  }, [router]);
+  // Auth check disabled - route is public (will be protected by magic link in the future)
 
   // Fetch leads
   const fetchLeads = useCallback(async () => {

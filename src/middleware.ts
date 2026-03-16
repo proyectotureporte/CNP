@@ -13,7 +13,9 @@ export async function middleware(request: NextRequest) {
     pathname === '/portal/login' ||
     pathname.startsWith('/api/auth/') ||
     pathname === '/api/admin/init' ||
-    pathname === '/api/whatsapp/webhook'
+    pathname === '/api/whatsapp/webhook' ||
+    pathname === '/crm/mensajes' ||
+    pathname.startsWith('/api/whatsapp/leads')
   ) {
     return NextResponse.next();
   }
