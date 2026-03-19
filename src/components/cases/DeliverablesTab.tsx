@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePusher } from "@/hooks/usePusher";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -22,6 +23,7 @@ function formatDate(d?: string) {
 export default function DeliverablesTab({ caseId }: DeliverablesTabProps) {
   const [activities, setActivities] = useState<WorkPlanActivity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -39,7 +41,12 @@ export default function DeliverablesTab({ caseId }: DeliverablesTabProps) {
       finally { setLoading(false); }
     }
     load();
-  }, [caseId]);
+  }, [caseId, refreshKey]);
+
+  usePusher(
+    ['activity:updated', 'deliverable:created', 'deliverable:reviewed'],
+    () => { setRefreshKey((k) => k + 1); }
+  );
 
   if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 

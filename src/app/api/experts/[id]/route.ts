@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { getExpertByIdQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 import type { Expert } from '@/lib/types';
 
 export async function GET(
@@ -56,6 +57,9 @@ export async function PUT(
     if (bankAccountNumber !== undefined) updateData.bankAccountNumber = bankAccountNumber;
 
     const updated = await writeClient.patch(id).set(updateData).commit();
+
+    triggerEvent('expert:updated', { id });
+
     return NextResponse.json({ success: true, data: updated });
   } catch {
     return NextResponse.json(

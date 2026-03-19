@@ -28,6 +28,7 @@ import {
   type WorkPlanActivity, type ActivityStatus, type UserRole, type ObservationType,
 } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
+import { usePusher } from "@/hooks/usePusher";
 
 interface WorkPlanTabProps { caseId: string; userRole?: string; }
 
@@ -111,7 +112,7 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
   const [recalcSaving, setRecalcSaving] = useState(false);
 
   const role = userRole || user?.role || '';
-  const canEdit = user && ["admin"].includes(role);
+  const canEdit = user && ["admin", "financiero"].includes(role);
   const isAdministrativo = role === "administrativo";
 
   const progressPercent = counts.total > 0
@@ -150,6 +151,11 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
   }, [caseId]);
 
   useEffect(() => { loadActivities(); }, [loadActivities]);
+
+  usePusher(
+    ['activity:created', 'activity:updated', 'activity:deleted'],
+    () => { loadActivities(); }
+  );
 
   useEffect(() => {
     async function loadUsers() {

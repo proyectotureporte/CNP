@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { usePusher } from '@/hooks/usePusher';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -107,6 +108,8 @@ export default function EvaluationsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  usePusher(['evaluation:created'], () => { load(); });
 
   return (
     <>

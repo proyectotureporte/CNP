@@ -4,6 +4,7 @@ import { listClientsQuery, listClientsForFinancieroQuery } from '@/lib/sanity/qu
 import { verifyToken } from '@/lib/auth/jwt';
 import { hashPassword } from '@/lib/auth/passwords';
 import { sendCredentialsEmail } from '@/lib/email';
+import { triggerEvent } from '@/lib/pusher/server';
 import type { CrmClient } from '@/lib/types';
 
 export async function GET(request: NextRequest) {
@@ -112,6 +113,8 @@ export async function POST(request: NextRequest) {
         password: portalPassword,
       }).catch((err) => console.error('[clients] Email send failed:', err));
     }
+
+    triggerEvent('client:created', { id: newClient._id });
 
     return NextResponse.json({
       success: true,

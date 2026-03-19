@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePusher } from "@/hooks/usePusher";
 import Link from "next/link";
 import {
   Briefcase,
@@ -150,6 +151,13 @@ export default function ExecutiveDashboardPage() {
   const [stats, setStats] = useState<DashboardStatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  usePusher(
+    ['case:created', 'case:updated', 'case:status-changed', 'quote:approved',
+     'payment:updated', 'client:created', 'expert:created'],
+    () => { setRefreshKey((k) => k + 1); }
+  );
 
   useEffect(() => {
     async function loadStats() {
@@ -170,7 +178,7 @@ export default function ExecutiveDashboardPage() {
       }
     }
     loadStats();
-  }, []);
+  }, [refreshKey]);
 
   // Build chart data from casesByStatus
   const chartData = stats

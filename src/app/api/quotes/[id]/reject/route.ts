@@ -3,6 +3,7 @@ import { client, writeClient } from '@/lib/sanity/client';
 import { getQuoteByIdQuery } from '@/lib/sanity/queries';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import type { Quote } from '@/lib/types';
+import { triggerEvent } from '@/lib/pusher/server';
 
 type QuoteWithCase = Quote & { case?: { _id: string; caseCode: string; title: string } };
 
@@ -54,6 +55,8 @@ export async function POST(
         userName,
       });
     }
+
+    triggerEvent('quote:rejected', { id });
 
     return NextResponse.json({ success: true, data: updated });
   } catch {

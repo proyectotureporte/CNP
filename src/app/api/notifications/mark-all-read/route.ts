@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -19,6 +20,8 @@ export async function PUT(request: NextRequest) {
       transaction.patch(n._id, (p) => p.set({ isRead: true, readAt: now }));
     }
     await transaction.commit();
+
+    triggerEvent('notification:read', { all: true });
 
     return NextResponse.json({ success: true, data: { marked: unread.length } });
   } catch {

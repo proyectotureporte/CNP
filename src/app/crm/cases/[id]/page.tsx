@@ -1,6 +1,7 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useCallback } from "react";
+import { usePusher } from "@/hooks/usePusher";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -114,6 +115,7 @@ export default function CrmCaseDetailPage({
   const [statusChanging, setStatusChanging] = useState(false);
   const [events, setEvents] = useState<CaseEvent[]>([]);
   const [activeTab, setActiveTab] = useState("summary");
+  const [refreshKey, setRefreshKey] = useState(0);
   const [showFinancieroDialog, setShowFinancieroDialog] = useState(false);
   const [financieroUsers, setFinancieroUsers] = useState<{ _id: string; displayName: string; role: string }[]>([]);
   const [selectedFinancieroId, setSelectedFinancieroId] = useState("");
@@ -153,7 +155,14 @@ export default function CrmCaseDetailPage({
       }
     }
     loadCase();
-  }, [id]);
+  }, [id, refreshKey]);
+
+  usePusher(
+    ['case:updated', 'case:status-changed', 'case:assigned', 'quote:created', 'quote:approved', 'quote:rejected',
+     'activity:created', 'activity:updated', 'activity:deleted', 'deliverable:created', 'deliverable:reviewed',
+     'document:created', 'hearing:created', 'payment:updated'],
+    () => { setRefreshKey((k) => k + 1); }
+  );
 
   // Recargar eventos al cambiar a la pestana Timeline
   useEffect(() => {

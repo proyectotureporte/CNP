@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { client } from '@/lib/sanity/client';
 import { getCaseByIdQuery, listAvailableExpertsForDisciplineQuery } from '@/lib/sanity/queries';
 import type { CaseExpanded, Expert } from '@/lib/types';
+import { triggerEvent } from '@/lib/pusher/server';
 
 interface ScoredExpert extends Expert {
   score: number;
@@ -83,6 +84,8 @@ export async function POST(
     // Sort by score desc and return top 3
     scored.sort((a, b) => b.score - a.score);
     const top3 = scored.slice(0, 3);
+
+    triggerEvent('case:updated', { id });
 
     return NextResponse.json({ success: true, data: top3 });
   } catch {

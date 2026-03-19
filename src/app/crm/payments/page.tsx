@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePusher } from "@/hooks/usePusher";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,7 +36,9 @@ export default function PaymentsPage() {
     finally { setLoading(false); }
   }
 
-  useEffect(() => { load(); }, [page, status]);
+  useEffect(() => { load(); }, [page, status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  usePusher(['payment:updated', 'payment:receipt'], () => { load(); });
 
   return (
     <>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { getPaymentByIdQuery, listAllPaymentsQuery, countAllPaymentsQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -37,6 +38,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.transactionReference) updateData.transactionReference = body.transactionReference;
     if (body.notes) updateData.notes = body.notes;
     const updated = await writeClient.patch(id).set(updateData).commit();
+
+    triggerEvent('payment:updated', { id });
+
     return NextResponse.json({ success: true, data: updated });
   } catch {
     return NextResponse.json({ success: false, error: 'Error actualizando pago' }, { status: 500 });

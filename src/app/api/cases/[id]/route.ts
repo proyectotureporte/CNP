@@ -6,6 +6,7 @@ import {
   CASE_STATUSES, CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES,
   type CaseStatus, type CaseExpanded,
 } from '@/lib/types';
+import { triggerEvent } from '@/lib/pusher/server';
 
 // Valid state transitions map
 const VALID_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
@@ -170,6 +171,7 @@ export async function PUT(
     }
 
     const updated = await writeClient.patch(id).set(updates).commit();
+    triggerEvent('case:updated', { id });
     return NextResponse.json({ success: true, data: updated });
   } catch {
     return NextResponse.json(

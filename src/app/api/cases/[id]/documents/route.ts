@@ -4,6 +4,7 @@ import { listCaseDocumentsQuery, listClientVisibleDocumentsQuery, getCaseByIdQue
 import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
 import { DOCUMENT_CATEGORIES, DOCUMENT_CATEGORY_LABELS, type DocumentCategory, type CaseExpanded } from '@/lib/types';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
+import { triggerEvent } from '@/lib/pusher/server';
 
 const paymentReceiptsQuery = `*[_type == "payment" && case._ref == $caseId && defined(receiptFile.asset)] | order(paymentNumber asc) {
   _id, _createdAt, paymentNumber,
@@ -179,6 +180,8 @@ export async function POST(
       description: `Documento subido: "${file.name}" (${catLabel})`,
       userId, userName,
     });
+
+    triggerEvent('document:created', { caseId: id });
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {

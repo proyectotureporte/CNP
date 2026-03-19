@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { getDeliverableByIdQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function PUT(
   request: NextRequest,
@@ -31,6 +32,9 @@ export async function PUT(
     }
 
     const updated = await writeClient.patch(id).set(updateData).commit();
+
+    triggerEvent('deliverable:reviewed', { id });
+
     return NextResponse.json({ success: true, data: updated });
   } catch {
     return NextResponse.json({ success: false, error: 'Error revisando entrega' }, { status: 500 });

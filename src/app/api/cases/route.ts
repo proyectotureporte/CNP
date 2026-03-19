@@ -4,6 +4,7 @@ import { listCasesQuery, countCasesQuery, getLatestCaseCodeQuery, listCasesForCl
 import { getClientIdForUser } from '@/lib/auth/clientAccess';
 import { CASE_STATUSES, CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES } from '@/lib/types';
 import type { CaseExpanded } from '@/lib/types';
+import { triggerEvent } from '@/lib/pusher/server';
 
 function generateCaseCode(latestCode: string | null, brand: string): string {
   const year = new Date().getFullYear();
@@ -201,6 +202,8 @@ export async function POST(request: NextRequest) {
         console.error('[cases] Auto-transfer WhatsApp docs error:', docErr);
       }
     }
+
+    triggerEvent('case:created', { id: created._id });
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { usePusher } from '@/hooks/usePusher';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -96,6 +97,8 @@ export default function DeliverablesPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  usePusher(['deliverable:created', 'deliverable:reviewed'], () => { load(); });
 
   async function handleReview() {
     if (!reviewTarget) return;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { getClientByIdQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 import type { CrmClient } from '@/lib/types';
 
 export async function GET(
@@ -54,6 +55,8 @@ export async function PUT(
     if (status !== undefined) updates.status = status;
 
     const updated = await writeClient.patch(id).set(updates).commit();
+
+    triggerEvent('client:updated', { id });
 
     return NextResponse.json({ success: true, data: updated });
   } catch {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePusher } from "@/hooks/usePusher";
 import { LayoutDashboard } from "lucide-react";
 import DashboardStats from "@/components/crm/DashboardStats";
 import type { CrmClient, DashboardStats as DashboardStatsType } from "@/lib/types";
@@ -40,6 +41,11 @@ export default function CrmDashboardPage() {
   const [stats, setStats] = useState<DashboardStatsType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  usePusher(['client:created', 'client:updated'], () => {
+    setRefreshKey((k) => k + 1);
+  });
 
   useEffect(() => {
     async function loadData() {
@@ -60,7 +66,7 @@ export default function CrmDashboardPage() {
       }
     }
     loadData();
-  }, []);
+  }, [refreshKey]);
 
   return (
     <div>

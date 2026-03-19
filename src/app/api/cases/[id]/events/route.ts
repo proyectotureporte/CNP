@@ -3,6 +3,7 @@ import { client, writeClient } from '@/lib/sanity/client';
 import { listCaseEventsQuery, getCaseByIdQuery } from '@/lib/sanity/queries';
 import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
 import { CASE_EVENT_TYPES, type CaseEvent, type CaseEventType, type CaseExpanded } from '@/lib/types';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(
   request: NextRequest,
@@ -75,6 +76,7 @@ export async function POST(
     }
 
     const created = await writeClient.create(doc);
+    triggerEvent('case:updated', { id });
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {
     return NextResponse.json(

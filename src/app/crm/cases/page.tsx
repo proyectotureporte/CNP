@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { usePusher } from "@/hooks/usePusher";
 import Link from "next/link";
 import { Plus, Search, Filter, Briefcase, Clock, AlertTriangle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -116,6 +117,11 @@ export default function CrmCasesPage() {
   useEffect(() => {
     fetchCases();
   }, [fetchCases]);
+
+  usePusher(
+    ['case:created', 'case:updated', 'case:status-changed', 'case:assigned'],
+    () => { fetchCases(); }
+  );
 
   // Fire-and-forget alert check on page load
   useEffect(() => {

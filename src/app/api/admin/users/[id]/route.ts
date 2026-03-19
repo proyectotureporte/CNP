@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeClient } from '@/lib/sanity/client';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function DELETE(
   _request: NextRequest,
@@ -9,6 +10,8 @@ export async function DELETE(
     const { id } = await params;
 
     await writeClient.patch(id).set({ active: false }).commit();
+
+    triggerEvent('user:updated', { id });
 
     return NextResponse.json({
       success: true,

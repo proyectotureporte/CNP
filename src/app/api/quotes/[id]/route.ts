@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { getQuoteByIdQuery, listAllQuotesQuery, countAllQuotesQuery, listQuotePaymentsQuery } from '@/lib/sanity/queries';
 import type { Quote, Payment } from '@/lib/types';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(
   request: NextRequest,
@@ -122,6 +123,8 @@ export async function PUT(
     });
 
     await Promise.all(paymentUpdates);
+
+    triggerEvent('quote:updated', { id });
 
     return NextResponse.json({ success: true, data: updated });
   } catch (err) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { usePusher } from "@/hooks/usePusher";
 import { Download, FileSpreadsheet, DollarSign, Users, Briefcase, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -165,6 +166,11 @@ function CasesReport() {
   useEffect(() => {
     fetchCases();
   }, [fetchCases]);
+
+  usePusher(
+    ['case:created', 'case:updated', 'case:status-changed', 'payment:updated', 'quote:approved'],
+    () => { fetchCases(); }
+  );
 
   function handleExportCSV() {
     const headers = [

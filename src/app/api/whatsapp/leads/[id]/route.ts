@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { getWhatsappLeadByIdQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(
   request: NextRequest,
@@ -37,6 +38,8 @@ export async function PATCH(
     if (unreadCount !== undefined) patch.set({ unreadCount });
 
     const updated = await patch.commit();
+
+    triggerEvent('whatsapp:lead', { id });
 
     return NextResponse.json({ success: true, data: updated });
   } catch (err) {

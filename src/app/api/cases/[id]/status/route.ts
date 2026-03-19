@@ -3,6 +3,7 @@ import { client, writeClient } from '@/lib/sanity/client';
 import { getCaseByIdQuery } from '@/lib/sanity/queries';
 import { CASE_STATUSES, CASE_STATUS_LABELS, type CaseStatus, type CaseExpanded } from '@/lib/types';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
+import { triggerEvent } from '@/lib/pusher/server';
 
 // Chain: juridico → financiero → admin
 // - creado: juridico (or admin) can change
@@ -146,6 +147,8 @@ export async function PUT(
         );
       }
     }
+
+    triggerEvent('case:status-changed', { id, status });
 
     return NextResponse.json({ success: true, data: updated });
   } catch {

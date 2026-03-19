@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { getPaymentByIdQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 import type { Payment } from '@/lib/types';
 
 export async function POST(
@@ -67,6 +68,8 @@ export async function POST(
         file: { _type: 'file', asset: assetRef },
       });
     }
+
+    triggerEvent('payment:receipt', { id });
 
     return NextResponse.json({ success: true, data: updated });
   } catch (err) {

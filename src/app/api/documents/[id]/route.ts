@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { getCaseDocumentByIdQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(
   _request: NextRequest,
@@ -42,6 +43,7 @@ export async function DELETE(
     }
 
     await writeClient.delete(id);
+    triggerEvent('document:deleted', { id });
     return NextResponse.json({ success: true, data: { message: 'Documento eliminado' } });
   } catch {
     return NextResponse.json(

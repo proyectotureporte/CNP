@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { getCaseEvaluationQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(
   _request: NextRequest,
@@ -43,6 +44,7 @@ export async function POST(
     if (userId && userId !== 'admin') doc.evaluatedBy = { _type: 'reference', _ref: userId };
 
     const created = await writeClient.create(doc);
+    triggerEvent('evaluation:created', { caseId: id });
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {
     return NextResponse.json({ success: false, error: 'Error creando evaluacion' }, { status: 500 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { getWorkPlanByIdQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function POST(
   request: NextRequest,
@@ -19,6 +20,7 @@ export async function POST(
       updateData.committeeApprovedBy = { _type: 'reference', _ref: userId };
     }
     const updated = await writeClient.patch(id).set(updateData).commit();
+    triggerEvent('work-plan:approved', { id });
     return NextResponse.json({ success: true, data: updated });
   } catch {
     return NextResponse.json({ success: false, error: 'Error aprobando plan' }, { status: 500 });

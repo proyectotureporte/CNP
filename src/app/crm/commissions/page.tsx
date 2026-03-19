@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePusher } from "@/hooks/usePusher";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,7 +35,9 @@ export default function CommissionsPage() {
     finally { setLoading(false); }
   }
 
-  useEffect(() => { load(); }, [page, status]);
+  useEffect(() => { load(); }, [page, status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  usePusher(['commission:calculated'], () => { load(); });
 
   const statusColors: Record<string, { bg: string; text: string }> = {
     pendiente: { bg: "bg-amber-50", text: "text-amber-700" },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { ACTIVITY_STATUS_LABELS, type ActivityStatus } from '@/lib/types';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
+import { triggerEvent } from '@/lib/pusher/server';
 
 const getActivityQuery = `*[_type == "workPlanActivity" && _id == $id][0]{
   _id, title, description, dueDate, status, startedAt, completedAt,
@@ -66,6 +67,8 @@ export async function PUT(
       });
     }
 
+    triggerEvent('activity:updated', { id });
+
     return NextResponse.json({ success: true, data: updated });
   } catch {
     return NextResponse.json({ success: false, error: 'Error actualizando actividad' }, { status: 500 });
@@ -96,6 +99,8 @@ export async function DELETE(
         userId, userName,
       });
     }
+
+    triggerEvent('activity:deleted', { id });
 
     return NextResponse.json({ success: true });
   } catch {

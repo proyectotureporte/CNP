@@ -3,6 +3,7 @@ import { client, writeClient } from '@/lib/sanity/client';
 import { getWhatsappLeadByIdQuery } from '@/lib/sanity/queries';
 import { hashPassword } from '@/lib/auth/passwords';
 import { sendCredentialsEmail } from '@/lib/email';
+import { triggerEvent } from '@/lib/pusher/server';
 import type { WhatsappLead } from '@/lib/types';
 
 export async function POST(
@@ -89,6 +90,8 @@ export async function POST(
       status: 'convertido',
       convertedClient: { _type: 'reference', _ref: newClient._id },
     }).commit();
+
+    triggerEvent('whatsapp:lead', { id, converted: true });
 
     return NextResponse.json({
       success: true,

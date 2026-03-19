@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { usePusher } from '@/hooks/usePusher';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -95,6 +96,11 @@ export default function WorkPlansPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  usePusher(
+    ['work-plan:submitted', 'work-plan:approved', 'work-plan:rejected', 'activity:created', 'activity:updated'],
+    () => { load(); }
+  );
 
   async function handleAction() {
     if (!actionTarget) return;

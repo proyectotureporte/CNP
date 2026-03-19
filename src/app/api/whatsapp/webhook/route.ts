@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeClient, client } from '@/lib/sanity/client';
 import { getWhatsappLeadByPhoneQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 
 // Public endpoint for n8n automation - protected by API key
 export async function POST(request: NextRequest) {
@@ -87,6 +88,8 @@ async function handleMessage(body: {
   }
   await patch.commit();
 
+  triggerEvent('whatsapp:message', {});
+
   return NextResponse.json({ success: true, leadId }, { status: 201 });
 }
 
@@ -120,6 +123,8 @@ async function handleComplete(body: {
     aiSummary: mensaje || '',
     lastMessageAt: new Date().toISOString(),
   }).commit();
+
+  triggerEvent('whatsapp:message', {});
 
   return NextResponse.json({ success: true, leadId, brand }, { status: 200 });
 }
@@ -183,6 +188,8 @@ async function handleDocument(request: NextRequest, body: {
   });
 
   await writeClient.patch(leadId).set({ lastMessageAt: new Date().toISOString() }).inc({ unreadCount: 1 }).commit();
+
+  triggerEvent('whatsapp:message', {});
 
   return NextResponse.json({ success: true, leadId }, { status: 201 });
 }

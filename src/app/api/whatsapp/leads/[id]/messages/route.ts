@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { listWhatsappMessagesQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(
   request: NextRequest,
@@ -82,6 +83,8 @@ export async function POST(
 
     // Update lead timestamp
     await writeClient.patch(id).set({ lastMessageAt: now }).commit();
+
+    triggerEvent('whatsapp:message', { leadId: id });
 
     return NextResponse.json({ success: true, data: message }, { status: 201 });
   } catch (err) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { listCasePaymentsQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -31,6 +32,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     };
     if (userId && userId !== 'admin') doc.createdBy = { _type: 'reference', _ref: userId };
     const created = await writeClient.create(doc);
+
+    triggerEvent('payment:updated', { caseId: id });
+
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {
     return NextResponse.json({ success: false, error: 'Error creando pago' }, { status: 500 });

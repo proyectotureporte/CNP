@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { getHearingByIdQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function PUT(
   request: NextRequest,
@@ -21,6 +22,7 @@ export async function PUT(
     if (body.followUpRequired !== undefined) updateData.followUpRequired = body.followUpRequired;
 
     const updated = await writeClient.patch(id).set(updateData).commit();
+    triggerEvent('hearing:updated', { id });
     return NextResponse.json({ success: true, data: updated });
   } catch {
     return NextResponse.json({ success: false, error: 'Error actualizando audiencia' }, { status: 500 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function POST(
   request: NextRequest,
@@ -51,6 +52,8 @@ export async function POST(
         userId, userName,
       });
     }
+
+    triggerEvent('activity:updated', { id });
 
     return NextResponse.json({ success: true, data: { fileUrl: asset.url } });
   } catch {

@@ -4,6 +4,7 @@ import { listCaseQuotesQuery, countCaseQuotesQuery, getCaseByIdQuery } from '@/l
 import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
 import type { Quote, CaseExpanded } from '@/lib/types';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(
   request: NextRequest,
@@ -176,6 +177,8 @@ export async function POST(
       description: `Cotizacion v${count + 1} creada por $${finalValue.toLocaleString('es-CO')}`,
       userId, userName,
     });
+
+    triggerEvent('quote:created', { caseId: id });
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (err) {

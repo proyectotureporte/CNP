@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePusher } from "@/hooks/usePusher";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,7 +55,12 @@ export default function QuotesPage() {
     finally { setLoading(false); }
   }
 
-  useEffect(() => { load(); }, [page, status]);
+  useEffect(() => { load(); }, [page, status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  usePusher(
+    ['quote:created', 'quote:updated', 'quote:approved', 'quote:rejected', 'quote:sent'],
+    () => { load(); }
+  );
 
   return (
     <>

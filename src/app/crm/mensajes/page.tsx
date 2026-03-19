@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { usePusher } from "@/hooks/usePusher";
 import {
   MessageSquare,
   Search,
@@ -156,18 +157,24 @@ export default function MensajesPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Polling for new messages
+  // Polling for new messages (relaxed interval since Pusher handles real-time)
   useEffect(() => {
     if (!selectedLead) return;
 
     pollingRef.current = setInterval(() => {
       fetchMessages(selectedLead._id);
-    }, 5000);
+    }, 30000);
 
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, [selectedLead, fetchMessages]);
+
+  // Real-time: refresh on WhatsApp events
+  usePusher(['whatsapp:message', 'whatsapp:lead'], () => {
+    fetchLeads();
+    if (selectedLead) fetchMessages(selectedLead._id);
+  });
 
   // Send message
   async function handleSend() {

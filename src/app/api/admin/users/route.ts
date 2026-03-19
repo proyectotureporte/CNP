@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { listAllCrmUsersQuery, getCrmUserByEmailQuery } from '@/lib/sanity/queries';
 import { hashPassword } from '@/lib/auth/passwords';
+import { triggerEvent } from '@/lib/pusher/server';
 import type { CrmUser, UserRole } from '@/lib/types';
 import { USER_ROLES } from '@/lib/types';
 
@@ -66,6 +67,8 @@ export async function POST(request: NextRequest) {
       role: userRole,
       active: true,
     });
+
+    triggerEvent('user:created', { id: user._id });
 
     return NextResponse.json({
       success: true,

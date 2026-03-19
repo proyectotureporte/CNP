@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { listExpertsQuery, countExpertsQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 import type { Expert } from '@/lib/types';
 
 export async function GET(request: NextRequest) {
@@ -81,6 +82,9 @@ export async function POST(request: NextRequest) {
     }
 
     const created = await writeClient.create(doc);
+
+    triggerEvent('expert:created', { id: created._id });
+
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {
     return NextResponse.json(

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { listCaseHearingsQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(
   _request: NextRequest,
@@ -42,6 +43,7 @@ export async function POST(
     };
 
     const created = await writeClient.create(doc);
+    triggerEvent('hearing:created', { caseId: id });
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {
     return NextResponse.json({ success: false, error: 'Error creando audiencia' }, { status: 500 });

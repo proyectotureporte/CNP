@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePusher } from "@/hooks/usePusher";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +57,9 @@ export default function ExpertsPage() {
     finally { setLoading(false); }
   }
 
-  useEffect(() => { loadExperts(); }, [page, discipline, availability]);
+  useEffect(() => { loadExperts(); }, [page, discipline, availability]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  usePusher(['expert:created', 'expert:updated'], () => { loadExperts(); });
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();

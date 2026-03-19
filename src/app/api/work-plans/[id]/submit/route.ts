@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { getWorkPlanByIdQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function POST(
   _request: NextRequest,
@@ -14,6 +15,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Solo se pueden enviar planes en borrador' }, { status: 400 });
     }
     const updated = await writeClient.patch(id).set({ status: 'enviado', submittedAt: new Date().toISOString() }).commit();
+    triggerEvent('work-plan:submitted', { id });
     return NextResponse.json({ success: true, data: updated });
   } catch {
     return NextResponse.json({ success: false, error: 'Error enviando plan' }, { status: 500 });

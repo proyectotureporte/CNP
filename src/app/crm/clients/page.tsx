@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { usePusher } from "@/hooks/usePusher";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, Search, Users } from "lucide-react";
@@ -88,6 +89,10 @@ export default function CrmClientsPage() {
   useEffect(() => {
     fetchClients(search, brandFilter);
   }, [brandFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  usePusher(['client:created', 'client:updated'], () => {
+    fetchClients(search, brandFilter);
+  });
 
   function handleSearch() {
     fetchClients(search, brandFilter);

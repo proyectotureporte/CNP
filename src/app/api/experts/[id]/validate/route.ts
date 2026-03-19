@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { getExpertByIdQuery } from '@/lib/sanity/queries';
+import { triggerEvent } from '@/lib/pusher/server';
 import type { Expert } from '@/lib/types';
 
 export async function POST(
@@ -42,6 +43,9 @@ export async function POST(
     }
 
     const updated = await writeClient.patch(id).set(updateData).commit();
+
+    triggerEvent('expert:updated', { id });
+
     return NextResponse.json({ success: true, data: updated });
   } catch {
     return NextResponse.json(

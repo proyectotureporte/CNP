@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { listCaseDeliverablesQuery, countCaseDeliverablesQuery } from '@/lib/sanity/queries';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
+import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(
   _request: NextRequest,
@@ -56,6 +57,8 @@ export async function POST(
       description: `Entrega enviada: fase "${body.phase}", v${doc.version}`,
       userId, userName,
     });
+
+    triggerEvent('deliverable:created', { caseId: id });
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {

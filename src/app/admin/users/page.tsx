@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Users } from "lucide-react";
+import { usePusher } from "@/hooks/usePusher";
 import UserTable from "@/components/crm/UserTable";
 import type { CrmUser, ApiResponse } from "@/lib/types";
 
@@ -60,6 +61,8 @@ export default function AdminUsersPage() {
     loadUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  usePusher(['user:created', 'user:updated'], () => { loadUsers(); });
 
   async function handleDeactivate(id: string) {
     const confirmed = window.confirm(

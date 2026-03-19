@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { client, writeClient } from '@/lib/sanity/client';
 import { getCaseByIdQuery, getCrmUserByIdQuery } from '@/lib/sanity/queries';
 import type { CaseExpanded, CrmUser } from '@/lib/types';
+import { triggerEvent } from '@/lib/pusher/server';
 
 type AssignRole = 'commercial' | 'technicalAnalyst' | 'assignedExpert';
 
@@ -52,6 +53,8 @@ export async function POST(
       .patch(id)
       .set({ [role]: { _type: 'reference', _ref: userId } })
       .commit();
+
+    triggerEvent('case:assigned', { id });
 
     return NextResponse.json({
       success: true,

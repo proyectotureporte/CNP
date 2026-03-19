@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { AppNotification } from '@/lib/types';
+import { usePusher } from '@/hooks/usePusher';
 
-const POLL_INTERVAL = 30_000;
+const POLL_INTERVAL = 60_000; // Relaxed since Pusher handles real-time
 
 interface UseNotificationsReturn {
   notifications: AppNotification[];
@@ -47,6 +48,11 @@ export function useNotifications(): UseNotificationsReturn {
       }
     };
   }, [fetchNotifications]);
+
+  // Real-time: refresh instantly when a notification event fires
+  usePusher(['notification:new', 'notification:read'], () => {
+    fetchNotifications(false);
+  });
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
