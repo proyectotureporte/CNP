@@ -24,14 +24,14 @@ export default function NationalOperation() {
 
         <div className="reveal-scale" style={{ marginBottom: "36px", borderRadius: "12px", overflow: "hidden" }}>
           <iframe
-            src="https://maps.google.com/maps?q=Carrera+101+17-53,+Cali,+Colombia&t=&z=15&ie=UTF8&iwloc=&output=embed"
+            src="https://maps.google.com/maps?q=Cra+101+%2317-36,+Cali,+Colombia&t=&z=15&ie=UTF8&iwloc=&output=embed"
             width="100%"
             height="400"
             style={{ border: 0, display: "block" }}
             allowFullScreen
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
-            title="Ubicaci&oacute;n CNP - Carrera 101 17-53, Cali"
+            title="Ubicaci&oacute;n CNP - Cra 101 #17-36, Cali"
           />
         </div>
 

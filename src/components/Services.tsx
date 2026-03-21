@@ -6,18 +6,15 @@ import { useReveal } from "@/hooks/useReveal";
 const services = [
   {
     title: "ELABORACI\u00D3N DE DICT\u00C1MENES FINANCIEROS",
-    image: "/images/dictamen-pericial.jpg",
-    items: ["Fotograf\u00EDa", "Documentos con n\u00FAmeros"],
+    image: "/images/1.png",
   },
   {
     title: "C\u00C1LCULO DE PERJUICIOS",
-    image: "/images/gavel.jpg",
-    items: ["Fotograf\u00EDa", "Maso y calculadora"],
+    image: "/images/2.png",
   },
   {
     title: "REALIZACI\u00D3N DE LIQUIDACIONES",
-    image: "/images/liquidaciones.jpg",
-    items: ["Fotograf\u00EDa", "Documento con tabla de n\u00FAmeros"],
+    image: "/images/3.png",
   },
 ];
 
@@ -72,18 +69,6 @@ export default function Services() {
                 >
                   {service.title}
                 </h3>
-                {service.items.map((item, i) => (
-                  <p
-                    key={i}
-                    style={{
-                      fontSize: "14px",
-                      color: "rgba(255, 255, 255, 0.8)",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {item}
-                  </p>
-                ))}
               </div>
             </div>
           ))}

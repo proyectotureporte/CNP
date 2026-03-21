@@ -36,7 +36,7 @@ export default function Footer() {
           {/* Left: Logo */}
           <div style={{ display: "flex", justifyContent: "center" }}>
             <Image
-              src="/images/favicon.png"
+              src="/images/cnpblanco.png"
               alt="CNP"
               width={320}
               height={320}
@@ -64,7 +64,7 @@ export default function Footer() {
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
                 <circle cx="12" cy="10" r="3" />
               </svg>
-              <span style={{ fontSize: "15px", color: "#ffffff" }}>Carrera 101 17-53, Cali.</span>
+              <span style={{ fontSize: "15px", color: "#ffffff" }}>Cra 101 #17-36, Cali.</span>
             </div>
           </div>
 
@@ -111,7 +111,7 @@ export default function Footer() {
               letterSpacing: "0.5px",
             }}
           >
-            TODOS LOS DERECHOS RESERVADOS / CENTRO NACIONAL DE PRUEBAS / @2025
+            TODOS LOS DERECHOS RESERVADOS / CENTRO NACIONAL DE PRUEBAS / @2026
           </p>
         </div>
       </div>

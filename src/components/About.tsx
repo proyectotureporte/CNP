@@ -72,8 +72,8 @@ export default function About() {
               }}
             >
               <Image
-                src="/images/about-team.jpg"
-                alt="Mg. Freddy Oliveros"
+                src="/images/freddy.jpg"
+                alt="Magister. Freddy Oliveros"
                 width={500}
                 height={400}
                 style={{
@@ -92,7 +92,7 @@ export default function About() {
                 marginBottom: "4px",
               }}
             >
-              Mg. Freddy Oliveros
+              Magister. Freddy Oliveros
             </p>
             <p style={{ fontSize: "14px", color: "#444" }}>
               Director general
