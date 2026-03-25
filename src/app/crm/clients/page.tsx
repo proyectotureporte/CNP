@@ -175,7 +175,13 @@ export default function CrmClientsPage() {
       )}
 
       {/* Table */}
-      {loading ? <TableSkeleton /> : <ClientTable clients={clients} showActions />}
+      {loading ? <TableSkeleton /> : (
+        <ClientTable
+          clients={clients}
+          showActions
+          onValidated={() => fetchClients(search, brandFilter)}
+        />
+      )}
     </>
   );
 }

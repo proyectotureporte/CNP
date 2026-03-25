@@ -123,6 +123,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate Peritus client approval before case creation
+    if (clientId) {
+      const clientInfo = await client.fetch<{ brand: string; peritusStatus?: string } | null>(
+        `*[_type == "crmClient" && _id == $clientId][0] {
+          brand,
+          "peritusStatus": *[_type == "registroPeritus" && clientRef._ref == ^._id][0].estadoDocumentacion
+        }`,
+        { clientId }
+      );
+      if (clientInfo?.brand === 'Peritus' && clientInfo?.peritusStatus !== 'aprobado') {
+        return NextResponse.json(
+          { success: false, error: 'No se puede crear un caso para un cliente Peritus que no ha sido aprobado' },
+          { status: 400 }
+        );
+      }
+    }
+
     const caseBrand = bodyBrand === 'Peritus' ? 'Peritus' : 'CNP';
 
     // Generate case code with brand prefix

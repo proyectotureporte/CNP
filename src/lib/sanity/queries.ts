@@ -32,9 +32,35 @@ export const countUsersByRoleQuery = `count(*[_type == "crmUser" && role == $rol
 export const listClientsQuery = `*[_type == "crmClient"
   && ($search == "" || name match $search + "*" || email match $search + "*" || company match $search + "*")
   && ($brand == "" || brand == $brand)
-] | order(_createdAt desc)`;
+] | order(_createdAt desc) {
+  ...,
+  "peritusRegistro": *[_type == "registroPeritus" && clientRef._ref == ^._id][0] {
+    _id,
+    estadoDocumentacion
+  }
+}`;
 
-export const getClientByIdQuery = `*[_type == "crmClient" && _id == $id][0]`;
+export const getClientByIdQuery = `*[_type == "crmClient" && _id == $id][0] {
+  ...,
+  "peritusRegistro": *[_type == "registroPeritus" && clientRef._ref == ^._id][0] {
+    _id,
+    peritusId,
+    nombreApellido,
+    cedula,
+    correo,
+    celular,
+    ciudad,
+    profesionOficio,
+    cargo,
+    experiencia,
+    especialidad,
+    edad,
+    "hojaDeVidaUrl": hojaDeVida.asset->url,
+    estadoDocumentacion,
+    notasValidacion,
+    fechaRegistro
+  }
+}`;
 
 export const countClientsQuery = `count(*[_type == "crmClient"])`;
 
@@ -189,7 +215,13 @@ export const listClientsForFinancieroQuery = `*[_type == "crmClient"
   && _id in *[_type == "case" && assignedFinanciero._ref == $userId && defined(client)].client._ref
   && ($search == "" || name match $search + "*" || email match $search + "*" || company match $search + "*")
   && ($brand == "" || brand == $brand)
-] | order(_createdAt desc)`;
+] | order(_createdAt desc) {
+  ...,
+  "peritusRegistro": *[_type == "registroPeritus" && clientRef._ref == ^._id][0] {
+    _id,
+    estadoDocumentacion
+  }
+}`;
 
 export const listCasesByClientQuery = `*[_type == "case" && client._ref == $clientId && status != "archivado"] | order(_createdAt desc) {
   _id, _createdAt, caseCode, title, discipline, status, complexity, priority,

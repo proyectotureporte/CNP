@@ -155,6 +155,11 @@ export const registroPeritusSchema = defineType({
       initialValue: 'pendiente',
     }),
     defineField({
+      name: 'notasValidacion',
+      title: 'Notas de Validación',
+      type: 'text',
+    }),
+    defineField({
       name: 'activo',
       title: 'Activo',
       type: 'boolean',

@@ -46,6 +46,7 @@ interface ClientOption {
   name: string;
   company: string;
   brand: "CNP" | "Peritus";
+  peritusRegistro?: { estadoDocumentacion?: string };
 }
 
 interface CaseFormProps {
@@ -212,40 +213,56 @@ export default function CaseForm({ initialData, caseId }: CaseFormProps) {
               <CommandList>
                 <CommandEmpty>No se encontraron clientes</CommandEmpty>
                 <CommandGroup>
-                  {clients.map((c) => (
-                    <CommandItem
-                      key={c._id}
-                      value={`${c.name} ${c.company || ""}`}
-                      onSelect={() => {
-                        setClientId(c._id === clientId ? "" : c._id);
-                        setClientOpen(false);
-                      }}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          clientId === c._id ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      <span className="flex items-center gap-2 flex-1">
-                        {c.name}
-                        {c.company ? (
-                          <span className="text-muted-foreground text-xs">({c.company})</span>
-                        ) : null}
-                        <Badge
-                          variant="outline"
+                  {clients.map((c) => {
+                    const isPeritusPending =
+                      c.brand === "Peritus" &&
+                      c.peritusRegistro?.estadoDocumentacion !== "aprobado";
+                    return (
+                      <CommandItem
+                        key={c._id}
+                        value={`${c.name} ${c.company || ""}`}
+                        disabled={isPeritusPending}
+                        onSelect={() => {
+                          if (isPeritusPending) return;
+                          setClientId(c._id === clientId ? "" : c._id);
+                          setClientOpen(false);
+                        }}
+                        className={isPeritusPending ? "opacity-50 cursor-not-allowed" : ""}
+                      >
+                        <Check
                           className={cn(
-                            "ml-auto text-xs border-0",
-                            c.brand === "Peritus"
-                              ? "bg-violet-100 text-violet-700"
-                              : "bg-sky-100 text-sky-700"
+                            "mr-2 h-4 w-4",
+                            clientId === c._id ? "opacity-100" : "opacity-0"
                           )}
-                        >
-                          {c.brand || "CNP"}
-                        </Badge>
-                      </span>
-                    </CommandItem>
-                  ))}
+                        />
+                        <span className="flex items-center gap-2 flex-1">
+                          {c.name}
+                          {c.company ? (
+                            <span className="text-muted-foreground text-xs">({c.company})</span>
+                          ) : null}
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "ml-1 text-xs border-0",
+                              c.brand === "Peritus"
+                                ? "bg-violet-100 text-violet-700"
+                                : "bg-sky-100 text-sky-700"
+                            )}
+                          >
+                            {c.brand || "CNP"}
+                          </Badge>
+                          {isPeritusPending && (
+                            <Badge
+                              variant="outline"
+                              className="ml-auto text-xs border-0 bg-amber-100 text-amber-700"
+                            >
+                              Pendiente aprobacion
+                            </Badge>
+                          )}
+                        </span>
+                      </CommandItem>
+                    );
+                  })}
                 </CommandGroup>
               </CommandList>
             </Command>

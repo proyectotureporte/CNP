@@ -145,6 +145,41 @@ export interface CrmUser extends SanityDocument {
   companyRef?: { _ref: string; _type: 'reference' };
 }
 
+export type PeritusDocStatus = 'pendiente' | 'revision' | 'aprobado' | 'denegado';
+
+export const PERITUS_DOC_STATUS_LABELS: Record<PeritusDocStatus, string> = {
+  pendiente: 'Pendiente',
+  revision: 'En Revision',
+  aprobado: 'Aprobado',
+  denegado: 'Denegado',
+};
+
+export const PERITUS_DOC_STATUS_COLORS: Record<PeritusDocStatus, { bg: string; text: string; dot: string }> = {
+  pendiente: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
+  revision: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
+  aprobado: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+  denegado: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+};
+
+export interface PeritusRegistro {
+  _id: string;
+  peritusId?: string;
+  nombreApellido?: string;
+  cedula?: string;
+  correo?: string;
+  celular?: string;
+  ciudad?: string;
+  profesionOficio?: string;
+  cargo?: string;
+  experiencia?: string;
+  especialidad?: string;
+  edad?: string;
+  hojaDeVidaUrl?: string;
+  estadoDocumentacion?: PeritusDocStatus;
+  notasValidacion?: string;
+  fechaRegistro?: string;
+}
+
 export interface CrmClient extends SanityDocument {
   _type: 'crmClient';
   brand: 'CNP' | 'Peritus';
@@ -156,6 +191,7 @@ export interface CrmClient extends SanityDocument {
   notes: string;
   status: 'activo' | 'inactivo' | 'prospecto';
   createdBy: string;
+  peritusRegistro?: PeritusRegistro;
 }
 
 export interface Company extends SanityDocument {

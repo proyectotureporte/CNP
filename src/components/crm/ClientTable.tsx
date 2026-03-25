@@ -1,11 +1,26 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/useAuth";
 import type { CrmClient } from "@/lib/types";
 
 interface ClientTableProps {
   clients: CrmClient[];
   showActions?: boolean;
+  onValidated?: () => void;
 }
 
 const statusConfig: Record<
@@ -30,6 +45,16 @@ const statusConfig: Record<
     textClass: "text-amber-700",
     dotClass: "bg-amber-500",
   },
+};
+
+const peritusStatusConfig: Record<
+  string,
+  { label: string; bgClass: string; textClass: string }
+> = {
+  pendiente: { label: "Pendiente", bgClass: "bg-amber-50", textClass: "text-amber-700" },
+  revision: { label: "En Revisión", bgClass: "bg-blue-50", textClass: "text-blue-700" },
+  aprobado: { label: "Aprobado", bgClass: "bg-green-50", textClass: "text-green-700" },
+  denegado: { label: "Denegado", bgClass: "bg-red-50", textClass: "text-red-700" },
 };
 
 function formatDate(dateString: string): string {
@@ -101,7 +126,34 @@ function EmptyUsersIcon() {
 export default function ClientTable({
   clients,
   showActions = true,
+  onValidated,
 }: ClientTableProps) {
+  const { user } = useAuth();
+  const canValidate = user && ["admin", "juridico"].includes(user.role);
+
+  const [rejectTarget, setRejectTarget] = useState<{ id: string; name: string } | null>(null);
+  const [rejectNotes, setRejectNotes] = useState("");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  async function handleValidate(clientId: string, action: "aprobado" | "denegado", notes?: string) {
+    setActionLoading(clientId + action);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, notes: notes || "" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setRejectTarget(null);
+        setRejectNotes("");
+        onValidated?.();
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   if (clients.length === 0) {
     return (
       <div className="rounded-xl border border-gray-100 bg-white px-6 py-16 text-center shadow-sm">
@@ -120,89 +172,201 @@ export default function ClientTable({
     "px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500";
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-      <div>
-        <table className="w-full table-fixed">
-          <thead className="bg-gray-50/80">
-            <tr>
-              <th scope="col" className={thClass}>
-                Nombre
-              </th>
-              <th scope="col" className={thClass}>
-                Email
-              </th>
-              <th scope="col" className={thClass}>
-                Empresa
-              </th>
-              <th scope="col" className={thClass}>
-                Estado
-              </th>
-              <th scope="col" className={thClass}>
-                Fecha
-              </th>
-              {showActions && (
+    <>
+      <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+        <div>
+          <table className="w-full table-fixed">
+            <thead className="bg-gray-50/80">
+              <tr>
                 <th scope="col" className={thClass}>
-                  Acciones
+                  Nombre
                 </th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {clients.map((client) => {
-              const status = statusConfig[client.status];
-              return (
-                <tr
-                  key={client._id}
-                  className="border-b border-gray-50 transition-all duration-200 hover:bg-gray-50/50"
-                >
-                  <td className="truncate px-4 py-3.5 text-sm font-medium text-gray-900">
-                    {client.name}
-                  </td>
-                  <td className="truncate px-4 py-3.5 text-sm text-gray-600">
-                    {client.email}
-                  </td>
-                  <td className="truncate px-4 py-3.5 text-sm text-gray-600">
-                    {client.company}
-                  </td>
-                  <td className="truncate px-4 py-3.5 text-sm">
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${status.bgClass} ${status.textClass}`}
-                    >
-                      <span
-                        className={`inline-block h-1.5 w-1.5 rounded-full ${status.dotClass}`}
-                      />
-                      {status.label}
-                    </span>
-                  </td>
-                  <td className="truncate px-4 py-3.5 text-sm text-gray-500">
-                    {formatDate(client._createdAt)}
-                  </td>
-                  {showActions && (
-                    <td className="truncate px-4 py-3.5 text-sm">
-                      <div className="flex items-center gap-1">
-                        <Link
-                          href={`/crm/clients/${client._id}`}
-                          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-medium text-[#2969b0] transition-all duration-200 hover:bg-[#2969b0]/5"
-                        >
-                          <EyeIcon />
-                          Ver
-                        </Link>
-                        <Link
-                          href={`/crm/clients/${client._id}/edit`}
-                          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-medium text-[#2969b0] transition-all duration-200 hover:bg-[#2969b0]/5"
-                        >
-                          <PencilIcon />
-                          Editar
-                        </Link>
+                <th scope="col" className={thClass}>
+                  Email
+                </th>
+                <th scope="col" className={thClass}>
+                  Empresa
+                </th>
+                <th scope="col" className={thClass}>
+                  Estado
+                </th>
+                <th scope="col" className={thClass}>
+                  Fecha
+                </th>
+                {showActions && (
+                  <th scope="col" className={thClass}>
+                    Acciones
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {clients.map((client) => {
+                const status = statusConfig[client.status];
+                const isPeritus = client.brand === "Peritus";
+                const peritusStatus = client.peritusRegistro?.estadoDocumentacion;
+                const showValidateButtons =
+                  canValidate &&
+                  isPeritus &&
+                  (peritusStatus === "pendiente" || peritusStatus === "revision");
+
+                return (
+                  <tr
+                    key={client._id}
+                    className="border-b border-gray-50 transition-all duration-200 hover:bg-gray-50/50"
+                  >
+                    {/* Nombre + badges debajo */}
+                    <td className="px-4 py-3.5 text-sm font-medium text-gray-900">
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className="truncate">{client.name}</span>
+                        <div className="flex flex-wrap gap-1">
+                          <span
+                            className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                              isPeritus
+                                ? "bg-violet-100 text-violet-700"
+                                : "bg-sky-100 text-sky-700"
+                            }`}
+                          >
+                            {client.brand || "CNP"}
+                          </span>
+                          {isPeritus && peritusStatus && peritusStatus !== "aprobado" && (
+                            <span
+                              className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                                peritusStatusConfig[peritusStatus]?.bgClass || "bg-gray-100"
+                              } ${peritusStatusConfig[peritusStatus]?.textClass || "text-gray-700"}`}
+                            >
+                              {peritusStatusConfig[peritusStatus]?.label || peritusStatus}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    <td className="truncate px-4 py-3.5 text-sm text-gray-600">
+                      {client.email}
+                    </td>
+                    <td className="truncate px-4 py-3.5 text-sm text-gray-600">
+                      {client.company}
+                    </td>
+                    <td className="truncate px-4 py-3.5 text-sm">
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${status.bgClass} ${status.textClass}`}
+                      >
+                        <span
+                          className={`inline-block h-1.5 w-1.5 rounded-full ${status.dotClass}`}
+                        />
+                        {status.label}
+                      </span>
+                    </td>
+                    <td className="truncate px-4 py-3.5 text-sm text-gray-500">
+                      {formatDate(client._createdAt)}
+                    </td>
+                    {showActions && (
+                      <td className="px-4 py-3.5 text-sm text-center">
+                        <div className="flex flex-wrap items-center justify-center gap-1">
+                          <Link
+                            href={`/crm/clients/${client._id}`}
+                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-medium text-[#2969b0] transition-all duration-200 hover:bg-[#2969b0]/5"
+                          >
+                            <EyeIcon />
+                            Ver
+                          </Link>
+                          <Link
+                            href={`/crm/clients/${client._id}/edit`}
+                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-medium text-[#2969b0] transition-all duration-200 hover:bg-[#2969b0]/5"
+                          >
+                            <PencilIcon />
+                            Editar
+                          </Link>
+                          {/* Botones de validación Peritus */}
+                          {showValidateButtons && (
+                            <>
+                              <button
+                                onClick={() => handleValidate(client._id, "aprobado")}
+                                disabled={actionLoading !== null}
+                                title="Aprobar"
+                                className="inline-flex items-center justify-center rounded-lg bg-green-50 p-2 text-green-700 transition-colors hover:bg-green-100 disabled:opacity-50"
+                              >
+                                {actionLoading === client._id + "aprobado" ? (
+                                  <Loader2 className="h-5 w-5 animate-spin" />
+                                ) : (
+                                  <CheckCircle className="h-5 w-5" />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => setRejectTarget({ id: client._id, name: client.name })}
+                                disabled={actionLoading !== null}
+                                title="Denegar"
+                                className="inline-flex items-center justify-center rounded-lg bg-red-50 p-2 text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50"
+                              >
+                                <XCircle className="h-5 w-5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      {/* Dialog de rechazo */}
+      <Dialog
+        open={rejectTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRejectTarget(null);
+            setRejectNotes("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Denegar Cliente Peritus</DialogTitle>
+            <DialogDescription>
+              Indique la razon por la cual se deniega a {rejectTarget?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="rejectNotesTable">Notas de rechazo *</Label>
+            <Textarea
+              id="rejectNotesTable"
+              value={rejectNotes}
+              onChange={(e) => setRejectNotes(e.target.value)}
+              placeholder="Explique la razon del rechazo..."
+              rows={4}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRejectTarget(null);
+                setRejectNotes("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() =>
+                rejectTarget && handleValidate(rejectTarget.id, "denegado", rejectNotes)
+              }
+              disabled={!rejectNotes.trim() || actionLoading !== null}
+            >
+              {actionLoading !== null ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <XCircle className="mr-2 h-4 w-4" />
+              )}
+              Confirmar Denegación
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
