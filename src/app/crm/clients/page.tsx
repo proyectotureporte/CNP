@@ -90,7 +90,7 @@ export default function CrmClientsPage() {
     fetchClients(search, brandFilter);
   }, [brandFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  usePusher(['client:created', 'client:updated'], () => {
+  usePusher(['client:created', 'client:updated', 'client:deleted'], () => {
     fetchClients(search, brandFilter);
   });
 

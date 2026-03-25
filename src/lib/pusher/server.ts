@@ -16,7 +16,7 @@ export type PusherEvent =
   | 'deliverable:created' | 'deliverable:reviewed'
   | 'payment:updated' | 'payment:receipt'
   | 'notification:new' | 'notification:read'
-  | 'client:created' | 'client:updated'
+  | 'client:created' | 'client:updated' | 'client:deleted'
   | 'expert:created' | 'expert:updated'
   | 'document:created' | 'document:deleted'
   | 'hearing:created' | 'hearing:updated'

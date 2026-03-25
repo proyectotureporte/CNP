@@ -73,9 +73,33 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    // Block deletion if client has active cases
+    const casesCount = await writeClient.fetch<number>(
+      `count(*[_type == "case" && client._ref == $id])`,
+      { id }
+    );
+    if (casesCount > 0) {
+      return NextResponse.json(
+        { success: false, error: `No se puede eliminar: el cliente tiene ${casesCount} caso(s) asociado(s). Elimínelos primero.` },
+        { status: 409 }
+      );
+    }
+
+    // Delete associated registroPeritus if exists (references crmClient)
+    const registroPeritus = await writeClient.fetch<{ _id: string } | null>(
+      `*[_type == "registroPeritus" && clientRef._ref == $id][0]{ _id }`,
+      { id }
+    );
+    if (registroPeritus) {
+      await writeClient.delete(registroPeritus._id);
+    }
+
     await writeClient.delete(id);
+    triggerEvent('client:deleted', { id });
     return NextResponse.json({ success: true, data: { message: 'Cliente eliminado' } });
-  } catch {
+  } catch (err) {
+    console.error('[clients] DELETE error:', err);
     return NextResponse.json(
       { success: false, error: 'Error eliminando cliente' },
       { status: 500 }

@@ -165,6 +165,13 @@ export const registroPeritusSchema = defineType({
       type: 'boolean',
       initialValue: true,
     }),
+    defineField({
+      name: 'contrasenaHash',
+      title: 'Contraseña (Hash)',
+      type: 'string',
+      readOnly: true,
+      hidden: true,
+    }),
   ],
   preview: {
     select: {
