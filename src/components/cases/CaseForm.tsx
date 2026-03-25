@@ -263,32 +263,17 @@ export default function CaseForm({ initialData, caseId }: CaseFormProps) {
         </div>
       )}
 
-      {/* Peritus client selected - no form yet */}
-      {selectedBrand === "Peritus" && !isEditing && (
-        <div className="rounded-lg border-2 border-violet-200 bg-violet-50 p-8 text-center space-y-3">
-          <Badge className="bg-violet-600 text-white text-sm px-3 py-1">Peritus</Badge>
-          <p className="text-violet-800 font-medium">
-            El formulario de casos para Peritus esta en desarrollo.
-          </p>
-          <p className="text-violet-600 text-sm">
-            Proximamente podras crear casos para clientes de Peritus.
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-            className="mt-4"
-          >
-            Volver
-          </Button>
-        </div>
-      )}
-
-      {/* CNP form - show when client is CNP or when editing */}
-      {(selectedBrand === "CNP" || isEditing) && (clientId || isEditing) && (
+      {/* Form - show when client is selected or when editing */}
+      {(selectedBrand !== null || isEditing) && (clientId || isEditing) && (
         <>
           {/* Brand indicator */}
-          {!isEditing && (
+          {!isEditing && selectedBrand === "Peritus" && (
+            <div className="flex items-center gap-2 rounded-lg bg-violet-50 border border-violet-200 px-4 py-2">
+              <Badge className="bg-violet-600 text-white text-xs">Peritus</Badge>
+              <span className="text-sm text-violet-700">Caso para Peritus</span>
+            </div>
+          )}
+          {!isEditing && selectedBrand === "CNP" && (
             <div className="flex items-center gap-2 rounded-lg bg-sky-50 border border-sky-200 px-4 py-2">
               <Badge className="bg-sky-600 text-white text-xs">CNP</Badge>
               <span className="text-sm text-sky-700">Caso para Centro Nacional de Pruebas</span>
