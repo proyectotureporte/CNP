@@ -3,6 +3,10 @@ import SmoothScroll from "@/components/SmoothScroll";
 import Hero from "@/components/Hero";
 import Services from "@/components/Services";
 import About from "@/components/About";
+import Team from "@/components/Team";
+import InfoHero from "@/components/InfoHero";
+import CasosExito from "@/components/CasosExito";
+import AudienceCards from "@/components/AudienceCards";
 import Benefits from "@/components/Benefits";
 import Values from "@/components/Values";
 import QuoteForm from "@/components/QuoteForm";
@@ -19,6 +23,10 @@ export default function Home() {
         <Hero />
         <Services />
         <About />
+        <Team />
+        <InfoHero />
+        <CasosExito />
+        <AudienceCards />
         <Benefits />
         <Values />
         <QuoteForm />

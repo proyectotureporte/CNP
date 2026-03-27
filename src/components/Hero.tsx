@@ -48,14 +48,16 @@ export default function Hero() {
             className="reveal-left"
             style={{
               fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-              fontSize: "clamp(32px, 5vw, 48px)",
+              fontSize: "clamp(20px, 3.8vw, 48px)",
               fontWeight: 800,
               color: "#ffffff",
-              lineHeight: 1.15,
+              lineHeight: 1.1,
               marginBottom: "24px",
             }}
           >
-            Expertos en dict&aacute;menes financieros.
+            <span style={{ whiteSpace: "nowrap" }}>Expertos en dict&aacute;menes</span>
+            <br />
+            <span style={{ color: "#fbbf24" }}>financieros.</span>
           </h1>
           <p
             className="reveal-left"
@@ -65,7 +67,7 @@ export default function Hero() {
               fontWeight: 400,
               color: "rgba(255, 255, 255, 0.9)",
               lineHeight: 1.8,
-              marginBottom: "36px",
+              marginBottom: "40px",
               maxWidth: "560px",
             }}
           >
@@ -77,21 +79,22 @@ export default function Hero() {
           <div className="reveal">
             <a
               href="#contacto"
+              className="btn-pulse"
               style={{
                 display: "inline-block",
                 fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                fontSize: "15px",
-                fontWeight: 700,
-                backgroundColor: "#1a3a7a",
+                fontSize: "16px",
+                fontWeight: 800,
+                backgroundColor: "#ea580c",
                 color: "#ffffff",
-                borderRadius: "8px",
-                padding: "14px 32px",
+                borderRadius: "10px",
+                padding: "16px 40px",
                 textDecoration: "none",
-                letterSpacing: "0.3px",
-                transition: "background-color 0.2s ease",
+                letterSpacing: "0.8px",
+                textTransform: "uppercase",
               }}
             >
-              Asesor especialista
+              Cont&aacute;ctanos
             </a>
           </div>
         </div>

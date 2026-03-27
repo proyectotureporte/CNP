@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 const navItems = [
   { label: "Inicio", href: "#inicio" },
   { label: "Servicios", href: "#servicios" },
+  { label: "Nosotros", href: "#quienes" },
   { label: "Nuestro equipo", href: "#equipo" },
   { label: "Contacto", href: "#contacto" },
 ];
@@ -29,7 +30,9 @@ export default function Header() {
         width: "100%",
         height: "80px",
         zIndex: 999,
-        backgroundColor: "#ffffff",
+        backgroundColor: "#0f3b85",
+        boxShadow: scrolled ? "0 2px 16px rgba(0,0,0,0.25)" : "none",
+        transition: "box-shadow 0.3s ease",
       }}
     >
       <div
@@ -50,11 +53,11 @@ export default function Header() {
           style={{ display: "flex", alignItems: "center", textDecoration: "none" }}
         >
           <Image
-            src="/images/logo-cnp.png"
+            src="/images/cnpblanco.png"
             alt="CNP"
             width={180}
             height={60}
-            style={{ height: "80px", width: "auto" }}
+            style={{ height: "85px", width: "auto" }}
             priority
           />
         </a>
@@ -68,25 +71,25 @@ export default function Header() {
                 onClick={() => setMenuOpen(false)}
                 style={{
                   padding: "8px 16px",
-                  fontSize: "18px",
+                  fontSize: "16px",
                   fontWeight: 600,
                   fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                  color: "#1a1a2e",
+                  color: "rgba(255,255,255,0.88)",
                   textDecoration: "none",
                   letterSpacing: "0.3px",
                   transition: "color 0.2s ease",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "#0a2a6e";
+                  e.currentTarget.style.color = "#ffffff";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "#1a1a2e";
+                  e.currentTarget.style.color = "rgba(255,255,255,0.88)";
                 }}
               >
                 {item.label}
               </a>
               {index < navItems.length - 1 && (
-                <span style={{ color: "#cbd5e1", fontSize: "14px", userSelect: "none" }}>|</span>
+                <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "14px", userSelect: "none" }}>|</span>
               )}
             </span>
           ))}
@@ -104,7 +107,7 @@ export default function Header() {
           }}
           aria-label="Menu"
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0a2a6e" strokeWidth="2" strokeLinecap="round">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round">
             {menuOpen ? (
               <>
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -126,8 +129,8 @@ export default function Header() {
         <div
           className="md:hidden"
           style={{
-            backgroundColor: "#ffffff",
-            borderTop: "1px solid #e2e8f0",
+            backgroundColor: "#0f3b85",
+            borderTop: "1px solid rgba(255,255,255,0.15)",
             padding: "16px 24px",
           }}
         >
@@ -142,9 +145,9 @@ export default function Header() {
                 fontSize: "15px",
                 fontWeight: 600,
                 fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                color: "#1a1a2e",
+                color: "#ffffff",
                 textDecoration: "none",
-                borderBottom: "1px solid #f1f5f9",
+                borderBottom: "1px solid rgba(255,255,255,0.1)",
               }}
             >
               {item.label}

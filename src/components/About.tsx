@@ -7,7 +7,7 @@ export default function About() {
   const ref = useReveal();
 
   return (
-    <section id="equipo" style={{ backgroundColor: "#dce8f5", padding: "80px 0" }}>
+    <section id="quienes" style={{ backgroundColor: "#dce8f5", padding: "80px 0" }}>
       <div ref={ref} style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 30px" }}>
         <div className="flex flex-col lg:flex-row" style={{ gap: "50px", alignItems: "center" }}>
           {/* Text column */}
@@ -44,17 +44,19 @@ export default function About() {
             </p>
             <a
               href="#equipo"
+              className="btn-pulse"
               style={{
                 display: "inline-block",
                 fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
                 fontSize: "15px",
-                fontWeight: 700,
-                backgroundColor: "#0a2a6e",
+                fontWeight: 800,
+                backgroundColor: "#ea580c",
                 color: "#ffffff",
-                borderRadius: "8px",
+                borderRadius: "10px",
                 padding: "14px 32px",
                 textDecoration: "none",
-                transition: "background-color 0.2s ease",
+                letterSpacing: "0.5px",
+                textTransform: "uppercase",
               }}
             >
               Conozca el equipo

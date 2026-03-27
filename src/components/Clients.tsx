@@ -11,80 +11,205 @@ const clients = [
   { name: "DAVIVIENDA", image: "/images/davivienda.png" },
 ];
 
+// Triple for seamless loop
+const row1 = [...clients, ...clients, ...clients];
+const row2 = [...clients].reverse();
+const row2x = [...row2, ...row2, ...row2];
+
 export default function Clients() {
   const ref = useReveal();
 
-  // Duplicate for infinite loop
-  const doubled = [...clients, ...clients];
-
   return (
-    <section id="clientes" style={{ backgroundColor: "#c8d8eb", padding: "100px 0" }}>
-      <div ref={ref} style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 30px" }}>
-        <h2
-          className="reveal"
-          style={{
-            fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-            fontSize: "clamp(28px, 4vw, 36px)",
-            fontWeight: 800,
-            color: "#0a2a6e",
-            textAlign: "center",
-            marginBottom: "60px",
-          }}
-        >
-          Confiaron en nosotros
-        </h2>
+    <section
+      id="clientes"
+      style={{
+        background: "linear-gradient(160deg, #07152e 0%, #0d1f4e 60%, #07152e 100%)",
+        padding: "100px 0",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Subtle grid */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+          backgroundSize: "60px 60px",
+          pointerEvents: "none",
+        }}
+      />
 
-        {/* Gallery carousel */}
-        <div style={{ overflow: "hidden" }}>
-          <div
-            className="animate-slide-clients"
+      <div ref={ref} style={{ position: "relative", zIndex: 1 }}>
+        {/* Header */}
+        <div className="reveal" style={{ textAlign: "center", marginBottom: "64px", padding: "0 30px" }}>
+          <p
             style={{
-              display: "flex",
-              gap: "48px",
-              width: "max-content",
+              fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
+              fontSize: "12px",
+              fontWeight: 700,
+              color: "#7eb8f7",
+              letterSpacing: "3px",
+              textTransform: "uppercase",
+              marginBottom: "14px",
             }}
           >
-            {doubled.map((client, index) => (
+            Empresas que nos respaldan
+          </p>
+          <h2
+            style={{
+              fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
+              fontSize: "clamp(28px, 4vw, 40px)",
+              fontWeight: 800,
+              color: "#ffffff",
+              marginBottom: "20px",
+            }}
+          >
+            Confiaron en nosotros
+          </h2>
+          <div
+            style={{
+              width: "70px",
+              height: "4px",
+              background: "linear-gradient(90deg, #ea580c, #fbbf24)",
+              borderRadius: "2px",
+              margin: "0 auto",
+            }}
+          />
+        </div>
+
+        {/* Row 1 — left to right */}
+        <div
+          className="clients-track-wrap"
+          style={{ overflow: "hidden", position: "relative", marginBottom: "24px" }}
+        >
+          {/* Left fade */}
+          <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "120px", background: "linear-gradient(90deg, #07152e, transparent)", zIndex: 2, pointerEvents: "none" }} />
+          {/* Right fade */}
+          <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "120px", background: "linear-gradient(-90deg, #07152e, transparent)", zIndex: 2, pointerEvents: "none" }} />
+
+          <div
+            className="animate-slide-clients"
+            style={{ display: "flex", gap: "20px", width: "max-content", padding: "10px 0" }}
+          >
+            {row1.map((client, index) => (
               <div
                 key={index}
+                className="client-card"
                 style={{
                   flexShrink: 0,
-                  width: "200px",
+                  width: "190px",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  gap: "16px",
+                  gap: "14px",
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: "14px",
+                  padding: "20px 16px",
                 }}
               >
                 <div
                   style={{
-                    width: "200px",
-                    height: "120px",
+                    width: "100%",
+                    height: "80px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    backgroundColor: "#ffffff",
-                    borderRadius: "12px",
-                    padding: "16px",
                   }}
                 >
                   <Image
                     src={client.image}
                     alt={client.name}
-                    width={180}
-                    height={100}
-                    style={{ objectFit: "contain", maxHeight: "88px", width: "auto" }}
+                    width={150}
+                    height={72}
+                    style={{
+                      objectFit: "contain",
+                      maxHeight: "72px",
+                      width: "auto",
+                      transition: "filter 0.3s ease",
+                    }}
                   />
                 </div>
                 <p
                   style={{
                     fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                    fontSize: "14px",
+                    fontSize: "11px",
                     fontWeight: 700,
-                    color: "#0a2a6e",
+                    color: "rgba(255,255,255,0.6)",
                     textAlign: "center",
                     textTransform: "uppercase",
-                    letterSpacing: "0.5px",
+                    letterSpacing: "1.5px",
+                  }}
+                >
+                  {client.name}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Row 2 — right to left */}
+        <div
+          className="clients-track-wrap"
+          style={{ overflow: "hidden", position: "relative" }}
+        >
+          <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "120px", background: "linear-gradient(90deg, #0d1f4e, transparent)", zIndex: 2, pointerEvents: "none" }} />
+          <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "120px", background: "linear-gradient(-90deg, #0d1f4e, transparent)", zIndex: 2, pointerEvents: "none" }} />
+
+          <div
+            className="animate-slide-clients-reverse"
+            style={{ display: "flex", gap: "20px", width: "max-content", padding: "10px 0" }}
+          >
+            {row2x.map((client, index) => (
+              <div
+                key={index}
+                className="client-card"
+                style={{
+                  flexShrink: 0,
+                  width: "190px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "14px",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: "14px",
+                  padding: "20px 16px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    height: "80px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Image
+                    src={client.image}
+                    alt={client.name}
+                    width={150}
+                    height={72}
+                    style={{
+                      objectFit: "contain",
+                      maxHeight: "72px",
+                      width: "auto",
+                      transition: "filter 0.3s ease",
+                    }}
+                  />
+                </div>
+                <p
+                  style={{
+                    fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    color: "rgba(255,255,255,0.5)",
+                    textAlign: "center",
+                    textTransform: "uppercase",
+                    letterSpacing: "1.5px",
                   }}
                 >
                   {client.name}
