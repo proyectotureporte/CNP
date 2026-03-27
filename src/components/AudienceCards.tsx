@@ -7,17 +7,17 @@ const audiences = [
   {
     label: "Soy abogado",
     image: "/images/lawyers-office.jpg",
-    href: "#contacto",
+    href: "/abogados",
   },
   {
     label: "Soy empresa",
     image: "/images/office-meeting.jpg",
-    href: "#contacto",
+    href: "/empresas",
   },
   {
     label: "Soy juez",
     image: "/images/gavel.jpg",
-    href: "#contacto",
+    href: "/jueces",
   },
 ];
 
