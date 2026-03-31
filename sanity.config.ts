@@ -25,6 +25,7 @@ import { systemSettingSchema } from './src/lib/sanity/schemas/systemSetting'
 import { whatsappLeadSchema } from './src/lib/sanity/schemas/whatsappLead'
 import { whatsappMessageSchema } from './src/lib/sanity/schemas/whatsappMessage'
 import { registroPeritusSchema } from './src/lib/sanity/schemas/registroPeritus'
+import { webLeadSchema } from './src/lib/sanity/schemas/webLead'
 
 export default defineConfig({
   name: 'cnp-peritus',
@@ -57,6 +58,7 @@ export default defineConfig({
       whatsappLeadSchema,
       whatsappMessageSchema,
       registroPeritusSchema,
+      webLeadSchema,
     ],
   },
 })

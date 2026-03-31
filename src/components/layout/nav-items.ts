@@ -14,6 +14,7 @@ import {
   Wallet,
   Shield,
   MessageSquare,
+  Inbox,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -36,6 +37,7 @@ export const navItems: NavItem[] = [
   { label: 'Pagos', href: '/crm/payments', icon: CreditCard, permission: 'payments' },
   { label: 'Comisiones', href: '/crm/commissions', icon: Wallet, permission: 'commissions' },
   { label: 'Reportes', href: '/crm/reports', icon: BarChart3, permission: 'reports' },
+  { label: 'Formularios', href: '/crm/formularios', icon: Inbox, permission: 'formularios' },
   { label: 'Mensajes', href: '/crm/mensajes', icon: MessageSquare, permission: 'mensajes' },
   { label: 'Notificaciones', href: '/crm/notifications', icon: Bell, permission: 'notifications' },
   { label: 'Mi Perfil', href: '/crm/profile', icon: UserCircle, permission: 'profile' },

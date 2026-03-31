@@ -33,7 +33,7 @@ export default function JuecesPage() {
       <Header />
       <main>
         <InnerHero
-          title="Soporte técnico para la decisión judicial"
+          title="Claridad, rigor y sustento técnico para la toma de decisiones judiciales."
           subtitle="Proveemos a jueces y magistrados análisis financiero imparcial y dictámenes periciales de alta precisión técnica para fundamentar cada resolución."
           bgImage="/images/gavel.jpg"
         />
@@ -46,7 +46,7 @@ export default function JuecesPage() {
           title="Claridad técnica al servicio de la justicia"
           text="Estamos disponibles para atender requerimientos judiciales con la celeridad y precisión que cada proceso exige, garantizando imparcialidad y rigor metodológico."
         />
-        <QuoteForm />
+        <QuoteForm origen="jueces" />
         <Clients />
         <NationalOperation />
       </main>

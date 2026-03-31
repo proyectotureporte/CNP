@@ -8,19 +8,19 @@ const services = [
     title: "ELABORACI\u00D3N DE DICT\u00C1MENES FINANCIEROS",
     image: "/images/1.png",
     description:
-      "Preparamos dictámenes periciales con rigor técnico y sustento contable para procesos judiciales, arbitrales y administrativos.",
+      "Análisis técnico de información financiera para litigios y controversias.",
   },
   {
     title: "C\u00C1LCULO DE PERJUICIOS",
     image: "/images/2.png",
     description:
-      "Cuantificamos lucro cesante, daño emergente y otros perjuicios económicos con metodología probada y trazable.",
+      "Cuantificación técnica de daño emergente, lucro cesante y afectaciones económicas.",
   },
   {
     title: "REALIZACI\u00D3N DE LIQUIDACIONES",
     image: "/images/3.png",
     description:
-      "Ejecutamos liquidaciones de contratos, créditos y obligaciones con precisión contable y plena validez probatoria.",
+      "Revisión técnica, estructuración y validación económica de liquidaciones e incumplimientos contractuales.",
   },
 ];
 

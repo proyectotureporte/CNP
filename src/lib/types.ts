@@ -36,7 +36,7 @@ export const ROLE_COLORS: Record<UserRole, { bg: string; text: string; dot: stri
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   admin: ['dashboard', 'cases', 'experts', 'clients', 'users', 'quotes', 'deliverables', 'work-plans', 'evaluations', 'payments', 'commissions', 'reports', 'settings', 'notifications', 'profile', 'audit-logs', 'cartera', 'mensajes'],
-  juridico: ['dashboard', 'cases', 'clients', 'notifications', 'profile', 'mensajes'],
+  juridico: ['dashboard', 'cases', 'clients', 'formularios', 'notifications', 'profile', 'mensajes'],
   financiero: ['dashboard', 'cases', 'quotes', 'payments', 'notifications', 'profile', 'cartera'],
   administrativo: ['dashboard', 'cases', 'work-plans', 'notifications', 'profile'],
   mercadeo: ['dashboard', 'cases', 'notifications', 'profile', 'mensajes'],

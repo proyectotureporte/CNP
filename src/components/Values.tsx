@@ -35,7 +35,7 @@ const values = [
       </svg>
     ),
     label: "Puntualidad",
-    text: "Precisión en pretensiones y liquidaciones, clave para fortalecer su caso.",
+    text: "Tiempos de respuesta eficientes que se ajustan a los plazos procesales de cada caso.",
   },
   {
     icon: (
@@ -55,7 +55,7 @@ const values = [
       </svg>
     ),
     label: "Análisis",
-    text: "Precisión en pretensiones y liquidaciones, clave para fortalecer su caso.",
+    text: "Análisis exhaustivo con sustento técnico que respalda cada conclusión del dictamen.",
   },
 ];
 

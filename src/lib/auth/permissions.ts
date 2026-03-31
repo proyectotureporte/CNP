@@ -17,6 +17,7 @@ const ROUTE_PERMISSION_MAP: Record<string, string> = {
   '/crm/evaluations': 'evaluations',
   '/crm/commissions': 'commissions',
   '/crm/mensajes': 'mensajes',
+  '/crm/formularios': 'formularios',
   '/crm/notifications': 'notifications',
   '/crm/profile': 'profile',
   '/crm/settings': 'settings',

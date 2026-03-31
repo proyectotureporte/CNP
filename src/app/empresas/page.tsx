@@ -33,7 +33,7 @@ export default function EmpresasPage() {
       <Header />
       <main>
         <InnerHero
-          title="Soluciones financieras para su empresa"
+          title="Soporte técnico integral para la defensa y protección de su patrimonio."
           subtitle="Acompañamos a empresas del sector real con análisis contable, tributario y económico en sus procesos judiciales, contractuales y de reclamación."
           bgImage="/images/office-meeting.jpg"
         />
@@ -46,7 +46,7 @@ export default function EmpresasPage() {
           title="Proteja el patrimonio de su empresa"
           text="Nuestros expertos están listos para acompañarle en cada etapa del proceso con el rigor técnico y la experiencia que su empresa merece."
         />
-        <QuoteForm />
+        <QuoteForm origen="empresas" />
         <Clients />
         <NationalOperation />
       </main>

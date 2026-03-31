@@ -33,7 +33,7 @@ export default function AbogadosPage() {
       <Header />
       <main>
         <InnerHero
-          title="Su aliado técnico en el litigio"
+          title="No improvise la prueba técnica. Fortalecemos su teoría del caso."
           subtitle="Aportamos sustento financiero y pericial para fortalecer cada pretensión de su caso con precisión, rigor y credibilidad técnica."
           bgImage="/images/lawyers-office.jpg"
         />
@@ -46,7 +46,7 @@ export default function AbogadosPage() {
           title="¿Listo para fortalecer su caso?"
           text="Contáctenos hoy y uno de nuestros expertos analizará su situación sin costo inicial. Estamos disponibles para responder con la celeridad que su proceso exige."
         />
-        <QuoteForm />
+        <QuoteForm origen="abogados" />
         <Clients />
         <NationalOperation />
       </main>

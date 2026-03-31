@@ -4,17 +4,19 @@ import Image from "next/image";
 import { useReveal } from "@/hooks/useReveal";
 
 const clients = [
-  { name: "EMCALI", image: "/images/EMCALI.png" },
-  { name: "RUTA N MEDELL\u00CDN", image: "/images/RUTANMEDELLIN.png" },
-  { name: "BANCOLOMBIA", image: "/images/bancolombia.png" },
-  { name: "METROVIA", image: "/images/METROVIA.png" },
-  { name: "DAVIVIENDA", image: "/images/davivienda.png" },
+  { name: "EMCALI", image: "/images/EMCALI.png", large: false },
+  { name: "RUTA N MEDELL\u00CDN", image: "/images/RUTANMEDELLIN.png", large: false },
+  { name: "BANCOLOMBIA", image: "/images/bancolombia.png", large: false },
+  { name: "METROVIA", image: "/images/METROVIA.png", large: false },
+  { name: "DAVIVIENDA", image: "/images/davivienda.png", large: false },
+  { name: "LOGON", image: "/images/LOGON.png", large: true },
+  { name: "LOGON1", image: "/images/LOGON1.png", large: true },
+  { name: "LOGON2", image: "/images/LOGON2.png", large: true },
+  { name: "LOGON3", image: "/images/LOGON3.png", large: true },
 ];
 
 // Triple for seamless loop
 const row1 = [...clients, ...clients, ...clients];
-const row2 = [...clients].reverse();
-const row2x = [...row2, ...row2, ...row2];
 
 export default function Clients() {
   const ref = useReveal();
@@ -79,10 +81,10 @@ export default function Clients() {
           />
         </div>
 
-        {/* Row 1 — left to right */}
+        {/* Row — left to right */}
         <div
           className="clients-track-wrap"
-          style={{ overflow: "hidden", position: "relative", marginBottom: "24px" }}
+          style={{ overflow: "hidden", position: "relative" }}
         >
           {/* Left fade */}
           <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "120px", background: "linear-gradient(90deg, #07152e, transparent)", zIndex: 2, pointerEvents: "none" }} />
@@ -91,7 +93,7 @@ export default function Clients() {
 
           <div
             className="animate-slide-clients"
-            style={{ display: "flex", gap: "20px", width: "max-content", padding: "10px 0" }}
+            style={{ display: "flex", gap: "28px", width: "max-content", padding: "10px 0" }}
           >
             {row1.map((client, index) => (
               <div
@@ -99,21 +101,22 @@ export default function Clients() {
                 className="client-card"
                 style={{
                   flexShrink: 0,
-                  width: "190px",
+                  width: client.large ? "320px" : "240px",
+                  height: "220px",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  gap: "14px",
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.1)",
+                  justifyContent: "center",
+                  background: "#ffffff",
+                  border: "1px solid #e2e8f0",
                   borderRadius: "14px",
-                  padding: "20px 16px",
+                  padding: "28px 20px",
                 }}
               >
                 <div
                   style={{
                     width: "100%",
-                    height: "80px",
+                    height: client.large ? "200px" : "110px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -122,98 +125,16 @@ export default function Clients() {
                   <Image
                     src={client.image}
                     alt={client.name}
-                    width={150}
-                    height={72}
+                    width={client.large ? 400 : 200}
+                    height={client.large ? 200 : 100}
                     style={{
                       objectFit: "contain",
-                      maxHeight: "72px",
+                      maxHeight: client.large ? "200px" : "100px",
                       width: "auto",
                       transition: "filter 0.3s ease",
                     }}
                   />
                 </div>
-                <p
-                  style={{
-                    fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    color: "rgba(255,255,255,0.6)",
-                    textAlign: "center",
-                    textTransform: "uppercase",
-                    letterSpacing: "1.5px",
-                  }}
-                >
-                  {client.name}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Row 2 — right to left */}
-        <div
-          className="clients-track-wrap"
-          style={{ overflow: "hidden", position: "relative" }}
-        >
-          <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "120px", background: "linear-gradient(90deg, #0d1f4e, transparent)", zIndex: 2, pointerEvents: "none" }} />
-          <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "120px", background: "linear-gradient(-90deg, #0d1f4e, transparent)", zIndex: 2, pointerEvents: "none" }} />
-
-          <div
-            className="animate-slide-clients-reverse"
-            style={{ display: "flex", gap: "20px", width: "max-content", padding: "10px 0" }}
-          >
-            {row2x.map((client, index) => (
-              <div
-                key={index}
-                className="client-card"
-                style={{
-                  flexShrink: 0,
-                  width: "190px",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "14px",
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: "14px",
-                  padding: "20px 16px",
-                }}
-              >
-                <div
-                  style={{
-                    width: "100%",
-                    height: "80px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Image
-                    src={client.image}
-                    alt={client.name}
-                    width={150}
-                    height={72}
-                    style={{
-                      objectFit: "contain",
-                      maxHeight: "72px",
-                      width: "auto",
-                      transition: "filter 0.3s ease",
-                    }}
-                  />
-                </div>
-                <p
-                  style={{
-                    fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    color: "rgba(255,255,255,0.5)",
-                    textAlign: "center",
-                    textTransform: "uppercase",
-                    letterSpacing: "1.5px",
-                  }}
-                >
-                  {client.name}
-                </p>
               </div>
             ))}
           </div>

@@ -55,9 +55,8 @@ export default function Hero() {
               marginBottom: "24px",
             }}
           >
-            <span style={{ whiteSpace: "nowrap" }}>Expertos en dict&aacute;menes</span>
-            <br />
-            <span style={{ color: "#fbbf24" }}>financieros.</span>
+            Te brindamos la confianza y seguridad necesaria{" "}
+            <span style={{ color: "#fbbf24" }}>para tu caso</span>
           </h1>
           <p
             className="reveal-left"
@@ -71,10 +70,8 @@ export default function Hero() {
               maxWidth: "560px",
             }}
           >
-            Acompa&ntilde;amos a jueces, abogados y empresas del sector real con
-            an&aacute;lisis contable, tributario y econ&oacute;mico, aportando
-            claridad, sustento t&eacute;cnico y confiabilidad en la
-            valoraci&oacute;n de la prueba financiera.
+            Transformamos problemas jur&iacute;dicos complejos en an&aacute;lisis
+            probatorio claro, defendible y cuantificado
           </p>
           <div className="reveal">
             <a
