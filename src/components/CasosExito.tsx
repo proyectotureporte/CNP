@@ -8,19 +8,19 @@ const cases = [
     title: "Caso de Bancolombia",
     image: "/images/exito1.webp",
     description:
-      "Expertos en más de 20 áreas técnicas (ingeniería, medicina, psicología y más). Todo el conocimiento que su caso necesita en un solo lugar.",
+      "Expertos en dictámenes periciales-financieros. Logramos controvertir pruebas técnicas de la contraparte en audiencias judiciales, asegurando una defensa sólida con consultores Senior. Todo el conocimiento que su caso necesita en un solo lugar.",
   },
   {
-    title: "Caso de EMCALI",
-    image: "/images/exito2.webp",
+    title: "Caso Univalle",
+    image: "/images/univalle.jpg",
     description:
-      "Expertos en más de 20 áreas técnicas (ingeniería, medicina, psicología y más). Todo el conocimiento que su caso necesita en un solo lugar.",
+      "Lideramos la investigación técnica para determinar la existencia de faltantes de dinero en la contabilidad de la compañía Industrias Wescold s.a.s. Contamos con el respaldo de consultores nivel Magíster para garantizar precisión en procesos de alto impacto económico. Todo el conocimiento que su caso necesita en un solo lugar.",
   },
   {
-    title: "Caso de Bancolombia",
-    image: "/images/exito3.webp",
+    title: "Caso Banco Fallabella",
+    image: "/images/falabella.jpg",
     description:
-      "Expertos en más de 20 áreas técnicas (ingeniería, medicina, psicología y más). Todo el conocimiento que su caso necesita en un solo lugar.",
+      "En este proceso, realizamos un análisis técnico profundo del dictamen presentado por la parte demandante, logrando un resultado exitoso al facilitar la conciliación en audiencia. Todo el conocimiento que su caso necesita en un solo lugar.",
   },
 ];
 
@@ -59,9 +59,9 @@ export default function CasosExito() {
                 border: "1px solid #e2e8f0",
               }}
             >
-              {/* 60% image */}
-              <div style={{ position: "relative", flex: "0 0 60%" }}>
-                <div style={{ paddingTop: "75%" /* aspect ratio placeholder */ }} />
+              {/* image */}
+              <div style={{ position: "relative" }}>
+                <div style={{ paddingTop: "55%" }} />
                 <Image
                   src={c.image}
                   alt={c.title}
@@ -70,16 +70,14 @@ export default function CasosExito() {
                 />
               </div>
 
-              {/* 40% text */}
+              {/* text */}
               <div
                 style={{
-                  padding: "24px 22px",
+                  padding: "28px 24px",
                   backgroundColor: "#ffffff",
-                  flex: 1,
                   display: "flex",
                   flexDirection: "column",
-                  justifyContent: "center",
-                  gap: "10px",
+                  gap: "12px",
                 }}
               >
                 <h3

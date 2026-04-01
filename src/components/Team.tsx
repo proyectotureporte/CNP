@@ -70,7 +70,7 @@ export default function Team() {
               }}
             >
               <Image
-                src="/images/info.jpg"
+                src="/images/ne.png"
                 alt="Nuestro equipo"
                 fill
                 style={{ objectFit: "cover", objectPosition: "center" }}

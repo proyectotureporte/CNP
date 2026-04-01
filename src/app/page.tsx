@@ -21,12 +21,12 @@ export default function Home() {
       <Header />
       <main>
         <Hero />
+        <AudienceCards />
         <Services />
         <About />
         <Team />
         <InfoHero />
         <CasosExito />
-        <AudienceCards />
         <Benefits />
         <Values />
         <QuoteForm />

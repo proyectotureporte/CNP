@@ -74,8 +74,8 @@ export default function About() {
               }}
             >
               <Image
-                src="/images/freddy.jpg"
-                alt="Magister. Freddy Oliveros"
+                src="/images/quiene.png"
+                alt="¿Quiénes somos?"
                 width={500}
                 height={400}
                 style={{
@@ -85,20 +85,6 @@ export default function About() {
                 }}
               />
             </div>
-            <p
-              style={{
-                fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                fontSize: "16px",
-                fontWeight: 700,
-                color: "#0a2a6e",
-                marginBottom: "4px",
-              }}
-            >
-              Magister. Freddy Oliveros
-            </p>
-            <p style={{ fontSize: "14px", color: "#444" }}>
-              Director general
-            </p>
           </div>
         </div>
       </div>
