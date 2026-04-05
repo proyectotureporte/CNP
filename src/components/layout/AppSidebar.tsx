@@ -47,7 +47,7 @@ export default function AppSidebar({ userRole, userName, variant = 'crm' }: AppS
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border px-4 py-5">
-        <Link href={variant === 'admin' ? '/admin' : '/crm'} className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3">
           <Image
             src="/images/favicon.png"
             alt="CNP"

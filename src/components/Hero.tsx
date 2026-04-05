@@ -18,7 +18,7 @@ export default function Hero() {
       }}
     >
       <Image
-        src="/images/fondo.png"
+        src="/images/FONDO.jpg"
         alt="Background"
         fill
         style={{ objectFit: "cover", objectPosition: "center 45%", transform: "scaleX(-1)" }}

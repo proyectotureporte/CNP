@@ -48,7 +48,7 @@ export default function Header() {
       >
         {/* Logo */}
         <a
-          href="#inicio"
+          href="/"
           onClick={() => setMenuOpen(false)}
           style={{ display: "flex", alignItems: "center", textDecoration: "none" }}
         >
