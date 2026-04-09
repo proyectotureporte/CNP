@@ -5,22 +5,34 @@ import { useReveal } from "@/hooks/useReveal";
 
 const services = [
   {
-    title: "ELABORACI\u00D3N DE DICT\u00C1MENES FINANCIEROS",
-    image: "/images/1.png",
-    description:
-      "Análisis técnico de información financiera para litigios y controversias.",
+    icon: "/images/3 1.svg",
+    title: "Diagnóstico Probatorio-Financiero.",
+    description: "Análisis inicial del caso para identificar necesidades técnicas, riesgos y alcances del dictamen pericial.",
   },
   {
-    title: "C\u00C1LCULO DE PERJUICIOS",
-    image: "/images/2.png",
-    description:
-      "Cuantificación técnica de daño emergente, lucro cesante y afectaciones económicas.",
+    icon: "/images/4 1.svg",
+    title: "Informe de Cuantificación de Daños.",
+    description: "Cuantificación técnica del daño emergente, lucro cesante y perjuicios económicos.",
   },
   {
-    title: "REALIZACI\u00D3N DE LIQUIDACIONES",
-    image: "/images/3.png",
-    description:
-      "Revisión técnica, estructuración y validación económica de liquidaciones e incumplimientos contractuales.",
+    icon: "/images/5 1.svg",
+    title: "Valoración del Acervo Probatorio.",
+    description: "Análisis técnico de documentos, soportes y evidencias de carácter financiero.",
+  },
+  {
+    icon: "/images/6 1.svg",
+    title: "Revisión de Dictamen Contrario.",
+    description: "Evaluación crítica del peritaje presentado por la contraparte para detectar errores técnicos.",
+  },
+  {
+    icon: "/images/7 1.svg",
+    title: "Segunda Opinión Pericial.",
+    description: "Revisión experta para fortalecer la decisión procesal o estratégica del equipo legal.",
+  },
+  {
+    icon: "/images/8 1.svg",
+    title: "Acompañamiento Técnico en Litigio.",
+    description: "Apoyo experto previo a la audiencia y en etapas críticas del caso.",
   },
 ];
 
@@ -28,102 +40,107 @@ export default function Services() {
   const ref = useReveal();
 
   return (
-    <section id="servicios" style={{ backgroundColor: "#1a3a7a", padding: "80px 0" }}>
-      <div ref={ref} style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 30px" }}>
-        {/* Section title */}
-        <h2
-          className="reveal"
-          style={{
-            fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-            fontSize: "clamp(22px, 3.5vw, 32px)",
-            fontWeight: 800,
-            color: "#ffffff",
-            textAlign: "center",
-            letterSpacing: "1.5px",
-            textTransform: "uppercase",
-            marginBottom: "48px",
-          }}
-        >
-          Nuestros Servicios
-        </h2>
+    <section id="servicios" style={{ backgroundColor: "#ffffff", padding: "80px 0" }}>
+      <div ref={ref} style={{ maxWidth: "1500px", margin: "0 auto", padding: "0 30px" }}>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 reveal-stagger" style={{ gap: "24px" }}>
+        {/* Header */}
+        <div className="reveal" style={{ textAlign: "center", marginBottom: "56px" }}>
+          <h2
+            style={{
+              fontSize: "clamp(20px, 2.8vw, 36px)",
+              fontWeight: 800,
+              color: "#0d1f4e",
+              letterSpacing: "1px",
+              textTransform: "uppercase",
+              marginBottom: "16px",
+            }}
+          >
+            Servicios Probatorios de Alta Especialidad.
+          </h2>
+          <p
+            style={{
+              fontSize: "clamp(21px, 1.8vw, 27px)",
+              color: "#4a5568",
+              lineHeight: 1,
+              maxWidth: "800px",
+              margin: "0 auto",
+            }}
+          >
+            Soluciones técnicas diseñadas para blindar su estrategia legal<br />
+            con rigor científico y precisión financiera.
+          </p>
+        </div>
+
+        {/* Grid */}
+        <div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 reveal-stagger"
+          style={{ gap: "20px", marginBottom: "48px" }}
+        >
           {services.map((service, index) => (
             <div
               key={index}
               style={{
-                backgroundColor: "rgba(255, 255, 255, 0.08)",
-                border: "1px solid rgba(255, 255, 255, 0.12)",
+                backgroundColor: "#ffffff",
+                border: "1px solid #dde6f0",
                 borderRadius: "12px",
-                overflow: "hidden",
+                padding: "36px 24px 28px",
                 display: "flex",
                 flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+                gap: "16px",
               }}
             >
-              {/* Image with hover overlay */}
-              <div className="service-img-wrap" style={{ height: "220px" }}>
-                <Image
-                  src={service.image}
-                  alt={service.title}
-                  fill
-                  style={{
-                    objectFit: "cover",
-                    objectPosition: index === 0 ? "center -10px" : "center top",
-                  }}
-                />
-                <div className="service-overlay">
-                  <svg
-                    width="36"
-                    height="36"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="#fbbf24"
-                    strokeWidth={1.8}
-                    style={{ marginBottom: "14px", flexShrink: 0 }}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 110 20A10 10 0 0112 2z" />
-                  </svg>
-                  <p
-                    style={{
-                      fontFamily: "'Open Sans', sans-serif",
-                      fontSize: "14px",
-                      color: "#ffffff",
-                      lineHeight: 1.7,
-                    }}
-                  >
-                    {service.description}
-                  </p>
-                </div>
-              </div>
-
-              {/* Title */}
-              <div
+              <Image
+                src={service.icon}
+                alt={service.title}
+                width={128}
+                height={128}
+              />
+              <h3
                 style={{
-                  padding: "28px 24px",
-                  textAlign: "center",
-                  flex: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  fontSize: "clamp(20px, 1.6vw, 24px)",
+                  fontWeight: 700,
+                  color: "#0d1f4e",
+                  lineHeight: 1.3,
                 }}
               >
-                <h3
-                  style={{
-                    fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                    fontSize: "15px",
-                    fontWeight: 800,
-                    color: "#ffffff",
-                    textTransform: "uppercase",
-                    letterSpacing: "1px",
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {service.title}
-                </h3>
-              </div>
+                {service.title}
+              </h3>
+              <p
+                style={{
+                  fontSize: "clamp(18px, 1.3vw, 20px)",
+                  color: "#4a5568",
+                  lineHeight: 1.6,
+                }}
+              >
+                {service.description}
+              </p>
             </div>
           ))}
         </div>
+
+        {/* CTA */}
+        <div style={{ textAlign: "center" }}>
+          <a
+            href="#contacto"
+            style={{
+              display: "inline-block",
+              backgroundColor: "#c9a84c",
+              color: "#ffffff",
+              fontWeight: 700,
+              fontSize: "clamp(17px, 1.3vw, 20px)",
+              letterSpacing: "1px",
+              textTransform: "uppercase",
+              padding: "16px 48px",
+              borderRadius: "8px",
+              textDecoration: "none",
+            }}
+          >
+            Solicitar diagnóstico de caso.
+          </a>
+        </div>
+
       </div>
     </section>
   );

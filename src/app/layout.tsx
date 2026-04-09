@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Open_Sans, Quicksand, Montserrat } from "next/font/google";
+import { Open_Sans, Quicksand, Montserrat, Oswald } from "next/font/google";
 import "./globals.css";
 
 const openSans = Open_Sans({
@@ -19,6 +19,12 @@ const montserrat = Montserrat({
   variable: "--font-montserrat",
 });
 
+const oswald = Oswald({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-oswald",
+});
+
 export const metadata: Metadata = {
   title: "Centro Nacional de Pruebas - Somos expertos en Derecho Financiero",
   description:
@@ -35,7 +41,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="scroll-smooth">
-      <body className={`${openSans.className} ${quicksand.variable} ${montserrat.variable}`}>
+      <body className={`${oswald.className} ${oswald.variable} ${quicksand.variable} ${montserrat.variable}`}>
         {children}
       </body>
     </html>

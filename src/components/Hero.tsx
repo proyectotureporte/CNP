@@ -18,7 +18,7 @@ export default function Hero() {
       }}
     >
       <Image
-        src="/images/FONDO.jpg"
+        src="/images/FONDON.png"
         alt="Background"
         fill
         style={{ objectFit: "cover", objectPosition: "center 45%", transform: "scaleX(-1)" }}
@@ -37,41 +37,41 @@ export default function Hero() {
         style={{
           position: "relative",
           zIndex: 10,
-          maxWidth: "1200px",
-          margin: "0 auto",
-          padding: "60px 30px",
           width: "100%",
+          display: "flex",
+          justifyContent: "center",
+          padding: "60px 0",
         }}
       >
-        <div style={{ maxWidth: "620px" }}>
+        <div style={{ width: "90%" }}>
           <h1
             className="reveal-left"
             style={{
-              fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-              fontSize: "clamp(20px, 3.8vw, 48px)",
+              fontFamily: "var(--font-oswald), Oswald, sans-serif",
+              fontSize: "clamp(24px, 4.1vw, 56px)",
               fontWeight: 800,
               color: "#ffffff",
-              lineHeight: 1.1,
+              lineHeight: 1.3,
               marginBottom: "24px",
             }}
           >
-            Te brindamos la confianza y seguridad necesaria{" "}
-            <span style={{ color: "#fbbf24" }}>para tu caso</span>
+            La prueba técnica del litigio: Transformamos casos,<br />
+            complejos en análisis probatorio <span style={{ color: "#fbbf24" }}>claro, defendible y<br />
+            cuantificado.</span>
           </h1>
           <p
             className="reveal-left"
             style={{
               fontFamily: "'Open Sans', sans-serif",
-              fontSize: "17px",
+              fontSize: "clamp(1.06rem, 1.45vw, 1.36rem)",
               fontWeight: 400,
               color: "rgba(255, 255, 255, 0.9)",
               lineHeight: 1.8,
               marginBottom: "40px",
-              maxWidth: "560px",
             }}
           >
-            Transformamos problemas jur&iacute;dicos complejos en an&aacute;lisis
-            probatorio claro, defendible y cuantificado
+            Apoyamos a abogados, firmas y empresas con dictámenes financieros, valoración de pruebas
+            y estrategia<br />probatoria para litigios y controversias.
           </p>
           <div className="reveal">
             <a
@@ -91,7 +91,7 @@ export default function Hero() {
                 textTransform: "uppercase",
               }}
             >
-              Cont&aacute;ctanos
+              Solicitar diagnóstico
             </a>
           </div>
         </div>

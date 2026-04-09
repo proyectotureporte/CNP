@@ -8,6 +8,10 @@ import InfoHero from "@/components/InfoHero";
 import CasosExito from "@/components/CasosExito";
 import AudienceCards from "@/components/AudienceCards";
 import Benefits from "@/components/Benefits";
+import TechnicalExcellence from "@/components/TechnicalExcellence";
+import MiniGuarantee from "@/components/MiniGuarantee";
+import ProcessSteps from "@/components/ProcessSteps";
+import EnfoqueMetodologia from "@/components/EnfoqueMetodologia";
 import Values from "@/components/Values";
 import QuoteForm from "@/components/QuoteForm";
 import Clients from "@/components/Clients";
@@ -22,11 +26,21 @@ export default function Home() {
       <main>
         <Hero />
         <AudienceCards />
+        <Benefits
+          id="soluciones"
+          eyebrow="No solo elaboramos dictámenes:"
+          heading="fortalecemos la estrategia probatoria del caso"
+          variant="soluciones"
+        />
+        <TechnicalExcellence />
+        <MiniGuarantee />
         <Services />
+        <ProcessSteps />
+        <CasosExito />
         <About />
         <Team />
+        <EnfoqueMetodologia />
         <InfoHero />
-        <CasosExito />
         <Benefits />
         <Values />
         <QuoteForm />

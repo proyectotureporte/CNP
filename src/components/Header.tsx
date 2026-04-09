@@ -6,8 +6,9 @@ import { useState, useEffect } from "react";
 const navItems = [
   { label: "Inicio", href: "#inicio" },
   { label: "Servicios", href: "#servicios" },
+  { label: "Soluciones", href: "#soluciones" },
+  { label: "Peritus By CNP", href: "https://peritus.com.co", external: true },
   { label: "Nosotros", href: "#quienes" },
-  { label: "Nuestro equipo", href: "#equipo" },
   { label: "Contacto", href: "#contacto" },
 ];
 
@@ -37,12 +38,11 @@ export default function Header() {
     >
       <div
         style={{
-          maxWidth: "1200px",
-          margin: "0 auto",
+          width: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 24px",
+          padding: "0 48px 0 24px",
           height: "80px",
         }}
       >
@@ -69,6 +69,7 @@ export default function Header() {
               <a
                 href={item.href}
                 onClick={() => setMenuOpen(false)}
+                {...(item.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                 style={{
                   padding: "8px 16px",
                   fontSize: "16px",

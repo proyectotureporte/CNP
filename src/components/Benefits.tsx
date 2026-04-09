@@ -1,47 +1,51 @@
 "use client";
 
-import { Target, MessageSquare, FileSearch, TrendingUp, Scale, Layers } from "lucide-react";
+import Image from "next/image";
+import { Target, MessageSquare, FileSearch, TrendingUp, Scale, Layers, LucideIcon } from "lucide-react";
 import { useReveal } from "@/hooks/useReveal";
 
-const benefits = [
-  {
-    icon: Target,
-    text: "Precisi\u00F3n en pretensiones y liquidaciones, clave para fortalecer su caso.",
-    delay: "0s",
-  },
-  {
-    icon: MessageSquare,
-    text: "Preparaci\u00F3n de interrogatorios con sustento t\u00E9cnico.",
-    delay: "0.4s",
-  },
-  {
-    icon: FileSearch,
-    text: "An\u00E1lisis t\u00E9cnico de dict\u00E1menes aplicados a procesos judiciales.",
-    delay: "0.8s",
-  },
-  {
-    icon: TrendingUp,
-    text: "Definici\u00F3n de estrategias probatorias que generen ventajas competitivas.",
-    delay: "1.2s",
-  },
-  {
-    icon: Scale,
-    text: "Valoraci\u00F3n del juramento estimatorio con enfoque financiero y probatorio.",
-    delay: "1.6s",
-  },
-  {
-    icon: Layers,
-    text: "Estructuraci\u00F3n de argumentos t\u00E9cnicos que contribuyan a persuadir con claridad.",
-    delay: "2.0s",
-  },
+type BenefitItem =
+  | { type: "icon"; icon: LucideIcon; text: string; delay: string }
+  | { type: "img"; src: string; text: string; delay: string };
+
+const defaultBenefits: BenefitItem[] = [
+  { type: "icon", icon: Target,        text: "Precisión en pretensiones y liquidaciones, clave para fortalecer su caso.", delay: "0s" },
+  { type: "icon", icon: MessageSquare, text: "Preparación de interrogatorios con sustento técnico.",                     delay: "0.4s" },
+  { type: "icon", icon: FileSearch,    text: "Análisis técnico de dictámenes aplicados a procesos judiciales.",          delay: "0.8s" },
+  { type: "icon", icon: TrendingUp,    text: "Definición de estrategias probatorias que generen ventajas competitivas.", delay: "1.2s" },
+  { type: "icon", icon: Scale,         text: "Valoración del juramento estimatorio con enfoque financiero y probatorio.", delay: "1.6s" },
+  { type: "icon", icon: Layers,        text: "Estructuración de argumentos técnicos que contribuyan a persuadir con claridad.", delay: "2.0s" },
 ];
 
-export default function Benefits() {
+const solucionesBenefits: BenefitItem[] = [
+  { type: "img", src: "/images/ICONO 1.png", text: "Rigor técnico",              delay: "0s" },
+  { type: "img", src: "/images/ICONO 2.png", text: "Metodología estructurada",   delay: "0.4s" },
+  { type: "img", src: "/images/ICONO 3.png", text: "Respuesta ágil",             delay: "0.8s" },
+  { type: "img", src: "/images/ICONO 4.png", text: "Enfoque probatorio",         delay: "1.2s" },
+  { type: "img", src: "/images/ICONO 5.png", text: "Expertos especializados",    delay: "1.6s" },
+  { type: "img", src: "/images/ICONO 6.png", text: "Acompañamiento Integral",    delay: "2.0s" },
+];
+
+interface BenefitsProps {
+  id?: string;
+  eyebrow?: string;
+  heading?: string;
+  variant?: "default" | "soluciones";
+}
+
+export default function Benefits({
+  id = "beneficios",
+  eyebrow = "¿Por qué elegirnos?",
+  heading = "Beneficios de nuestro servicio",
+  variant = "default",
+}: BenefitsProps) {
   const ref = useReveal();
+  const items = variant === "soluciones" ? solucionesBenefits : defaultBenefits;
+  const cardTextSize = variant === "default" ? "1.51rem" : "2.8rem";
 
   return (
     <section
-      id="beneficios"
+      id={id}
       style={{
         background: "linear-gradient(160deg, #060f2e 0%, #0d1f4e 50%, #0a1840 100%)",
         padding: "100px 0",
@@ -49,7 +53,6 @@ export default function Benefits() {
         overflow: "hidden",
       }}
     >
-      {/* Decorative grid overlay */}
       <div
         style={{
           position: "absolute",
@@ -74,7 +77,7 @@ export default function Benefits() {
               marginBottom: "12px",
             }}
           >
-            ¿Por qué elegirnos?
+            {eyebrow}
           </p>
           <h2
             style={{
@@ -84,7 +87,7 @@ export default function Benefits() {
               color: "#ffffff",
             }}
           >
-            Beneficios de nuestro servicio
+            {heading}
           </h2>
           <div
             style={{
@@ -98,7 +101,7 @@ export default function Benefits() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 reveal-stagger" style={{ gap: "24px" }}>
-          {benefits.map(({ icon: Icon, text, delay }, index) => (
+          {items.map((item, index) => (
             <div
               key={index}
               className="benefit-card"
@@ -117,9 +120,9 @@ export default function Benefits() {
               <div
                 className="benefit-icon"
                 style={{
-                  animationDelay: delay,
-                  width: "68px",
-                  height: "68px",
+                  animationDelay: item.delay,
+                  width: "88px",
+                  height: "88px",
                   borderRadius: "50%",
                   background: "linear-gradient(135deg, rgba(126,184,247,0.2), rgba(234,88,12,0.12))",
                   border: "1.5px solid rgba(126,184,247,0.3)",
@@ -129,17 +132,21 @@ export default function Benefits() {
                   flexShrink: 0,
                 }}
               >
-                <Icon size={28} color="#7eb8f7" strokeWidth={1.6} />
+                {item.type === "img" ? (
+                  <Image src={item.src} alt={item.text} width={47} height={47} />
+                ) : (
+                  <item.icon size={36} color="#7eb8f7" strokeWidth={1.6} />
+                )}
               </div>
 
               <p
                 style={{
-                  fontSize: "15px",
+                  fontSize: cardTextSize,
                   color: "rgba(255,255,255,0.88)",
-                  lineHeight: 1.8,
+                  lineHeight: 1,
                 }}
               >
-                {text}
+                {item.text}
               </p>
             </div>
           ))}

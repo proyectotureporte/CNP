@@ -74,7 +74,7 @@ export default function About() {
               }}
             >
               <Image
-                src="/images/quiene.png"
+                src="/images/quiene.jpg"
                 alt="¿Quiénes somos?"
                 width={500}
                 height={400}

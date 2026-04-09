@@ -1,0 +1,380 @@
+[
+  {
+    "num": 1,
+    "clientName": "INFOMEDICAL DE COLOMBIA S.A.S",
+    "caseCode": "CNP-2026-0013",
+    "caseId": "PBvMc4A176yy1xKAL5D1MH",
+    "status": "gestionado"
+  },
+  {
+    "num": 2,
+    "clientName": "BANCOLOMBIA S.A.",
+    "caseCode": "CNP-2026-0014",
+    "caseId": "PBvMc4A176yy1xKAL5D21t",
+    "status": "gestionado"
+  },
+  {
+    "num": 3,
+    "clientName": "BANCO FALABELLA S.A.",
+    "caseCode": "CNP-2026-0015",
+    "caseId": "PBvMc4A176yy1xKAL5D2IX",
+    "status": "gestionado"
+  },
+  {
+    "num": 4,
+    "clientName": "JORGE IGNACIO SANCHEZ",
+    "caseCode": "CNP-2026-0016",
+    "caseId": "40L5ChlweOHtktuIUKKxBy",
+    "status": "gestionado"
+  },
+  {
+    "num": 5,
+    "clientName": "WILSON STEVEN GARCIA TABARES",
+    "caseCode": "CNP-2026-0017",
+    "caseId": "ylE3b8M0xWxRmlYLvBCxbj",
+    "status": "gestionado"
+  },
+  {
+    "num": 6,
+    "clientName": "ENERGÉTICOS SA ESP",
+    "caseCode": "CNP-2026-0018",
+    "caseId": "PBvMc4A176yy1xKAL5D32J",
+    "status": "gestionado"
+  },
+  {
+    "num": 7,
+    "clientName": "GIL MÉDICA S.A",
+    "caseCode": "CNP-2026-0019",
+    "caseId": "PBvMc4A176yy1xKAL5D3hv",
+    "status": "gestionado"
+  },
+  {
+    "num": 8,
+    "clientName": "PEDRO NEL JARAMILLO",
+    "caseCode": "CNP-2026-0020",
+    "caseId": "PBvMc4A176yy1xKAL5D4B3",
+    "status": "gestionado"
+  },
+  {
+    "num": 9,
+    "clientName": "FORTOX S.A",
+    "caseCode": "CNP-2026-0021",
+    "caseId": "PBvMc4A176yy1xKAL5D4Rh",
+    "status": "gestionado"
+  },
+  {
+    "num": 10,
+    "clientName": "UNIVALLE",
+    "caseCode": "CNP-2026-0022",
+    "caseId": "PBvMc4A176yy1xKAL5D4up",
+    "status": "gestionado"
+  },
+  {
+    "num": 11,
+    "clientName": "CAFÉ DEL EJE S.A.S",
+    "caseCode": "CNP-2026-0023",
+    "caseId": "ylE3b8M0xWxRmlYLvBCy29",
+    "status": "gestionado"
+  },
+  {
+    "num": 12,
+    "clientName": "INMAC S.A.S",
+    "caseCode": "CNP-2026-0024",
+    "caseId": "40L5ChlweOHtktuIUKKyew",
+    "status": "gestionado"
+  },
+  {
+    "num": 13,
+    "clientName": "MOHAMAD KAMEL SALEH",
+    "caseCode": "CNP-2026-0025",
+    "caseId": "PBvMc4A176yy1xKAL5D5aR",
+    "status": "gestionado"
+  },
+  {
+    "num": 14,
+    "clientName": "ALVARO HURTADO - CONSTRUCTORA ALPES S.A",
+    "caseCode": "CNP-2026-0026",
+    "caseId": "ylE3b8M0xWxRmlYLvBCyDK",
+    "status": "gestionado"
+  },
+  {
+    "num": 15,
+    "clientName": "ACOSTAS & CIA S. EN C.S. EN LIQUIDACIÓN",
+    "caseCode": "CNP-2026-0027",
+    "caseId": "PBvMc4A176yy1xKAL5D63Z",
+    "status": "gestionado"
+  },
+  {
+    "num": 16,
+    "clientName": "MERCEDES BASTIDAS DAZA Y OTROS",
+    "caseCode": "CNP-2026-0028",
+    "caseId": "40L5ChlweOHtktuIUKKz0A",
+    "status": "gestionado"
+  },
+  {
+    "num": 17,
+    "clientName": "TRIBUNAL ARBITRAMIENTO CÚCUTA",
+    "caseCode": "CNP-2026-0029",
+    "caseId": "PBvMc4A176yy1xKAL5D6ar",
+    "status": "gestionado"
+  },
+  {
+    "num": 18,
+    "clientName": "DAVID CUENCA VELEZ - DR FACE S.A.S",
+    "caseCode": "CNP-2026-0030",
+    "caseId": "40L5ChlweOHtktuIUKKzLO",
+    "status": "gestionado"
+  },
+  {
+    "num": 19,
+    "clientName": "CARLOS ARTURO BENAVIDES GARZÓN",
+    "caseCode": "CNP-2026-0031",
+    "caseId": "ylE3b8M0xWxRmlYLvBCyKR",
+    "status": "gestionado"
+  },
+  {
+    "num": 20,
+    "clientName": "COLEGIO NACIONAL DE ECÓLOGOS",
+    "caseCode": "CNP-2026-0032",
+    "caseId": "PBvMc4A176yy1xKAL5D7jb",
+    "status": "gestionado"
+  },
+  {
+    "num": 21,
+    "clientName": "SANIN TRUJILLO S.A.S",
+    "caseCode": "CNP-2026-0033",
+    "caseId": "PBvMc4A176yy1xKAL5D8Cj",
+    "status": "gestionado"
+  },
+  {
+    "num": 22,
+    "clientName": "HAMBURGO CAPITAL",
+    "caseCode": "CNP-2026-0034",
+    "caseId": "PBvMc4A176yy1xKAL5D8k1",
+    "status": "gestionado"
+  },
+  {
+    "num": 23,
+    "clientName": "MÓNICA JARAMILLO GOMEZ",
+    "caseCode": "CNP-2026-0035",
+    "caseId": "PBvMc4A176yy1xKAL5D90f",
+    "status": "gestionado"
+  },
+  {
+    "num": 24,
+    "clientName": "PROMOTARA DICASA S.A.S - ALMADIA INGENIEROS CONSTRUCTORES S.A.S",
+    "caseCode": "CNP-2026-0036",
+    "caseId": "ylE3b8M0xWxRmlYLvBCydk",
+    "status": "creado"
+  },
+  {
+    "num": 25,
+    "clientName": "ESTRATEGIAS EFECTIVAS",
+    "caseCode": "CNP-2026-0037",
+    "caseId": "PBvMc4A176yy1xKAL5D9gH",
+    "status": "gestionado"
+  },
+  {
+    "num": 26,
+    "clientName": "REPRESENTACIONES GARCIA POLO",
+    "caseCode": "CNP-2026-0038",
+    "caseId": "40L5ChlweOHtktuIUKL0K2",
+    "status": "gestionado"
+  },
+  {
+    "num": 27,
+    "clientName": "EL SURTIDOR-RODAMIENTOS",
+    "caseCode": "CNP-2026-0039",
+    "caseId": "ylE3b8M0xWxRmlYLvBCypw",
+    "status": "gestionado"
+  },
+  {
+    "num": 28,
+    "clientName": "DICEL S.A. E.S.P",
+    "caseCode": "CNP-2026-0040",
+    "caseId": "40L5ChlweOHtktuIUKL0rO",
+    "status": "gestionado"
+  },
+  {
+    "num": 29,
+    "clientName": "HIDROPURA LTDA",
+    "caseCode": "CNP-2026-0041",
+    "caseId": "40L5ChlweOHtktuIUKL1Cc",
+    "status": "gestionado"
+  },
+  {
+    "num": 30,
+    "clientName": "TROVINA",
+    "caseCode": "CNP-2026-0042",
+    "caseId": "ylE3b8M0xWxRmlYLvBCz06",
+    "status": "gestionado"
+  },
+  {
+    "num": 31,
+    "clientName": "JESUS ALFONSO CARDONA",
+    "caseCode": "CNP-2026-0043",
+    "caseId": "PBvMc4A176yy1xKAL5DA9P",
+    "status": "gestionado"
+  },
+  {
+    "num": null,
+    "clientName": "DR. OMAR MISNAZA",
+    "caseCode": "CNP-2026-0044",
+    "caseId": "ylE3b8M0xWxRmlYLvBCz7D",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "JUAN CAMILO DONCEL",
+    "caseCode": "CNP-2026-0045",
+    "caseId": "ylE3b8M0xWxRmlYLvBCzBH",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "EDGARDO LONDOÑO",
+    "caseCode": "CNP-2026-0046",
+    "caseId": "40L5ChlweOHtktuIUKL28E",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "JARAMILLO MORA",
+    "caseCode": "CNP-2026-0047",
+    "caseId": "40L5ChlweOHtktuIUKL2WU",
+    "status": "gestionado"
+  },
+  {
+    "num": null,
+    "clientName": "AROPECUARIA ARIAS",
+    "caseCode": "CNP-2026-0048",
+    "caseId": "ylE3b8M0xWxRmlYLvBCzSY",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "DUE DILIGENCE",
+    "caseCode": "CNP-2026-0049",
+    "caseId": "40L5ChlweOHtktuIUKL30o",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "RUTA N",
+    "caseCode": "CNP-2026-0050",
+    "caseId": "40L5ChlweOHtktuIUKL3V8",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "SEGUROS BOLIVAR",
+    "caseCode": "CNP-2026-0051",
+    "caseId": "40L5ChlweOHtktuIUKL3tO",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "MARCAS EMPRESARIAL",
+    "caseCode": "CNP-2026-0052",
+    "caseId": "PBvMc4A176yy1xKAL5DC1v",
+    "status": "gestionado"
+  },
+  {
+    "num": null,
+    "clientName": "COLBOLETOS",
+    "caseCode": "CNP-2026-0053",
+    "caseId": "40L5ChlweOHtktuIUKL4Qk",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "DEBIA DILIGENCIA",
+    "caseCode": "CNP-2026-0054",
+    "caseId": "ylE3b8M0xWxRmlYLvBCzx2",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "MEDICO TRASTOMIA",
+    "caseCode": "CNP-2026-0055",
+    "caseId": "40L5ChlweOHtktuIUKL4p0",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "JUAN SEBASTIAN FERNANDEZ DIAZ",
+    "caseCode": "CNP-2026-0056",
+    "caseId": "40L5ChlweOHtktuIUKL5AE",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "MEGAPROYECTOS",
+    "caseCode": "CNP-2026-0057",
+    "caseId": "40L5ChlweOHtktuIUKL5SQ",
+    "status": "gestionado"
+  },
+  {
+    "num": null,
+    "clientName": "ELECTROMILLONARIA, FRATELLI, KEEWAY",
+    "caseCode": "CNP-2026-0058",
+    "caseId": "40L5ChlweOHtktuIUKL65q",
+    "status": "gestionado"
+  },
+  {
+    "num": null,
+    "clientName": "SUPERMERCADOS LA GRAN COLOMBIA",
+    "caseCode": "CNP-2026-0059",
+    "caseId": "PBvMc4A176yy1xKAL5DEJP",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "ASADOS EXQUISITOS",
+    "caseCode": "CNP-2026-0060",
+    "caseId": "PBvMc4A176yy1xKAL5DEmX",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "TULIO ORJUELA - CASO SALUD",
+    "caseCode": "CNP-2026-0061",
+    "caseId": "ylE3b8M0xWxRmlYLvBD29C",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "GASES DE OCCIDENTE",
+    "caseCode": "CNP-2026-0062",
+    "caseId": "PBvMc4A176yy1xKAL5DFS9",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "LEASING",
+    "caseCode": "CNP-2026-0063",
+    "caseId": "40L5ChlweOHtktuIUKL6yQ",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "AMPARA",
+    "caseCode": "CNP-2026-0064",
+    "caseId": "ylE3b8M0xWxRmlYLvBD2TW",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "CARRETERAS CONSORCIO UNICA",
+    "caseCode": "CNP-2026-0065",
+    "caseId": "40L5ChlweOHtktuIUKL7bq",
+    "status": "creado"
+  },
+  {
+    "num": null,
+    "clientName": "PAULINA LLERENA",
+    "caseCode": "CNP-2026-0066",
+    "caseId": "PBvMc4A176yy1xKAL5DGWj",
+    "status": "creado"
+  }
+]
