@@ -15,6 +15,7 @@ const navItems = [
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeItem, setActiveItem] = useState<string | null>(null);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -64,36 +65,58 @@ export default function Header() {
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex" style={{ alignItems: "center", gap: "0" }}>
-          {navItems.map((item, index) => (
-            <span key={item.href} style={{ display: "flex", alignItems: "center" }}>
-              <a
-                href={item.href}
-                onClick={() => setMenuOpen(false)}
-                {...(item.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                style={{
-                  padding: "8px 16px",
-                  fontSize: "16px",
-                  fontWeight: 600,
-                  fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                  color: "rgba(255,255,255,0.88)",
-                  textDecoration: "none",
-                  letterSpacing: "0.3px",
-                  transition: "color 0.2s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "#ffffff";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "rgba(255,255,255,0.88)";
-                }}
-              >
-                {item.label}
-              </a>
-              {index < navItems.length - 1 && (
-                <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "14px", userSelect: "none" }}>|</span>
-              )}
-            </span>
-          ))}
+          {navItems.map((item, index) => {
+            const isActive = activeItem === item.href;
+            return (
+              <span key={item.href} style={{ display: "flex", alignItems: "center" }}>
+                <a
+                  href={item.href}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setActiveItem(item.href);
+                  }}
+                  {...(item.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                  style={{
+                    position: "relative",
+                    padding: "8px 16px",
+                    paddingBottom: "10px",
+                    fontSize: "16px",
+                    fontWeight: isActive ? 800 : 600,
+                    fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
+                    color: isActive ? "#ffffff" : "rgba(255,255,255,0.88)",
+                    textDecoration: "none",
+                    letterSpacing: "0.3px",
+                    transition: "color 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) e.currentTarget.style.color = "#ffffff";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) e.currentTarget.style.color = "rgba(255,255,255,0.88)";
+                  }}
+                >
+                  {item.label}
+                  {isActive && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        bottom: 0,
+                        left: "16px",
+                        right: "16px",
+                        height: "3px",
+                        borderRadius: "1px",
+                        background:
+                          "repeating-linear-gradient(45deg, #c9a227 0px, #c9a227 5px, #f5d76e 5px, #f5d76e 10px)",
+                      }}
+                    />
+                  )}
+                </a>
+                {index < navItems.length - 1 && (
+                  <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "14px", userSelect: "none" }}>|</span>
+                )}
+              </span>
+            );
+          })}
         </nav>
 
         {/* Mobile hamburger */}
@@ -135,25 +158,40 @@ export default function Header() {
             padding: "16px 24px",
           }}
         >
-          {navItems.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              onClick={() => setMenuOpen(false)}
-              style={{
-                display: "block",
-                padding: "12px 0",
-                fontSize: "15px",
-                fontWeight: 600,
-                fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                color: "#ffffff",
-                textDecoration: "none",
-                borderBottom: "1px solid rgba(255,255,255,0.1)",
-              }}
-            >
-              {item.label}
-            </a>
-          ))}
+          {navItems.map((item) => {
+            const isActive = activeItem === item.href;
+            return (
+              <a
+                key={item.href}
+                href={item.href}
+                onClick={() => {
+                  setMenuOpen(false);
+                  setActiveItem(item.href);
+                }}
+                style={{
+                  display: "block",
+                  padding: "12px 0",
+                  fontSize: "15px",
+                  fontWeight: isActive ? 800 : 600,
+                  fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
+                  color: "#ffffff",
+                  textDecoration: "none",
+                  borderBottom: isActive
+                    ? "3px solid transparent"
+                    : "1px solid rgba(255,255,255,0.1)",
+                  backgroundImage: isActive
+                    ? "repeating-linear-gradient(45deg, #c9a227 0px, #c9a227 5px, #f5d76e 5px, #f5d76e 10px)"
+                    : "none",
+                  backgroundSize: "100% 3px",
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "0 100%",
+                  paddingBottom: isActive ? "14px" : "12px",
+                }}
+              >
+                {item.label}
+              </a>
+            );
+          })}
         </div>
       )}
     </header>

@@ -55,9 +55,9 @@ export default function Hero() {
               marginBottom: "24px",
             }}
           >
-            La prueba técnica del litigio: Transformamos casos,<br />
-            complejos en análisis probatorio <span style={{ color: "#fbbf24" }}>claro, defendible y<br />
-            cuantificado.</span>
+            Prueba técnica para el litigio: Transformamos casos <br />complejos en
+             <span style={{ color: "#fbbf24" }}> dictámenes claros, comprensibles y sustentables
+            </span> ante el juez
           </h1>
           <p
             className="reveal-left"
@@ -70,10 +70,10 @@ export default function Hero() {
               marginBottom: "40px",
             }}
           >
-            Apoyamos a abogados, firmas y empresas con dictámenes financieros, valoración de pruebas
-            y estrategia<br />probatoria para litigios y controversias.
+            Apoyamos a abogados, firmas y empresas en la elaboración de dictámenes financieros especializados,<br /> valoración
+técnica de pruebas, estrategia probatoria para litigio
           </p>
-          <div className="reveal">
+          <div className="reveal" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
             <a
               href="#contacto"
               className="btn-pulse"
@@ -92,6 +92,25 @@ export default function Hero() {
               }}
             >
               Solicitar diagnóstico
+            </a>
+            <a
+              href="#contacto"
+              className="btn-pulse"
+              style={{
+                display: "inline-block",
+                fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
+                fontSize: "16px",
+                fontWeight: 800,
+                backgroundColor: "#16a34a",
+                color: "#ffffff",
+                borderRadius: "10px",
+                padding: "16px 40px",
+                textDecoration: "none",
+                letterSpacing: "0.8px",
+                textTransform: "uppercase",
+              }}
+            >
+              Solicitar Dictamen Pericial
             </a>
           </div>
         </div>

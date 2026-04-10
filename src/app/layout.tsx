@@ -40,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className="scroll-smooth">
+    <html lang="es">
       <body className={`${oswald.className} ${oswald.variable} ${quicksand.variable} ${montserrat.variable}`}>
         {children}
       </body>
