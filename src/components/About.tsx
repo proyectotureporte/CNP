@@ -27,7 +27,7 @@ export default function About() {
               style={{
                 fontSize: "23px",
                 color: "#333",
-                lineHeight: 1.85,
+                lineHeight: 1.2,
                 marginBottom: "32px",
                 textAlign: "justify",
               }}
@@ -35,26 +35,11 @@ export default function About() {
               Centro Nacional de Pruebas – CNP es una firma especializada en dictámenes periciales financieros y valoración técnica de pruebas, que apoya a abogados, jueces, magistrados y empresas en la comprensión de asuntos económicos complejos dentro de procesos judiciales.
               <br /><br />
               Con más de 10 años de experiencia, brindamos análisis independientes y técnicamente rigurosos en materias contables, financieras, tributarias y económicas, aportando claridad técnica a controversias judiciales y empresariales.
+              <br /><br />
+              Nuestro equipo de expertos convierte información financiera compleja en dictámenes claros y comprensibles, facilitando la valoración de la prueba y fortaleciendo la toma de decisiones dentro del litigio.
+              <br /><br />
+              En CNP contribuimos a que las decisiones jurídicas se fundamenten en análisis técnico sólido, evidencia confiable y rigor profesional.
             </p>
-            <a
-              href="#equipo"
-              className="btn-pulse"
-              style={{
-                display: "inline-block",
-                fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                fontSize: "15px",
-                fontWeight: 800,
-                backgroundColor: "#ea580c",
-                color: "#ffffff",
-                borderRadius: "10px",
-                padding: "14px 32px",
-                textDecoration: "none",
-                letterSpacing: "0.5px",
-                textTransform: "uppercase",
-              }}
-            >
-              Conozca al equipo
-            </a>
           </div>
 
           {/* Image column */}

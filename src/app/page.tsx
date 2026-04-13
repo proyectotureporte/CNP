@@ -4,7 +4,6 @@ import Hero from "@/components/Hero";
 import Services from "@/components/Services";
 import SolucionesClientes from "@/components/SolucionesClientes";
 import About from "@/components/About";
-import Team from "@/components/Team";
 import InfoHero from "@/components/InfoHero";
 import CasosExito from "@/components/CasosExito";
 import AudienceCards from "@/components/AudienceCards";
@@ -40,7 +39,6 @@ export default function Home() {
         <Services />
         <CasosExito />
         <About />
-        <Team />
         <EnfoqueMetodologia />
         <InfoHero />
         <Benefits />

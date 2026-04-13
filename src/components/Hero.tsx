@@ -18,12 +18,12 @@ export default function Hero() {
       }}
     >
       <Image
-        src="/images/FONDON.png"
-        alt="Background"
-        fill
-        style={{ objectFit: "cover", objectPosition: "center 45%", transform: "scaleX(-1)" }}
-        priority
-      />
+  src="/images/herologo.png"
+  alt="Background"
+  fill
+  style={{ objectFit: "cover", objectPosition: "top"}}
+  priority
+/>
       <div
         style={{
           position: "absolute",
