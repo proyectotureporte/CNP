@@ -2,6 +2,7 @@ import Header from "@/components/Header";
 import SmoothScroll from "@/components/SmoothScroll";
 import Hero from "@/components/Hero";
 import Services from "@/components/Services";
+import SolucionesClientes from "@/components/SolucionesClientes";
 import About from "@/components/About";
 import Team from "@/components/Team";
 import InfoHero from "@/components/InfoHero";
@@ -13,6 +14,7 @@ import MiniGuarantee from "@/components/MiniGuarantee";
 import ProcessSteps from "@/components/ProcessSteps";
 import EnfoqueMetodologia from "@/components/EnfoqueMetodologia";
 import Values from "@/components/Values";
+import LitigioModerno from "@/components/LitigioModerno";
 import QuoteForm from "@/components/QuoteForm";
 import Clients from "@/components/Clients";
 import NationalOperation from "@/components/NationalOperation";
@@ -25,6 +27,7 @@ export default function Home() {
       <Header />
       <main>
         <Hero />
+        <SolucionesClientes />
         <AudienceCards />
         <Benefits
           id="soluciones"
@@ -35,7 +38,6 @@ export default function Home() {
         <TechnicalExcellence />
         <MiniGuarantee />
         <Services />
-        <ProcessSteps />
         <CasosExito />
         <About />
         <Team />
@@ -43,6 +45,8 @@ export default function Home() {
         <InfoHero />
         <Benefits />
         <Values />
+        <LitigioModerno />
+        <ProcessSteps />
         <QuoteForm />
         <Clients />
         <NationalOperation />

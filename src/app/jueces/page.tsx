@@ -36,6 +36,9 @@ export default function JuecesPage() {
           title="Claridad, rigor y sustento técnico para la toma de decisiones judiciales."
           subtitle="Proveemos a jueces y magistrados análisis financiero imparcial y dictámenes periciales de alta precisión técnica para fundamentar cada resolución."
           bgImage="/images/gavel.jpg"
+          showButtons
+          btn1Label="Solicitar evaluación imparcial"
+          btn2Label="Hablar con un agente"
         />
         <InnerContent
           sectionTitle="Auxiliares de la justicia especializados"

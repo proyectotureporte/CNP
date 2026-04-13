@@ -25,7 +25,6 @@ export default function InnerContent({ sectionTitle, sectionText, cards }: Props
         <div className="reveal" style={{ textAlign: "center", maxWidth: "720px", margin: "0 auto 64px" }}>
           <h2
             style={{
-              fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
               fontSize: "clamp(24px, 3.5vw, 36px)",
               fontWeight: 800,
               color: "#0a2a6e",
@@ -86,7 +85,6 @@ export default function InnerContent({ sectionTitle, sectionText, cards }: Props
               >
                 <h3
                   style={{
-                    fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
                     fontSize: "15px",
                     fontWeight: 800,
                     color: "#ffffff",

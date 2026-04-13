@@ -6,9 +6,12 @@ interface Props {
   title: string;
   subtitle: string;
   bgImage: string;
+  showButtons?: boolean;
+  btn1Label?: string;
+  btn2Label?: string;
 }
 
-export default function InnerHero({ title, subtitle, bgImage }: Props) {
+export default function InnerHero({ title, subtitle, bgImage, showButtons = false, btn1Label = "Evaluar mi caso jurídico", btn2Label = "Hablar con un agente" }: Props) {
   return (
     <section
       style={{
@@ -46,7 +49,6 @@ export default function InnerHero({ title, subtitle, bgImage }: Props) {
         <div style={{ maxWidth: "680px" }}>
           <p
             style={{
-              fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
               fontSize: "12px",
               fontWeight: 700,
               color: "#fbbf24",
@@ -59,7 +61,6 @@ export default function InnerHero({ title, subtitle, bgImage }: Props) {
           </p>
           <h1
             style={{
-              fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
               fontSize: "clamp(30px, 4.5vw, 52px)",
               fontWeight: 800,
               color: "#ffffff",
@@ -71,15 +72,57 @@ export default function InnerHero({ title, subtitle, bgImage }: Props) {
           </h1>
           <p
             style={{
-              fontFamily: "'Open Sans', sans-serif",
-              fontSize: "17px",
+              fontSize: "26px",
               color: "rgba(255,255,255,0.88)",
-              lineHeight: 1.8,
-              maxWidth: "560px",
+              lineHeight: 1.2,
+              maxWidth: "820px",
             }}
           >
             {subtitle}
           </p>
+
+          {showButtons && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "28px", marginTop: "32px" }}>
+              <a
+                href="#contacto"
+                className="btn-pulse"
+                style={{
+                  display: "inline-block",
+                  backgroundColor: "#ea580c",
+                  color: "#ffffff",
+                  fontWeight: 700,
+                  fontSize: "19px",
+                  padding: "14px 36px",
+                  borderRadius: "8px",
+                  textDecoration: "none",
+                  letterSpacing: "0.4px",
+                }}
+              >
+                {btn1Label}
+              </a>
+              <a
+                href="https://wa.me/573164071992?text=quiero%20hablar%20con%20un%20agente%20de%20CNP"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-pulse"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  backgroundColor: "#ea580c",
+                  color: "#ffffff",
+                  fontWeight: 700,
+                  fontSize: "19px",
+                  padding: "14px 36px",
+                  borderRadius: "8px",
+                  textDecoration: "none",
+                  letterSpacing: "0.4px",
+                }}
+              >
+                {btn2Label}
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </section>

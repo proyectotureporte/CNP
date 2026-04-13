@@ -20,7 +20,6 @@ export default function InnerBanner({ title, text }: Props) {
       <div style={{ maxWidth: "760px", textAlign: "center", padding: "48px 0" }}>
         <h2
           style={{
-            fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
             fontSize: "clamp(22px, 3vw, 32px)",
             fontWeight: 800,
             color: "#ffffff",

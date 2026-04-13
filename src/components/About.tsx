@@ -8,10 +8,10 @@ export default function About() {
 
   return (
     <section id="quienes" style={{ backgroundColor: "#dce8f5", padding: "80px 0" }}>
-      <div ref={ref} style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 30px" }}>
+      <div ref={ref} style={{ maxWidth: "1500px", margin: "0 auto", padding: "0 60px" }}>
         <div className="flex flex-col lg:flex-row" style={{ gap: "50px", alignItems: "center" }}>
           {/* Text column */}
-          <div className="w-full lg:w-[55%] reveal-left">
+          <div className="w-full lg:w-[65%] reveal-left">
             <h2
               style={{
                 fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
@@ -21,26 +21,20 @@ export default function About() {
                 marginBottom: "24px",
               }}
             >
-              &iquest;Qui&eacute;nes somos?
+              ¿Quiénes somos?
             </h2>
             <p
               style={{
-                fontSize: "16px",
+                fontSize: "23px",
                 color: "#333",
                 lineHeight: 1.85,
                 marginBottom: "32px",
+                textAlign: "justify",
               }}
             >
-              CNP es una entidad de car&aacute;cter privado con m&aacute;s de 10
-              a&ntilde;os de experiencia en la elaboraci&oacute;n de
-              dict&aacute;menes, as&iacute; como en la asesor&iacute;a
-              t&eacute;cnica a abogados, jueces, magistrados y empresas del
-              sector real en temas probatorios de car&aacute;cter contable,
-              tributario y econ&oacute;mico. Contamos con un equipo altamente
-              calificado en auditor&iacute;a, an&aacute;lisis financiero y
-              valoraci&oacute;n de pruebas, que apoya la toma de decisiones en
-              controversias judiciales con sustento t&eacute;cnico y
-              precisi&oacute;n profesional.
+              Centro Nacional de Pruebas – CNP es una firma especializada en dictámenes periciales financieros y valoración técnica de pruebas, que apoya a abogados, jueces, magistrados y empresas en la comprensión de asuntos económicos complejos dentro de procesos judiciales.
+              <br /><br />
+              Con más de 10 años de experiencia, brindamos análisis independientes y técnicamente rigurosos en materias contables, financieras, tributarias y económicas, aportando claridad técnica a controversias judiciales y empresariales.
             </p>
             <a
               href="#equipo"
@@ -59,30 +53,27 @@ export default function About() {
                 textTransform: "uppercase",
               }}
             >
-              Conozca el equipo
+              Conozca al equipo
             </a>
           </div>
 
           {/* Image column */}
-          <div className="w-full lg:w-[42%] reveal-right" style={{ textAlign: "center" }}>
+          <div className="w-full lg:w-[32%] reveal-right" style={{ textAlign: "center" }}>
             <div
               style={{
                 backgroundColor: "#c0d4ec",
                 borderRadius: "12px",
                 overflow: "hidden",
                 marginBottom: "16px",
+                position: "relative",
+                height: "468px",
               }}
             >
               <Image
                 src="/images/quiene.jpg"
                 alt="¿Quiénes somos?"
-                width={500}
-                height={400}
-                style={{
-                  width: "100%",
-                  height: "auto",
-                  display: "block",
-                }}
+                fill
+                style={{ objectFit: "cover", objectPosition: "center" }}
               />
             </div>
           </div>

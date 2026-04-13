@@ -36,6 +36,7 @@ export default function AbogadosPage() {
           title="No improvise la prueba técnica. Fortalecemos su teoría del caso."
           subtitle="Aportamos sustento financiero y pericial para fortalecer cada pretensión de su caso con precisión, rigor y credibilidad técnica."
           bgImage="/images/lawyers-office.jpg"
+          showButtons
         />
         <InnerContent
           sectionTitle="Cómo fortalecemos su práctica jurídica"

@@ -6,17 +6,17 @@ import { useReveal } from "@/hooks/useReveal";
 const audiences = [
   {
     label: "Soy abogado",
-    image: "/images/lawyers-office.jpg",
+    image: "/images/soyabogado.png",
     href: "/abogados",
   },
   {
     label: "Soy empresa",
-    image: "/images/office-meeting.jpg",
+    image: "/images/soyempresa.png",
     href: "/empresas",
   },
   {
     label: "Soy juez",
-    image: "/images/gavel.jpg",
+    image: "/images/soyjuez.png",
     href: "/jueces",
   },
 ];
@@ -25,7 +25,7 @@ export default function AudienceCards() {
   const ref = useReveal();
 
   return (
-    <section style={{ backgroundColor: "#07152e", padding: "80px 0" }}>
+    <section id="audiencia" style={{ backgroundColor: "#07152e", padding: "80px 0" }}>
       <div ref={ref} style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 30px" }}>
         <div className="grid grid-cols-1 md:grid-cols-3 reveal-stagger" style={{ gap: "24px" }}>
           {audiences.map((a, index) => (
@@ -48,11 +48,15 @@ export default function AudienceCards() {
                   fill
                   style={{ objectFit: "cover", objectPosition: "center" }}
                 />
-                <div className="audience-overlay">
+                <a
+                  href={a.href}
+                  className="audience-overlay"
+                  style={{ cursor: "pointer", textDecoration: "none" }}
+                >
                   <span
                     style={{
                       fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                      fontSize: "13px",
+                      fontSize: "14px",
                       color: "rgba(255,255,255,0.85)",
                       textAlign: "center",
                       letterSpacing: "0.5px",
@@ -60,7 +64,7 @@ export default function AudienceCards() {
                   >
                     Haga clic en Ver m&aacute;s para conocer nuestros servicios
                   </span>
-                </div>
+                </a>
               </div>
 
               {/* 20% text + button */}
@@ -77,7 +81,7 @@ export default function AudienceCards() {
                 <h3
                   style={{
                     fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                    fontSize: "18px",
+                    fontSize: "22px",
                     fontWeight: 800,
                     color: "#ffffff",
                     textAlign: "center",
@@ -92,7 +96,7 @@ export default function AudienceCards() {
                   style={{
                     display: "inline-block",
                     fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
-                    fontSize: "13px",
+                    fontSize: "14px",
                     fontWeight: 800,
                     backgroundColor: "#ea580c",
                     color: "#ffffff",

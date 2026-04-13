@@ -8,10 +8,10 @@ export default function Team() {
 
   return (
     <section id="equipo" style={{ backgroundColor: "#f0f6ff", padding: "80px 0" }}>
-      <div ref={ref} style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 30px" }}>
+      <div ref={ref} style={{ maxWidth: "1500px", margin: "0 auto", padding: "0 60px" }}>
         <div className="flex flex-col lg:flex-row" style={{ gap: "50px", alignItems: "center" }}>
           {/* Text column */}
-          <div className="w-full lg:w-[55%] reveal-left">
+          <div className="w-full lg:w-[65%] reveal-left">
             <h2
               style={{
                 fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
@@ -25,18 +25,16 @@ export default function Team() {
             </h2>
             <p
               style={{
-                fontSize: "16px",
+                fontSize: "23px",
                 color: "#333",
                 lineHeight: 1.85,
                 marginBottom: "32px",
+                textAlign: "justify",
               }}
             >
-              Contamos con un equipo altamente calificado en auditor&iacute;a,
-              an&aacute;lisis financiero y valoraci&oacute;n de pruebas, que
-              apoya la toma de decisiones en controversias judiciales con
-              sustento t&eacute;cnico y precisi&oacute;n profesional. Nuestros
-              expertos combinan trayectoria acad&eacute;mica y experiencia
-              pericial para garantizar dictámenes de la m&aacute;s alta calidad.
+              Nuestro equipo de expertos convierte información financiera compleja en dictámenes claros y comprensibles, facilitando la valoración de la prueba y fortaleciendo la toma de decisiones dentro del litigio.
+              <br /><br />
+              En CNP contribuimos a que las decisiones jurídicas se fundamenten en análisis técnico sólido, evidencia confiable y rigor profesional.
             </p>
             <a
               href="#contacto"
@@ -60,13 +58,13 @@ export default function Team() {
           </div>
 
           {/* Image column — fondo.png fills the card */}
-          <div className="w-full lg:w-[42%] reveal-right">
+          <div className="w-full lg:w-[32%] reveal-right">
             <div
               style={{
                 borderRadius: "12px",
                 overflow: "hidden",
                 position: "relative",
-                height: "380px",
+                height: "468px",
               }}
             >
               <Image

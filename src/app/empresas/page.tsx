@@ -36,6 +36,9 @@ export default function EmpresasPage() {
           title="Soporte técnico integral para la defensa y protección de su patrimonio."
           subtitle="Acompañamos a empresas del sector real con análisis contable, tributario y económico en sus procesos judiciales, contractuales y de reclamación."
           bgImage="/images/office-meeting.jpg"
+          showButtons
+          btn1Label="Evaluar mi empresa"
+          btn2Label="Hablar con un agente"
         />
         <InnerContent
           sectionTitle="Servicios diseñados para empresas"

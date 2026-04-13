@@ -73,7 +73,7 @@ export default function Hero() {
             Apoyamos a abogados, firmas y empresas en la elaboración de dictámenes financieros especializados,<br /> valoración
 técnica de pruebas, estrategia probatoria para litigio
           </p>
-          <div className="reveal" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
+          <div className="reveal" style={{ display: "flex", flexWrap: "wrap", gap: "28px" }}>
             <a
               href="#contacto"
               className="btn-pulse"
@@ -101,7 +101,7 @@ técnica de pruebas, estrategia probatoria para litigio
                 fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
                 fontSize: "16px",
                 fontWeight: 800,
-                backgroundColor: "#16a34a",
+                backgroundColor: "#ea580c",
                 color: "#ffffff",
                 borderRadius: "10px",
                 padding: "16px 40px",

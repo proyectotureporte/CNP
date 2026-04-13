@@ -19,7 +19,8 @@ const values = [
       </svg>
     ),
     label: "Precisión",
-    text: "Precisión en pretensiones y liquidaciones, clave para fortalecer su caso.",
+    backLabel: "Rigor técnico",
+    text: "Dictámenes elaborados con metodologías profesionales y sustento técnico verificable.",
   },
   {
     icon: (
@@ -35,7 +36,8 @@ const values = [
       </svg>
     ),
     label: "Puntualidad",
-    text: "Tiempos de respuesta eficientes que se ajustan a los plazos procesales de cada caso.",
+    backLabel: "Independencia y objetividad",
+    text: "Análisis imparciales que fortalecen la credibilidad de la prueba.",
   },
   {
     icon: (
@@ -55,7 +57,8 @@ const values = [
       </svg>
     ),
     label: "Análisis",
-    text: "Análisis exhaustivo con sustento técnico que respalda cada conclusión del dictamen.",
+    backLabel: "Claridad probatoria",
+    text: "Transformamos información financiera compleja en análisis comprensibles para el proceso judicial.",
   },
 ];
 
@@ -148,11 +151,11 @@ export default function Values() {
                       letterSpacing: "0.5px",
                     }}
                   >
-                    {value.label}
+                    {value.backLabel}
                   </p>
                   <p
                     style={{
-                      fontSize: "15px",
+                      fontSize: "18px",
                       color: "rgba(255,255,255,0.92)",
                       lineHeight: 1.8,
                       textAlign: "center",
