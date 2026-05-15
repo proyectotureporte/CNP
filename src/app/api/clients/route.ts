@@ -74,6 +74,20 @@ export async function POST(request: NextRequest) {
       createdBy: payload?.displayName || 'Sistema',
     });
 
+    if (brand === 'Peritus') {
+      await writeClient.create({
+        _type: 'registroPeritus',
+        peritusId: `PER-${newClient._id.slice(-6).toUpperCase()}`,
+        nombreApellido: name,
+        correo: normalizedEmail,
+        celular: phone || '',
+        clientRef: { _type: 'reference', _ref: newClient._id },
+        fechaRegistro: new Date().toISOString(),
+        estadoDocumentacion: 'pendiente',
+        activo: true,
+      });
+    }
+
     // Auto-create portal user for the client if email is provided
     let portalPassword: string | undefined;
     if (normalizedEmail) {
