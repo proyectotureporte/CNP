@@ -1,4 +1,4 @@
-import { writeClient } from './client';
+import { caseEvent } from '@/lib/db';
 
 interface LogEventParams {
   caseId: string;
@@ -8,20 +8,17 @@ interface LogEventParams {
   userName?: string | null;
 }
 
+/**
+ * Registra un evento de caso. No bloqueante: si falla, no rompe la operación
+ * principal. (Repuntado a PostgreSQL; el nombre de archivo se mantiene para no
+ * tocar los imports de las rutas durante la Fase 5.)
+ */
 export async function logCaseEvent({ caseId, eventType, description, userId, userName }: LogEventParams) {
-  try {
-    const doc: { _type: 'caseEvent'; [key: string]: unknown } = {
-      _type: 'caseEvent',
-      case: { _type: 'reference', _ref: caseId },
-      eventType,
-      description,
-      createdByName: userName || 'Sistema',
-    };
-    if (userId && userId !== 'admin') {
-      doc.createdBy = { _type: 'reference', _ref: userId };
-    }
-    await writeClient.create(doc);
-  } catch {
-    // Non-blocking: don't fail the main operation if event logging fails
-  }
+  await caseEvent.logCaseEvent({
+    caseId,
+    eventType,
+    description,
+    createdById: userId ?? null,
+    createdByName: userName ?? 'Sistema',
+  });
 }

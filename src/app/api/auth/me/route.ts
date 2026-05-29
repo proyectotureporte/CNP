@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth/jwt';
-import { client } from '@/lib/sanity/client';
-import { getCrmUserByIdQuery } from '@/lib/sanity/queries';
+import { crmUser } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   const type = request.nextUrl.searchParams.get('type') || 'crm';
@@ -22,10 +21,7 @@ export async function GET(request: NextRequest) {
   // Check mustChangePassword flag from Sanity for non-admin users
   let mustChangePassword = false;
   if (payload.sub !== 'admin') {
-    const user = await client.fetch<{ mustChangePassword?: boolean } | null>(
-      getCrmUserByIdQuery,
-      { id: payload.sub }
-    );
+    const user = await crmUser.getUserById(payload.sub);
     mustChangePassword = user?.mustChangePassword === true;
   }
 

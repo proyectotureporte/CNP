@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client } from '@/lib/sanity/client';
-import { getAdminConfigQuery, getCrmUserByEmailQuery } from '@/lib/sanity/queries';
+import { adminConfig, crmUser } from '@/lib/db';
 import { comparePassword } from '@/lib/auth/passwords';
 import { signToken } from '@/lib/auth/jwt';
-import type { AdminConfig, CrmUser } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     // Admin login - password only
     if (type === 'admin') {
-      const config = await client.fetch<AdminConfig | null>(getAdminConfigQuery);
+      const config = await adminConfig.getAdminConfig();
       if (!config) {
         return NextResponse.json(
           { success: false, error: 'Sistema no inicializado. Ejecute /api/admin/init primero.' },
@@ -74,7 +72,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const user = await client.fetch<CrmUser | null>(getCrmUserByEmailQuery, { email: email.trim().toLowerCase() });
+      const user = await crmUser.getUserByEmail(email.trim());
       if (!user) {
         return NextResponse.json(
           { success: false, error: 'Email o contrasena incorrectos' },
@@ -133,7 +131,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const user = await client.fetch<CrmUser | null>(getCrmUserByEmailQuery, { email: email.trim().toLowerCase() });
+      const user = await crmUser.getUserByEmail(email.trim());
       if (!user) {
         return NextResponse.json(
           { success: false, error: 'Email o contrasena incorrectos' },
@@ -190,8 +188,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const missing = [
       !process.env.JWT_SECRET && 'JWT_SECRET',
-      !process.env.NEXT_PUBLIC_SANITY_PROJECT_ID && 'NEXT_PUBLIC_SANITY_PROJECT_ID',
-      !process.env.NEXT_PUBLIC_SANITY_DATASET && 'NEXT_PUBLIC_SANITY_DATASET',
+      !process.env.DATABASE_URL && 'DATABASE_URL',
     ].filter(Boolean);
 
     console.error('[auth/login] Error:', err);
