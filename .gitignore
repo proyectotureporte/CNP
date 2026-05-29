@@ -44,3 +44,8 @@ next-env.d.ts
 .clauderc
 nul
 plan.md
+
+# Exports de Sanity (datos de producción — NUNCA subir)
+*.tar.gz
+data.ndjson
+/sanity-export/
