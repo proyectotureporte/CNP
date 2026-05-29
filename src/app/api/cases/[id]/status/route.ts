@@ -1,35 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getCaseByIdQuery } from '@/lib/sanity/queries';
-import { CASE_STATUSES, CASE_STATUS_LABELS, type CaseStatus, type CaseExpanded } from '@/lib/types';
+import { cases, notification } from '@/lib/db';
+import { CASE_STATUSES, CASE_STATUS_LABELS, type CaseStatus } from '@/lib/types';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/pusher/server';
 
 // Chain: juridico → financiero → admin
-// - creado: juridico (or admin) can change
-// - after juridico changes: only financiero (or admin) can change
-// - after financiero changes: only admin can change
-// - "devolver" = financiero sends back to creado so juridico can edit again
-
 const VALID_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
   creado: ['gestionado', 'cancelado'],
-  gestionado: ['creado', 'cancelado'],  // financiero can return to creado or cancel
-  cancelado: ['creado'],                // admin can reopen
+  gestionado: ['creado', 'cancelado'],
+  cancelado: ['creado'],
 };
 
 function canChangeStatus(userRole: string, statusChangedByRole?: string): boolean {
   if (userRole === 'admin') return true;
-
-  // Case in creado with no prior change or returned by financiero: juridico can change
   if (userRole === 'juridico') {
     return !statusChangedByRole || statusChangedByRole === 'financiero';
   }
-
-  // After juridico changes: financiero can change
   if (userRole === 'financiero') {
     return statusChangedByRole === 'juridico';
   }
-
   return false;
 }
 
@@ -46,21 +35,14 @@ export async function PUT(
     const { status, assignedFinancieroId } = body as { status: string; assignedFinancieroId?: string };
 
     if (!status || !CASE_STATUSES.includes(status as CaseStatus)) {
-      return NextResponse.json(
-        { success: false, error: 'Estado no valido' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Estado no valido' }, { status: 400 });
     }
 
-    const existing = await client.fetch<CaseExpanded | null>(getCaseByIdQuery, { id });
+    const existing = await cases.getCaseById(id);
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Caso no encontrado' },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'Caso no encontrado' }, { status: 404 });
     }
 
-    // Check permission chain
     if (!canChangeStatus(userRole, existing.statusChangedByRole)) {
       return NextResponse.json(
         { success: false, error: 'No tiene permisos para cambiar el estado de este caso en este momento' },
@@ -68,13 +50,12 @@ export async function PUT(
       );
     }
 
-    // Validate transition
-    const validNext = VALID_TRANSITIONS[existing.status] || [];
+    const validNext = VALID_TRANSITIONS[existing.status as CaseStatus] || [];
     if (!validNext.includes(status as CaseStatus)) {
       return NextResponse.json(
         {
           success: false,
-          error: `Transicion no permitida de "${CASE_STATUS_LABELS[existing.status]}" a "${CASE_STATUS_LABELS[status as CaseStatus]}"`,
+          error: `Transicion no permitida de "${CASE_STATUS_LABELS[existing.status as CaseStatus]}" a "${CASE_STATUS_LABELS[status as CaseStatus]}"`,
         },
         { status: 400 }
       );
@@ -88,32 +69,24 @@ export async function PUT(
       );
     }
 
-    const patch: Record<string, unknown> = {
-      status,
+    const patch: Parameters<typeof cases.updateCase>[1] = {
+      status: status as CaseStatus,
       statusChangedByRole: userRole,
     };
 
-    // When juridico sets gestionado, assign financiero
     if (status === 'gestionado' && assignedFinancieroId) {
-      patch.assignedFinanciero = { _type: 'reference', _ref: assignedFinancieroId };
+      patch.assignedFinancieroId = assignedFinancieroId;
     }
 
-    // When returning to creado (devolver), clear the chain so juridico can act
-    // and remove the financiero assignment so the case no longer appears in their list
+    // When financiero returns case to creado, clear the chain and the assignment
     if (status === 'creado' && userRole === 'financiero') {
       patch.statusChangedByRole = 'financiero';
+      patch.assignedFinancieroId = null;
     }
 
-    let patchOp = writeClient.patch(id).set(patch);
+    const updated = await cases.updateCase(id, patch);
 
-    // Clear assignedFinanciero when returning case to creado
-    if (status === 'creado' && userRole === 'financiero') {
-      patchOp = patchOp.unset(['assignedFinanciero']);
-    }
-
-    const updated = await patchOp.commit();
-
-    const fromLabel = CASE_STATUS_LABELS[existing.status] || existing.status;
+    const fromLabel = CASE_STATUS_LABELS[existing.status as CaseStatus] || existing.status;
     const toLabel = CASE_STATUS_LABELS[status as CaseStatus] || status;
     logCaseEvent({
       caseId: id,
@@ -122,29 +95,21 @@ export async function PUT(
       userId, userName,
     });
 
-    // When financiero returns case to creado, notify the juridico team (commercial + createdBy)
+    // When financiero returns case to creado, notify the juridico team
     if (status === 'creado' && userRole === 'financiero') {
       const recipients = new Set<string>();
       if (existing.commercial?._id) recipients.add(existing.commercial._id);
       if (existing.createdBy?._id) recipients.add(existing.createdBy._id);
 
-      if (recipients.size > 0) {
-        const transaction = writeClient.transaction();
-        for (const recipientId of recipients) {
-          transaction.create({
-            _type: 'notification',
-            type: 'warning',
-            priority: 'alta',
-            title: `Caso Devuelto: ${existing.caseCode}`,
-            message: `El caso "${existing.title}" fue devuelto por el area financiera y requiere su atencion.`,
-            linkUrl: `/crm/cases/${id}`,
-            isRead: false,
-            user: { _type: 'reference', _ref: recipientId },
-          });
-        }
-        transaction.commit().catch((err: unknown) =>
-          console.error('[status] Error creating return notifications:', err)
-        );
+      for (const recipientId of recipients) {
+        notification.createNotification({
+          userId: recipientId,
+          type: 'warning',
+          priority: 'alta',
+          title: `Caso Devuelto: ${existing.caseCode}`,
+          message: `El caso "${existing.title}" fue devuelto por el area financiera y requiere su atencion.`,
+          linkUrl: `/crm/cases/${id}`,
+        }).catch((err) => console.error('[status] Error creating return notification:', err));
       }
     }
 

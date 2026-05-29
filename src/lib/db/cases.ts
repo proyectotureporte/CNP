@@ -254,7 +254,7 @@ export interface CaseInput {
   assignedExpertId?: string | null;
   assignedFinancieroId?: string | null;
   discipline?: Case['discipline'] | null;
-  status?: Case['status'];
+  status?: Case['status'] | 'archivado';
   statusChangedByRole?: string | null;
   complexity?: Case['complexity'];
   priority?: Case['priority'];

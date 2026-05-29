@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getCaseByIdQuery } from '@/lib/sanity/queries';
+import { cases } from '@/lib/db';
 import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
 import {
   CASE_STATUSES, CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES,
-  type CaseStatus, type CaseExpanded,
+  type CaseStatus,
 } from '@/lib/types';
 import { triggerEvent } from '@/lib/pusher/server';
 
@@ -23,7 +22,7 @@ export async function GET(
     const { id } = await params;
     const userRole = request.headers.get('x-user-role') || '';
     const userId = request.headers.get('x-user-id') || '';
-    const caseData = await client.fetch<CaseExpanded | null>(getCaseByIdQuery, { id });
+    const caseData = await cases.getCaseById(id);
 
     if (!caseData) {
       return NextResponse.json(
@@ -70,23 +69,17 @@ export async function PUT(
 
     // Clients cannot edit cases
     if (userRole === 'cliente') {
-      return NextResponse.json(
-        { success: false, error: 'Acceso denegado' },
-        { status: 403 }
-      );
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 
     const body = await request.json();
 
-    const existing = await client.fetch<CaseExpanded | null>(getCaseByIdQuery, { id });
+    const existing = await cases.getCaseById(id);
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Caso no encontrado' },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'Caso no encontrado' }, { status: 404 });
     }
 
-    // Juridico cannot edit cases that are already gestionado (read-only unless returned)
+    // Juridico cannot edit cases that are already gestionado
     if (userRole === 'juridico' && existing.status !== 'creado') {
       return NextResponse.json(
         { success: false, error: 'No puede editar este caso. Solo puede editar casos en estado Creado.' },
@@ -94,83 +87,67 @@ export async function PUT(
       );
     }
 
-    const updates: Record<string, unknown> = {};
+    const patch: Parameters<typeof cases.updateCase>[1] = {};
 
-    // Simple fields
-    if (body.title !== undefined) updates.title = body.title;
-    if (body.description !== undefined) updates.description = body.description;
-    if (body.city !== undefined) updates.city = body.city;
-    if (body.courtName !== undefined) updates.courtName = body.courtName;
-    if (body.caseNumber !== undefined) updates.caseNumber = body.caseNumber;
-    if (body.estimatedAmount !== undefined) updates.estimatedAmount = body.estimatedAmount;
+    if (body.title !== undefined) patch.title = body.title;
+    if (body.description !== undefined) patch.description = body.description;
+    if (body.city !== undefined) patch.city = body.city;
+    if (body.courtName !== undefined) patch.courtName = body.courtName;
+    if (body.caseNumber !== undefined) patch.caseNumber = body.caseNumber;
+    if (body.estimatedAmount !== undefined) patch.estimatedAmount = body.estimatedAmount;
     if (body.hasHearing !== undefined) {
-      updates.hasHearing = body.hasHearing;
-      // When unchecked, clear hearing fields
+      patch.hasHearing = body.hasHearing;
       if (!body.hasHearing) {
-        updates.hearingDate = '';
-        updates.hearingLink = '';
+        patch.hearingDate = null;
+        patch.hearingLink = null;
       }
     }
-    if (body.hearingDate !== undefined) updates.hearingDate = body.hearingDate;
-    if (body.hearingLink !== undefined) updates.hearingLink = body.hearingLink;
-    if (body.deadlineDate !== undefined) updates.deadlineDate = body.deadlineDate;
-    if (body.riskScore !== undefined) updates.riskScore = body.riskScore;
+    if (body.hearingDate !== undefined) patch.hearingDate = body.hearingDate || null;
+    if (body.hearingLink !== undefined) patch.hearingLink = body.hearingLink;
+    if (body.deadlineDate !== undefined) patch.deadlineDate = body.deadlineDate || null;
+    if (body.riskScore !== undefined) patch.riskScore = body.riskScore;
 
-    // Enum fields with validation
     if (body.discipline !== undefined) {
       if (!CASE_DISCIPLINES.includes(body.discipline)) {
         return NextResponse.json({ success: false, error: 'Disciplina no valida' }, { status: 400 });
       }
-      updates.discipline = body.discipline;
+      patch.discipline = body.discipline;
     }
-
     if (body.complexity !== undefined) {
       if (!CASE_COMPLEXITIES.includes(body.complexity)) {
         return NextResponse.json({ success: false, error: 'Complejidad no valida' }, { status: 400 });
       }
-      updates.complexity = body.complexity;
+      patch.complexity = body.complexity;
     }
-
     if (body.priority !== undefined) {
       if (!CASE_PRIORITIES.includes(body.priority)) {
         return NextResponse.json({ success: false, error: 'Prioridad no valida' }, { status: 400 });
       }
-      updates.priority = body.priority;
+      patch.priority = body.priority;
     }
 
-    // Status transition with validation
     if (body.status !== undefined) {
       if (!CASE_STATUSES.includes(body.status)) {
         return NextResponse.json({ success: false, error: 'Estado no valido' }, { status: 400 });
       }
-      const validNextStates = VALID_TRANSITIONS[existing.status];
+      const validNextStates = VALID_TRANSITIONS[existing.status as CaseStatus] || [];
       if (!validNextStates.includes(body.status)) {
         return NextResponse.json(
           { success: false, error: `Transicion no permitida de "${existing.status}" a "${body.status}"` },
           { status: 400 }
         );
       }
-      updates.status = body.status;
+      patch.status = body.status;
     }
 
-    // Reference fields
-    if (body.clientId !== undefined) {
-      updates.client = body.clientId ? { _type: 'reference', _ref: body.clientId } : undefined;
-    }
-    if (body.commercialId !== undefined) {
-      updates.commercial = body.commercialId ? { _type: 'reference', _ref: body.commercialId } : undefined;
-    }
-    if (body.technicalAnalystId !== undefined) {
-      updates.technicalAnalyst = body.technicalAnalystId ? { _type: 'reference', _ref: body.technicalAnalystId } : undefined;
-    }
-    if (body.assignedExpertId !== undefined) {
-      updates.assignedExpert = body.assignedExpertId ? { _type: 'reference', _ref: body.assignedExpertId } : undefined;
-    }
-    if (body.assignedFinancieroId !== undefined) {
-      updates.assignedFinanciero = body.assignedFinancieroId ? { _type: 'reference', _ref: body.assignedFinancieroId } : undefined;
-    }
+    // Reference fields (vacío => limpiar)
+    if (body.clientId !== undefined) patch.clientId = body.clientId || null;
+    if (body.commercialId !== undefined) patch.commercialId = body.commercialId || null;
+    if (body.technicalAnalystId !== undefined) patch.technicalAnalystId = body.technicalAnalystId || null;
+    if (body.assignedExpertId !== undefined) patch.assignedExpertId = body.assignedExpertId || null;
+    if (body.assignedFinancieroId !== undefined) patch.assignedFinancieroId = body.assignedFinancieroId || null;
 
-    const updated = await writeClient.patch(id).set(updates).commit();
+    const updated = await cases.updateCase(id, patch);
     triggerEvent('case:updated', { id });
     return NextResponse.json({ success: true, data: updated });
   } catch {
@@ -191,22 +168,16 @@ export async function DELETE(
 
     // Clients cannot delete cases
     if (userRole === 'cliente') {
-      return NextResponse.json(
-        { success: false, error: 'Acceso denegado' },
-        { status: 403 }
-      );
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 
-    const existing = await client.fetch<CaseExpanded | null>(getCaseByIdQuery, { id });
+    const existing = await cases.getCaseById(id);
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Caso no encontrado' },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'Caso no encontrado' }, { status: 404 });
     }
 
     // Soft delete: move to archivado
-    await writeClient.patch(id).set({ status: 'archivado' }).commit();
+    await cases.updateCase(id, { status: 'archivado' });
     return NextResponse.json({ success: true, data: { message: 'Caso archivado' } });
   } catch {
     return NextResponse.json(

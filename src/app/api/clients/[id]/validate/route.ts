@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
+import { registroPeritus } from '@/lib/db';
 import { triggerEvent } from '@/lib/pusher/server';
 
 export async function POST(
@@ -25,10 +25,7 @@ export async function POST(
       );
     }
 
-    const registro = await client.fetch<{ _id: string } | null>(
-      `*[_type == "registroPeritus" && clientRef._ref == $id][0]{ _id }`,
-      { id }
-    );
+    const registro = await registroPeritus.getRegistroByClientId(id);
 
     if (!registro) {
       return NextResponse.json(
@@ -37,10 +34,10 @@ export async function POST(
       );
     }
 
-    const updateData: Record<string, unknown> = { estadoDocumentacion: action };
-    if (notes) updateData.notasValidacion = notes;
-
-    await writeClient.patch(registro._id).set(updateData).commit();
+    await registroPeritus.updateRegistroPeritus(registro._id, {
+      estadoDocumentacion: action,
+      notasValidacion: notes || undefined,
+    });
     triggerEvent('client:updated', { id });
 
     return NextResponse.json({ success: true });

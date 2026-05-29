@@ -43,6 +43,14 @@ export async function listUsers(): Promise<CrmUser[]> {
   return query<CrmUser>(`SELECT ${SAFE} ${FROM} ORDER BY u.created_at DESC`);
 }
 
+/** Lista ligera de usuarios activos (id, displayName, role) ordenada por rol y nombre. */
+export async function listActiveUsersBasic(): Promise<Array<{ _id: string; displayName: string; role: UserRole }>> {
+  return query<{ _id: string; displayName: string; role: UserRole }>(
+    `SELECT id AS "_id", display_name AS "displayName", role
+     FROM crm_user WHERE active = TRUE ORDER BY role ASC, display_name ASC`,
+  );
+}
+
 export async function listUsersByRole(role: UserRole): Promise<CrmUser[]> {
   return query<CrmUser>(
     `SELECT ${SAFE} ${FROM} WHERE u.role = $1::user_role AND u.active = TRUE ORDER BY u.display_name ASC`,

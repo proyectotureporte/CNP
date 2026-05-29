@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getCaseByIdQuery, getCrmUserByIdQuery } from '@/lib/sanity/queries';
-import type { CaseExpanded, CrmUser } from '@/lib/types';
+import { cases, crmUser } from '@/lib/db';
 import { triggerEvent } from '@/lib/pusher/server';
 
 type AssignRole = 'commercial' | 'technicalAnalyst' | 'assignedExpert';
 
 const VALID_ASSIGN_ROLES: AssignRole[] = ['commercial', 'technicalAnalyst', 'assignedExpert'];
+
+const ROLE_FIELD: Record<AssignRole, 'commercialId' | 'technicalAnalystId' | 'assignedExpertId'> = {
+  commercial: 'commercialId',
+  technicalAnalyst: 'technicalAnalystId',
+  assignedExpert: 'assignedExpertId',
+};
 
 export async function POST(
   request: NextRequest,
@@ -25,34 +29,20 @@ export async function POST(
     }
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'userId es requerido' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'userId es requerido' }, { status: 400 });
     }
 
-    // Verify case exists
-    const existing = await client.fetch<CaseExpanded | null>(getCaseByIdQuery, { id });
+    const existing = await cases.getCaseById(id);
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Caso no encontrado' },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'Caso no encontrado' }, { status: 404 });
     }
 
-    // Verify user exists
-    const user = await client.fetch<CrmUser | null>(getCrmUserByIdQuery, { id: userId });
+    const user = await crmUser.getUserById(userId);
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Usuario no encontrado' },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'Usuario no encontrado' }, { status: 404 });
     }
 
-    const updated = await writeClient
-      .patch(id)
-      .set({ [role]: { _type: 'reference', _ref: userId } })
-      .commit();
+    const updated = await cases.updateCase(id, { [ROLE_FIELD[role as AssignRole]]: userId });
 
     triggerEvent('case:assigned', { id });
 

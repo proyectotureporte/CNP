@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { listCompaniesQuery, searchCompaniesQuery } from '@/lib/sanity/queries';
+import { company } from '@/lib/db';
 import type { Company } from '@/lib/types';
 
 export async function GET(request: NextRequest) {
@@ -8,12 +7,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
 
-    let companies: Company[];
-    if (search) {
-      companies = await client.fetch<Company[]>(searchCompaniesQuery, { search });
-    } else {
-      companies = await client.fetch<Company[]>(listCompaniesQuery);
-    }
+    const companies = search
+      ? await company.searchCompanies(search)
+      : await company.listCompanies();
 
     return NextResponse.json({ success: true, data: companies });
   } catch {
@@ -36,22 +32,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const company = await writeClient.create({
-      _type: 'company',
-      name,
-      nit,
-      type,
-      address: address || '',
-      city: city || '',
-      country: country || 'Colombia',
-      phone: phone || '',
-      website: website || '',
-      billingEmail: billingEmail || '',
-      logoUrl: logoUrl || '',
-      isActive: true,
+    const created = await company.createCompany({
+      name, nit, type, address, city, country, phone, website, billingEmail, logoUrl,
     });
 
-    return NextResponse.json({ success: true, data: company }, { status: 201 });
+    return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {
     return NextResponse.json(
       { success: false, error: 'Error creando empresa' },

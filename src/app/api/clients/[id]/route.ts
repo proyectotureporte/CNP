@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getClientByIdQuery } from '@/lib/sanity/queries';
+import { crmClient, registroPeritus, queryOne } from '@/lib/db';
 import { triggerEvent } from '@/lib/pusher/server';
-import type { CrmClient } from '@/lib/types';
 
 export async function GET(
   _request: NextRequest,
@@ -10,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const clientData = await client.fetch<CrmClient | null>(getClientByIdQuery, { id });
+    const clientData = await crmClient.getClientById(id);
 
     if (!clientData) {
       return NextResponse.json(
@@ -42,19 +40,12 @@ export async function PUT(
       company?: string;
       position?: string;
       notes?: string;
-      status?: string;
+      status?: 'activo' | 'inactivo' | 'prospecto';
     };
 
-    const updates: Record<string, string> = {};
-    if (name !== undefined) updates.name = name;
-    if (email !== undefined) updates.email = email;
-    if (phone !== undefined) updates.phone = phone;
-    if (company !== undefined) updates.company = company;
-    if (position !== undefined) updates.position = position;
-    if (notes !== undefined) updates.notes = notes;
-    if (status !== undefined) updates.status = status;
-
-    const updated = await writeClient.patch(id).set(updates).commit();
+    const updated = await crmClient.updateClient(id, {
+      name, email, phone, company, position, notes, status,
+    });
 
     triggerEvent('client:updated', { id });
 
@@ -74,11 +65,12 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // Block deletion if client has active cases
-    const casesCount = await writeClient.fetch<number>(
-      `count(*[_type == "case" && client._ref == $id])`,
-      { id }
+    // Block deletion if client has cases
+    const row = await queryOne<{ count: number }>(
+      'SELECT count(*)::int AS count FROM cases WHERE client_id = $1',
+      [id]
     );
+    const casesCount = row?.count ?? 0;
     if (casesCount > 0) {
       return NextResponse.json(
         { success: false, error: `No se puede eliminar: el cliente tiene ${casesCount} caso(s) asociado(s). Elimínelos primero.` },
@@ -86,16 +78,13 @@ export async function DELETE(
       );
     }
 
-    // Delete associated registroPeritus if exists (references crmClient)
-    const registroPeritus = await writeClient.fetch<{ _id: string } | null>(
-      `*[_type == "registroPeritus" && clientRef._ref == $id][0]{ _id }`,
-      { id }
-    );
-    if (registroPeritus) {
-      await writeClient.delete(registroPeritus._id);
+    // Delete associated registroPeritus if exists
+    const registro = await registroPeritus.getRegistroByClientId(id);
+    if (registro) {
+      await registroPeritus.deleteRegistroPeritus(registro._id);
     }
 
-    await writeClient.delete(id);
+    await crmClient.deleteClient(id);
     triggerEvent('client:deleted', { id });
     return NextResponse.json({ success: true, data: { message: 'Cliente eliminado' } });
   } catch (err) {

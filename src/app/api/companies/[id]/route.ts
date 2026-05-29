@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getCompanyByIdQuery } from '@/lib/sanity/queries';
+import { company } from '@/lib/db';
 import type { Company } from '@/lib/types';
 
 export async function GET(
@@ -9,16 +8,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const company = await client.fetch<Company | null>(getCompanyByIdQuery, { id });
+    const found = await company.getCompanyById(id);
 
-    if (!company) {
+    if (!found) {
       return NextResponse.json(
         { success: false, error: 'Empresa no encontrada' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, data: company });
+    return NextResponse.json({ success: true, data: found });
   } catch {
     return NextResponse.json(
       { success: false, error: 'Error obteniendo empresa' },
@@ -36,7 +35,7 @@ export async function PUT(
     const body = await request.json();
     const { name, nit, type, address, city, country, phone, website, billingEmail, logoUrl, isActive } = body as Partial<Company>;
 
-    const existing = await client.fetch<Company | null>(getCompanyByIdQuery, { id });
+    const existing = await company.getCompanyById(id);
     if (!existing) {
       return NextResponse.json(
         { success: false, error: 'Empresa no encontrada' },
@@ -44,20 +43,9 @@ export async function PUT(
       );
     }
 
-    const updates: Record<string, unknown> = {};
-    if (name !== undefined) updates.name = name;
-    if (nit !== undefined) updates.nit = nit;
-    if (type !== undefined) updates.type = type;
-    if (address !== undefined) updates.address = address;
-    if (city !== undefined) updates.city = city;
-    if (country !== undefined) updates.country = country;
-    if (phone !== undefined) updates.phone = phone;
-    if (website !== undefined) updates.website = website;
-    if (billingEmail !== undefined) updates.billingEmail = billingEmail;
-    if (logoUrl !== undefined) updates.logoUrl = logoUrl;
-    if (isActive !== undefined) updates.isActive = isActive;
-
-    const updated = await writeClient.patch(id).set(updates).commit();
+    const updated = await company.updateCompany(id, {
+      name, nit, type, address, city, country, phone, website, billingEmail, logoUrl, isActive,
+    });
     return NextResponse.json({ success: true, data: updated });
   } catch {
     return NextResponse.json(
@@ -73,7 +61,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const existing = await client.fetch<Company | null>(getCompanyByIdQuery, { id });
+    const existing = await company.getCompanyById(id);
     if (!existing) {
       return NextResponse.json(
         { success: false, error: 'Empresa no encontrada' },
@@ -82,7 +70,7 @@ export async function DELETE(
     }
 
     // Soft delete
-    await writeClient.patch(id).set({ isActive: false }).commit();
+    await company.updateCompany(id, { isActive: false });
     return NextResponse.json({ success: true, data: { message: 'Empresa desactivada' } });
   } catch {
     return NextResponse.json(
