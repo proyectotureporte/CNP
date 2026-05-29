@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getCaseEvaluationQuery } from '@/lib/sanity/queries';
+import { evaluation, commission } from '@/lib/db';
 import { triggerEvent } from '@/lib/pusher/server';
 
 export async function POST(request: NextRequest) {
@@ -11,30 +10,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'expertId, caseId y baseAmount son requeridos' }, { status: 400 });
     }
 
-    const evaluation = await client.fetch(getCaseEvaluationQuery, { caseId });
+    const eval_ = await evaluation.getCaseEvaluation(caseId);
     let bonusPercentage = 0;
     let penaltyPercentage = 0;
 
-    if (evaluation) {
-      if (evaluation.finalScore >= 4.5) bonusPercentage = 10;
-      else if (evaluation.finalScore >= 4.0) bonusPercentage = 5;
-      else if (evaluation.finalScore < 3.0) penaltyPercentage = 10;
-      else if (evaluation.finalScore < 2.0) penaltyPercentage = 20;
+    if (eval_) {
+      if (eval_.finalScore >= 4.5) bonusPercentage = 10;
+      else if (eval_.finalScore >= 4.0) bonusPercentage = 5;
+      else if (eval_.finalScore < 3.0) penaltyPercentage = 10;
+      else if (eval_.finalScore < 2.0) penaltyPercentage = 20;
     }
 
     const bonus = baseAmount * bonusPercentage / 100;
     const penalty = baseAmount * penaltyPercentage / 100;
     const finalAmount = baseAmount + bonus - penalty;
 
-    const doc: { _type: 'commission'; [key: string]: unknown } = {
-      _type: 'commission',
-      expert: { _type: 'reference', _ref: expertId },
-      case: { _type: 'reference', _ref: caseId },
-      baseAmount, bonusPercentage, penaltyPercentage, finalAmount,
-      status: 'pendiente',
-    };
-
-    const created = await writeClient.create(doc);
+    const created = await commission.createCommission({
+      expertId, caseId, baseAmount, bonusPercentage, penaltyPercentage, finalAmount, status: 'pendiente',
+    });
 
     triggerEvent('commission:calculated', {});
 

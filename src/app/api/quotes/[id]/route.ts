@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getQuoteByIdQuery, listAllQuotesQuery, countAllQuotesQuery, listQuotePaymentsQuery } from '@/lib/sanity/queries';
-import type { Quote, Payment } from '@/lib/types';
+import { quote, payment } from '@/lib/db';
+import { uploadFile } from '@/lib/sanity/assets';
 import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(
@@ -15,24 +14,20 @@ export async function GET(
       const status = searchParams.get('status') || '';
       const page = parseInt(searchParams.get('page') || '1');
       const limit = parseInt(searchParams.get('limit') || '20');
-      const start = (page - 1) * limit;
-      const end = start + limit;
+      const offset = (page - 1) * limit;
       const [quotes, total] = await Promise.all([
-        client.fetch(listAllQuotesQuery, { status, start, end }),
-        client.fetch(countAllQuotesQuery, { status }),
+        quote.listAllQuotes(status, limit, offset),
+        quote.countAllQuotes(status),
       ]);
       return NextResponse.json({ success: true, data: quotes, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } });
     }
-    const quote = await client.fetch<Quote | null>(getQuoteByIdQuery, { id });
-    if (!quote) {
+    const found = await quote.getQuoteById(id);
+    if (!found) {
       return NextResponse.json({ success: false, error: 'Cotizacion no encontrada' }, { status: 404 });
     }
-    return NextResponse.json({ success: true, data: quote });
+    return NextResponse.json({ success: true, data: found });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error obteniendo cotizacion' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error obteniendo cotizacion' }, { status: 500 });
   }
 }
 
@@ -43,95 +38,70 @@ export async function PUT(
   try {
     const { id } = await params;
 
-    const existing = await client.fetch<Quote | null>(getQuoteByIdQuery, { id });
+    const existing = await quote.getQuoteById(id);
     if (!existing) {
       return NextResponse.json({ success: false, error: 'Cotizacion no encontrada' }, { status: 404 });
     }
-
     if (existing.status !== 'borrador') {
-      return NextResponse.json(
-        { success: false, error: 'Solo se pueden editar cotizaciones en borrador' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Solo se pueden editar cotizaciones en borrador' }, { status: 400 });
     }
 
     const formData = await request.formData();
 
     const totalPrice = parseFloat(formData.get('totalPrice') as string) || existing.totalPrice;
-    const discountPercentage = parseFloat(formData.get('discountPercentage') as string) ?? existing.discountPercentage;
+    const dp = parseFloat(formData.get('discountPercentage') as string);
+    const discountPercentage = isNaN(dp) ? existing.discountPercentage : dp;
     const notes = (formData.get('notes') as string) ?? existing.notes;
-    const validUntil = (formData.get('validUntil') as string) || existing.validUntil;
-    const firstPaymentDate = (formData.get('firstPaymentDate') as string) || existing.firstPaymentDate;
-    const lastPaymentDate = (formData.get('lastPaymentDate') as string) || existing.lastPaymentDate;
+    const validUntil = (formData.get('validUntil') as string) || existing.validUntil || null;
+    const firstPaymentDate = (formData.get('firstPaymentDate') as string) || existing.firstPaymentDate || null;
+    const lastPaymentDate = (formData.get('lastPaymentDate') as string) || existing.lastPaymentDate || null;
     const customSplit = formData.get('customSplit') === 'true';
     const firstPaymentPercentage = customSplit
       ? parseFloat(formData.get('firstPaymentPercentage') as string) || existing.firstPaymentPercentage
       : 50;
-
     const quoteFile = formData.get('quoteDocument') as File | null;
 
     const finalValue = totalPrice - (totalPrice * discountPercentage / 100);
 
-    // Upload new file if provided
-    const patchOps: Record<string, unknown> = {
-      totalPrice,
-      discountPercentage,
-      finalValue,
-      notes,
-      validUntil: validUntil || undefined,
-      firstPaymentDate: firstPaymentDate || undefined,
-      lastPaymentDate: lastPaymentDate || undefined,
-      customSplit,
-      firstPaymentPercentage,
-    };
-
+    let asset: Awaited<ReturnType<typeof uploadFile>> | null = null;
     if (quoteFile && quoteFile.size > 0) {
       const buffer = Buffer.from(await quoteFile.arrayBuffer());
-      const asset = await writeClient.assets.upload('file', buffer, {
-        filename: quoteFile.name,
-        contentType: quoteFile.type,
-      });
-      patchOps.quoteDocument = { _type: 'file', asset: { _type: 'reference', _ref: asset._id } };
+      asset = await uploadFile(buffer, quoteFile.name, quoteFile.type);
     }
 
-    const updated = await writeClient
-      .patch(id)
-      .set(patchOps)
-      .commit();
+    const updated = await quote.updateQuote(id, {
+      totalPrice, discountPercentage, finalValue, notes,
+      validUntil, firstPaymentDate, lastPaymentDate, customSplit, firstPaymentPercentage,
+      fileUrl: asset?.url,
+      fileAssetId: asset?.assetId,
+      fileName: asset?.originalFilename,
+      mimeType: asset?.mimeType,
+      fileSize: asset?.size,
+    });
 
     // Update linked payments (amounts and dates)
-    const payments = await client.fetch<Payment[]>(listQuotePaymentsQuery, { quoteId: id });
+    const payments = await payment.listQuotePayments(id);
     const secondPercentage = 100 - firstPaymentPercentage;
     const payment1Amount = Math.round(finalValue * firstPaymentPercentage / 100);
     const payment2Amount = finalValue - payment1Amount;
 
-    const paymentUpdates = payments.map((p) => {
-      if (p.paymentNumber === 1) {
-        return writeClient.patch(p._id).set({
-          amount: payment1Amount,
-          percentage: firstPaymentPercentage,
-          dueDate: firstPaymentDate || undefined,
-        }).commit();
-      } else if (p.paymentNumber === 2) {
-        return writeClient.patch(p._id).set({
-          amount: payment2Amount,
-          percentage: secondPercentage,
-          dueDate: lastPaymentDate || undefined,
-        }).commit();
-      }
-      return Promise.resolve();
-    });
-
-    await Promise.all(paymentUpdates);
+    await Promise.all(
+      payments.map((p) => {
+        if (p.paymentNumber === 1) {
+          return payment.updatePayment(p._id, { amount: payment1Amount, percentage: firstPaymentPercentage, dueDate: firstPaymentDate });
+        }
+        if (p.paymentNumber === 2) {
+          return payment.updatePayment(p._id, { amount: payment2Amount, percentage: secondPercentage, dueDate: lastPaymentDate });
+        }
+        return Promise.resolve(null);
+      })
+    );
 
     triggerEvent('quote:updated', { id });
 
     return NextResponse.json({ success: true, data: updated });
   } catch (err) {
     console.error('Error updating quote:', err);
-    return NextResponse.json(
-      { success: false, error: 'Error actualizando cotizacion' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error actualizando cotizacion' }, { status: 500 });
   }
 }

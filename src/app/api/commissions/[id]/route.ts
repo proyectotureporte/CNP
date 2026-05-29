@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { listAllCommissionsQuery, countAllCommissionsQuery } from '@/lib/sanity/queries';
+import { commission } from '@/lib/db';
+import type { CommissionStatus } from '@/lib/types';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -10,11 +10,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       const status = searchParams.get('status') || '';
       const page = parseInt(searchParams.get('page') || '1');
       const limit = parseInt(searchParams.get('limit') || '20');
-      const start = (page - 1) * limit;
-      const end = start + limit;
+      const offset = (page - 1) * limit;
       const [commissions, total] = await Promise.all([
-        client.fetch(listAllCommissionsQuery, { status, start, end }),
-        client.fetch(countAllCommissionsQuery, { status }),
+        commission.listAllCommissions(status, limit, offset),
+        commission.countAllCommissions(status),
       ]);
       return NextResponse.json({ success: true, data: commissions, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } });
     }
@@ -28,11 +27,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id } = await params;
     const body = await request.json();
-    const updateData: Record<string, unknown> = {};
-    if (body.status) updateData.status = body.status;
-    if (body.paymentDate) updateData.paymentDate = body.paymentDate;
-    if (body.paymentReference) updateData.paymentReference = body.paymentReference;
-    const updated = await writeClient.patch(id).set(updateData).commit();
+    const updated = await commission.updateCommission(id, {
+      status: body.status as CommissionStatus | undefined,
+      paymentDate: body.paymentDate,
+      paymentReference: body.paymentReference,
+    });
     return NextResponse.json({ success: true, data: updated });
   } catch {
     return NextResponse.json({ success: false, error: 'Error actualizando comision' }, { status: 500 });

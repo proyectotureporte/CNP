@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getPaymentByIdQuery, listAllPaymentsQuery, countAllPaymentsQuery } from '@/lib/sanity/queries';
+import { payment } from '@/lib/db';
+import type { PaymentStatus } from '@/lib/types';
 import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -11,17 +11,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       const status = searchParams.get('status') || '';
       const page = parseInt(searchParams.get('page') || '1');
       const limit = parseInt(searchParams.get('limit') || '20');
-      const start = (page - 1) * limit;
-      const end = start + limit;
+      const offset = (page - 1) * limit;
       const [payments, total] = await Promise.all([
-        client.fetch(listAllPaymentsQuery, { status, start, end }),
-        client.fetch(countAllPaymentsQuery, { status }),
+        payment.listAllPayments(status, limit, offset),
+        payment.countAllPayments(status),
       ]);
       return NextResponse.json({ success: true, data: payments, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } });
     }
-    const payment = await client.fetch(getPaymentByIdQuery, { id });
-    if (!payment) return NextResponse.json({ success: false, error: 'Pago no encontrado' }, { status: 404 });
-    return NextResponse.json({ success: true, data: payment });
+    const found = await payment.getPaymentById(id);
+    if (!found) return NextResponse.json({ success: false, error: 'Pago no encontrado' }, { status: 404 });
+    return NextResponse.json({ success: true, data: found });
   } catch {
     return NextResponse.json({ success: false, error: 'Error obteniendo pago' }, { status: 500 });
   }
@@ -31,13 +30,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id } = await params;
     const body = await request.json();
-    const existing = await client.fetch(getPaymentByIdQuery, { id });
+    const existing = await payment.getPaymentById(id);
     if (!existing) return NextResponse.json({ success: false, error: 'Pago no encontrado' }, { status: 404 });
-    const updateData: Record<string, unknown> = {};
-    if (body.status) updateData.status = body.status;
-    if (body.transactionReference) updateData.transactionReference = body.transactionReference;
-    if (body.notes) updateData.notes = body.notes;
-    const updated = await writeClient.patch(id).set(updateData).commit();
+
+    const updated = await payment.updatePayment(id, {
+      status: body.status as PaymentStatus | undefined,
+      transactionReference: body.transactionReference,
+      notes: body.notes,
+    });
 
     triggerEvent('payment:updated', { id });
 

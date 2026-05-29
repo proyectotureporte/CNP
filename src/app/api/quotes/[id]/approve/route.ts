@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getQuoteByIdQuery } from '@/lib/sanity/queries';
+import { quote } from '@/lib/db';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import type { Quote } from '@/lib/types';
 import { triggerEvent } from '@/lib/pusher/server';
@@ -16,31 +15,19 @@ export async function POST(
     const userId = request.headers.get('x-user-id');
     const userName = request.headers.get('x-user-name');
 
-    const existing = await client.fetch<QuoteWithCase | null>(getQuoteByIdQuery, { id });
+    const existing = (await quote.getQuoteById(id)) as QuoteWithCase | null;
     if (!existing) {
       return NextResponse.json({ success: false, error: 'Cotizacion no encontrada' }, { status: 404 });
     }
-
     if (existing.status !== 'enviada') {
-      return NextResponse.json(
-        { success: false, error: 'Solo se pueden aprobar cotizaciones enviadas' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Solo se pueden aprobar cotizaciones enviadas' }, { status: 400 });
     }
 
-    const updateData: Record<string, unknown> = {
+    const updated = await quote.updateQuote(id, {
       status: 'aprobada',
       approvedAt: new Date().toISOString(),
-    };
-
-    if (userId && userId !== 'admin') {
-      updateData.approvedBy = { _type: 'reference', _ref: userId };
-    }
-
-    const updated = await writeClient
-      .patch(id)
-      .set(updateData)
-      .commit();
+      approvedById: userId && userId !== 'admin' ? userId : null,
+    });
 
     if (existing.case?._id) {
       const versionLabel = existing.version ? ` v${existing.version}` : '';
@@ -48,8 +35,7 @@ export async function POST(
         caseId: existing.case._id,
         eventType: 'quote_approved',
         description: `Cotizacion${versionLabel} aprobada`,
-        userId,
-        userName,
+        userId, userName,
       });
     }
 
@@ -57,9 +43,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, data: updated });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error aprobando cotizacion' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error aprobando cotizacion' }, { status: 500 });
   }
 }

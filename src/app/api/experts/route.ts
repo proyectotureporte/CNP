@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { listExpertsQuery, countExpertsQuery } from '@/lib/sanity/queries';
+import { expert } from '@/lib/db';
 import { triggerEvent } from '@/lib/pusher/server';
-import type { Expert } from '@/lib/types';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,14 +12,13 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const start = (page - 1) * limit;
-    const end = start + limit;
+    const offset = (page - 1) * limit;
 
-    const params = { discipline, city, availability, validationStatus, search, start, end };
+    const filters = { discipline, city, availability, validationStatus, search };
 
     const [experts, total] = await Promise.all([
-      client.fetch<Expert[]>(listExpertsQuery, params),
-      client.fetch<number>(countExpertsQuery, params),
+      expert.listExperts({ ...filters, limit, offset }),
+      expert.countExperts(filters),
     ]);
 
     return NextResponse.json({
@@ -30,10 +27,7 @@ export async function GET(request: NextRequest) {
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error obteniendo peritos' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error obteniendo peritos' }, { status: 500 });
   }
 }
 
@@ -48,14 +42,11 @@ export async function POST(request: NextRequest) {
     } = body;
 
     if (!disciplines || disciplines.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Al menos una disciplina es requerida' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Al menos una disciplina es requerida' }, { status: 400 });
     }
 
-    const doc: { _type: 'expert'; [key: string]: unknown } = {
-      _type: 'expert',
+    const created = await expert.createExpert({
+      userId: userRef || (userId && userId !== 'admin' ? userId : null),
       disciplines,
       specialization: specialization || '',
       experienceYears: experienceYears || 0,
@@ -65,31 +56,17 @@ export async function POST(request: NextRequest) {
       baseFee: baseFee || 0,
       feeCurrency: feeCurrency || 'COP',
       availability: 'disponible',
-      rating: 0,
-      totalCases: 0,
-      completedCases: 0,
       validationStatus: 'pendiente',
       taxId: taxId || '',
       bankName: bankName || '',
-      bankAccountType: bankAccountType || '',
+      bankAccountType: bankAccountType || null,
       bankAccountNumber: bankAccountNumber || '',
-    };
+    });
 
-    // Link to user if provided, otherwise use current user
-    const refId = userRef || (userId && userId !== 'admin' ? userId : null);
-    if (refId) {
-      doc.user = { _type: 'reference', _ref: refId };
-    }
-
-    const created = await writeClient.create(doc);
-
-    triggerEvent('expert:created', { id: created._id });
+    if (created) triggerEvent('expert:created', { id: created._id });
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error creando perito' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error creando perito' }, { status: 500 });
   }
 }

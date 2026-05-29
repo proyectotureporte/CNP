@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getExpertByIdQuery } from '@/lib/sanity/queries';
+import { expert } from '@/lib/db';
 import { triggerEvent } from '@/lib/pusher/server';
-import type { Expert } from '@/lib/types';
+import type { ExpertAvailability } from '@/lib/types';
 
 export async function PUT(
   request: NextRequest,
@@ -20,20 +19,17 @@ export async function PUT(
       );
     }
 
-    const existing = await client.fetch<Expert | null>(getExpertByIdQuery, { id });
+    const existing = await expert.getExpertById(id);
     if (!existing) {
       return NextResponse.json({ success: false, error: 'Perito no encontrado' }, { status: 404 });
     }
 
-    const updated = await writeClient.patch(id).set({ availability }).commit();
+    const updated = await expert.updateExpert(id, { availability: availability as ExpertAvailability });
 
     triggerEvent('expert:updated', { id });
 
     return NextResponse.json({ success: true, data: updated });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error actualizando disponibilidad' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error actualizando disponibilidad' }, { status: 500 });
   }
 }

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getQuoteByIdQuery } from '@/lib/sanity/queries';
+import { quote } from '@/lib/db';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import type { Quote } from '@/lib/types';
 import { triggerEvent } from '@/lib/pusher/server';
@@ -18,41 +17,25 @@ export async function POST(
     const body = await request.json();
     const { rejectionReason } = body;
 
-    const existing = await client.fetch<QuoteWithCase | null>(getQuoteByIdQuery, { id });
+    const existing = (await quote.getQuoteById(id)) as QuoteWithCase | null;
     if (!existing) {
       return NextResponse.json({ success: false, error: 'Cotizacion no encontrada' }, { status: 404 });
     }
-
     if (existing.status !== 'enviada') {
-      return NextResponse.json(
-        { success: false, error: 'Solo se pueden rechazar cotizaciones enviadas' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Solo se pueden rechazar cotizaciones enviadas' }, { status: 400 });
     }
-
     if (!rejectionReason) {
-      return NextResponse.json(
-        { success: false, error: 'La razon de rechazo es requerida' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'La razon de rechazo es requerida' }, { status: 400 });
     }
 
-    const updated = await writeClient
-      .patch(id)
-      .set({
-        status: 'rechazada',
-        rejectionReason,
-      })
-      .commit();
+    const updated = await quote.updateQuote(id, { status: 'rechazada', rejectionReason });
 
     if (existing.case?._id) {
-      const reasonLabel = rejectionReason ? `: ${rejectionReason}` : '';
       await logCaseEvent({
         caseId: existing.case._id,
         eventType: 'quote_rejected',
-        description: `Cotizacion rechazada${reasonLabel}`,
-        userId,
-        userName,
+        description: `Cotizacion rechazada: ${rejectionReason}`,
+        userId, userName,
       });
     }
 
@@ -60,9 +43,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, data: updated });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error rechazando cotizacion' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error rechazando cotizacion' }, { status: 500 });
   }
 }

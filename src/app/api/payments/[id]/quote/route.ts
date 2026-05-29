@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client } from '@/lib/sanity/client';
-import { listQuotePaymentsQuery } from '@/lib/sanity/queries';
+import { payment } from '@/lib/db';
 
 export async function GET(
   _request: NextRequest,
@@ -8,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const payments = await client.fetch(listQuotePaymentsQuery, { quoteId: id });
+    const payments = await payment.listQuotePayments(id);
     return NextResponse.json({ success: true, data: payments });
   } catch {
     return NextResponse.json(

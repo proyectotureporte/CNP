@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getPaymentByIdQuery } from '@/lib/sanity/queries';
+import { payment, caseDocument } from '@/lib/db';
+import { uploadFile } from '@/lib/sanity/assets';
 import { triggerEvent } from '@/lib/pusher/server';
-import type { Payment } from '@/lib/types';
 
 export async function POST(
   request: NextRequest,
@@ -11,12 +10,11 @@ export async function POST(
   try {
     const { id } = await params;
 
-    const payment = await client.fetch<Payment | null>(getPaymentByIdQuery, { id });
-    if (!payment) {
+    const existing = await payment.getPaymentById(id);
+    if (!existing) {
       return NextResponse.json({ success: false, error: 'Pago no encontrado' }, { status: 404 });
     }
-
-    if (payment.status !== 'pendiente') {
+    if (existing.status !== 'pendiente') {
       return NextResponse.json(
         { success: false, error: 'Solo se pueden subir justificantes a pagos pendientes' },
         { status: 400 }
@@ -25,47 +23,37 @@ export async function POST(
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-
     if (!file || file.size === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Archivo de justificante es requerido' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Archivo de justificante es requerido' }, { status: 400 });
     }
 
-    // Upload to Sanity assets
     const buffer = Buffer.from(await file.arrayBuffer());
-    const asset = await writeClient.assets.upload('file', buffer, {
-      filename: file.name,
-      contentType: file.type,
+    const asset = await uploadFile(buffer, file.name, file.type);
+
+    const updated = await payment.updatePayment(id, {
+      fileUrl: asset.url,
+      fileAssetId: asset.assetId,
+      fileName: file.name,
+      mimeType: file.type,
+      fileSize: file.size,
+      status: 'validado',
+      paymentDate: new Date().toISOString(),
     });
 
-    const assetRef = { _type: 'reference' as const, _ref: asset._id };
-
-    // Patch payment: set receipt file and mark as validado
-    const updated = await writeClient
-      .patch(id)
-      .set({
-        receiptFile: { _type: 'file', asset: assetRef },
-        status: 'validado',
-        paymentDate: new Date().toISOString(),
-      })
-      .commit();
-
     // Also create a caseDocument for this receipt
-    if (payment.caseRef?._id) {
-      const docName = `Justificante Pago ${payment.paymentNumber}`;
-      await writeClient.create({
-        _type: 'caseDocument',
-        case: { _type: 'reference', _ref: payment.caseRef._id },
+    if (existing.caseRef?._id) {
+      const docName = `Justificante Pago ${existing.paymentNumber}`;
+      await caseDocument.createCaseDocument({
+        caseId: existing.caseRef._id,
         category: 'pago',
         fileName: docName,
         fileSize: file.size,
         mimeType: file.type,
+        fileUrl: asset.url,
+        fileAssetId: asset.assetId,
         version: 1,
         isVisibleToClient: true,
         description: docName,
-        file: { _type: 'file', asset: assetRef },
       });
     }
 
@@ -74,9 +62,6 @@ export async function POST(
     return NextResponse.json({ success: true, data: updated });
   } catch (err) {
     console.error('Error uploading receipt:', err);
-    return NextResponse.json(
-      { success: false, error: 'Error subiendo justificante' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error subiendo justificante' }, { status: 500 });
   }
 }
