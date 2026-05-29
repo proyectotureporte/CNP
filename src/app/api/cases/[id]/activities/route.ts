@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { listWorkPlanActivitiesQuery, countActivitiesByStatusQuery } from '@/lib/sanity/queries';
+import { workPlanActivity } from '@/lib/db';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/pusher/server';
 
@@ -11,8 +10,8 @@ export async function GET(
   try {
     const { id } = await params;
     const [activities, counts] = await Promise.all([
-      client.fetch(listWorkPlanActivitiesQuery, { caseId: id }),
-      client.fetch(countActivitiesByStatusQuery, { caseId: id }),
+      workPlanActivity.listWorkPlanActivities(id),
+      workPlanActivity.countActivitiesByStatus(id),
     ]);
     return NextResponse.json({ success: true, data: { activities, counts } });
   } catch {
@@ -34,21 +33,15 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Nombre requerido' }, { status: 400 });
     }
 
-    const doc: { _type: 'workPlanActivity'; [key: string]: unknown } = {
-      _type: 'workPlanActivity',
-      case: { _type: 'reference', _ref: id },
+    const created = await workPlanActivity.createActivity({
+      caseId: id,
       title: body.title.trim(),
       description: body.description || '',
       status: 'pendiente',
-    };
-
-    if (body.dueDate) doc.dueDate = body.dueDate;
-    if (body.assignedTo) doc.assignedTo = { _type: 'reference', _ref: body.assignedTo };
-    if (userId && userId !== 'admin') {
-      doc.createdBy = { _type: 'reference', _ref: userId };
-    }
-
-    const created = await writeClient.create(doc);
+      dueDate: body.dueDate || null,
+      assignedToId: body.assignedTo || null,
+      createdById: userId && userId !== 'admin' ? userId : null,
+    });
 
     logCaseEvent({
       caseId: id,

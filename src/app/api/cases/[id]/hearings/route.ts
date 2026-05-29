@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { listCaseHearingsQuery } from '@/lib/sanity/queries';
+import { hearing } from '@/lib/db';
 import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(
@@ -9,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const hearings = await client.fetch(listCaseHearingsQuery, { caseId: id });
+    const hearings = await hearing.listCaseHearings(id);
     return NextResponse.json({ success: true, data: hearings });
   } catch {
     return NextResponse.json({ success: false, error: 'Error obteniendo audiencias' }, { status: 500 });
@@ -28,9 +27,8 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Fecha programada requerida' }, { status: 400 });
     }
 
-    const doc: { _type: 'hearing'; [key: string]: unknown } = {
-      _type: 'hearing',
-      case: { _type: 'reference', _ref: id },
+    const created = await hearing.createHearing({
+      caseId: id,
       scheduledDate: body.scheduledDate,
       location: body.location || '',
       courtName: body.courtName || '',
@@ -40,9 +38,8 @@ export async function POST(
       result: 'pendiente',
       notes: body.notes || '',
       followUpRequired: false,
-    };
+    });
 
-    const created = await writeClient.create(doc);
     triggerEvent('hearing:created', { caseId: id });
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {

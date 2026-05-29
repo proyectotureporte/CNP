@@ -1,17 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { listCaseDocumentsQuery, listClientVisibleDocumentsQuery, getCaseByIdQuery } from '@/lib/sanity/queries';
+import { cases, caseDocument, query } from '@/lib/db';
+import { uploadFile } from '@/lib/sanity/assets';
 import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
-import { DOCUMENT_CATEGORIES, DOCUMENT_CATEGORY_LABELS, type DocumentCategory, type CaseExpanded } from '@/lib/types';
+import { DOCUMENT_CATEGORIES, DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '@/lib/types';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/pusher/server';
-
-const paymentReceiptsQuery = `*[_type == "payment" && case._ref == $caseId && defined(receiptFile.asset)] | order(paymentNumber asc) {
-  _id, _createdAt, paymentNumber,
-  "fileUrl": receiptFile.asset->url,
-  "fileSize": receiptFile.asset->size,
-  "mimeType": receiptFile.asset->mimeType
-}`;
 
 export async function GET(
   request: NextRequest,
@@ -28,34 +21,31 @@ export async function GET(
     if (userRole === 'cliente') {
       const { owns } = await verifyClientOwnsCase(userId, id);
       if (!owns) {
-        return NextResponse.json(
-          { success: false, error: 'No tiene acceso a este caso' },
-          { status: 403 }
-        );
+        return NextResponse.json({ success: false, error: 'No tiene acceso a este caso' }, { status: 403 });
       }
-      const documents = await client.fetch(listClientVisibleDocumentsQuery, { caseId: id });
+      const documents = await caseDocument.listClientVisibleDocuments(id);
       return NextResponse.json({ success: true, data: documents });
     }
 
-    const documents = await client.fetch(listCaseDocumentsQuery, { caseId: id, category });
+    const docs = await caseDocument.listCaseDocuments(id, category);
+    let data: unknown[] = docs;
 
-    // Also fetch payment receipts directly from payments to ensure they always show
+    // Also surface payment receipts as virtual "pago" documents
     if (!category || category === 'pago') {
-      const paymentReceipts = await client.fetch<{
+      const receipts = await query<{
         _id: string; _createdAt: string; paymentNumber: number;
-        fileUrl: string; fileSize: number; mimeType: string;
-      }[]>(paymentReceiptsQuery, { caseId: id });
-
-      // Deduplicate: check which payment receipts already have a caseDocument
-      const existingPaymentDocNames = new Set(
-        documents
-          .filter((d: { category: string }) => d.category === 'pago')
-          .map((d: { fileName: string }) => d.fileName)
+        fileUrl: string; fileSize: number | null; mimeType: string | null;
+      }>(
+        `SELECT id AS "_id", created_at AS "_createdAt", payment_number AS "paymentNumber",
+           file_url AS "fileUrl", file_size AS "fileSize", mime_type AS "mimeType"
+         FROM payment WHERE case_id = $1 AND file_url IS NOT NULL ORDER BY payment_number ASC`,
+        [id]
       );
 
-      const virtualDocs = paymentReceipts
-        .filter(p => !existingPaymentDocNames.has(`Justificante Pago ${p.paymentNumber}`))
-        .map(p => ({
+      const existing = new Set(docs.filter((d) => d.category === 'pago').map((d) => d.fileName));
+      const virtual = receipts
+        .filter((p) => !existing.has(`Justificante Pago ${p.paymentNumber}`))
+        .map((p) => ({
           _id: `payment-receipt-${p._id}`,
           _createdAt: p._createdAt,
           category: 'pago',
@@ -69,15 +59,12 @@ export async function GET(
           uploadedByName: 'Sistema',
         }));
 
-      documents.push(...virtualDocs);
+      data = [...docs, ...virtual];
     }
 
-    return NextResponse.json({ success: true, data: documents });
+    return NextResponse.json({ success: true, data });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error obteniendo documentos' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error obteniendo documentos' }, { status: 500 });
   }
 }
 
@@ -91,87 +78,53 @@ export async function POST(
     const userName = request.headers.get('x-user-name');
     const userRole = request.headers.get('x-user-role') || '';
 
-    // Portal clients: verify ownership before uploading
     if (userRole === 'cliente') {
       const { owns } = await verifyClientOwnsCase(userId || '', id);
       if (!owns) {
-        return NextResponse.json(
-          { success: false, error: 'No tiene acceso a este caso' },
-          { status: 403 }
-        );
+        return NextResponse.json({ success: false, error: 'No tiene acceso a este caso' }, { status: 403 });
       }
     }
 
-    // Verify case exists
-    const existing = await client.fetch<CaseExpanded | null>(getCaseByIdQuery, { id });
+    const existing = await cases.getCaseById(id);
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Caso no encontrado' },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'Caso no encontrado' }, { status: 404 });
     }
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 
-    // Clients always upload as 'soporte_tecnico' with isVisibleToClient=true
     const isClientUpload = userRole === 'cliente';
     const category = isClientUpload ? 'soporte_tecnico' : ((formData.get('category') as string) || 'otro');
     const description = (formData.get('description') as string) || '';
     const isVisibleToClient = isClientUpload ? true : formData.get('isVisibleToClient') === 'true';
 
     if (!file) {
-      return NextResponse.json(
-        { success: false, error: 'Archivo requerido' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Archivo requerido' }, { status: 400 });
     }
-
     if (!DOCUMENT_CATEGORIES.includes(category as DocumentCategory)) {
-      return NextResponse.json(
-        { success: false, error: 'Categoria no valida' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Categoria no valida' }, { status: 400 });
     }
-
-    // Max file size: 10MB
     if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json(
-        { success: false, error: 'El archivo excede el limite de 10MB' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'El archivo excede el limite de 10MB' }, { status: 400 });
     }
 
-    // Upload file to Sanity assets
     const buffer = Buffer.from(await file.arrayBuffer());
-    const asset = await writeClient.assets.upload('file', buffer, {
-      filename: file.name,
-      contentType: file.type,
-    });
+    const asset = await uploadFile(buffer, file.name, file.type);
 
-    // Create document record
-    const doc: { _type: 'caseDocument'; [key: string]: unknown } = {
-      _type: 'caseDocument',
-      case: { _type: 'reference', _ref: id },
-      category,
+    const created = await caseDocument.createCaseDocument({
+      caseId: id,
+      category: category as DocumentCategory,
       fileName: file.name,
       fileSize: file.size,
       mimeType: file.type,
+      fileUrl: asset.url,
+      fileAssetId: asset.assetId,
       version: 1,
       isVisibleToClient,
       description,
+      uploadedById: userId && userId !== 'admin' ? userId : null,
       uploadedByName: userName || 'Sistema',
-      file: {
-        _type: 'file',
-        asset: { _type: 'reference', _ref: asset._id },
-      },
-    };
-
-    if (userId && userId !== 'admin') {
-      doc.uploadedBy = { _type: 'reference', _ref: userId };
-    }
-
-    const created = await writeClient.create(doc);
+    });
 
     const catLabel = DOCUMENT_CATEGORY_LABELS[category as DocumentCategory] || category;
     logCaseEvent({
@@ -185,9 +138,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error subiendo documento' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error subiendo documento' }, { status: 500 });
   }
 }

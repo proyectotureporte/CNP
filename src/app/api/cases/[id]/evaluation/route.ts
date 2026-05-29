@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getCaseEvaluationQuery } from '@/lib/sanity/queries';
+import { evaluation } from '@/lib/db';
 import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(
@@ -9,8 +8,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const evaluation = await client.fetch(getCaseEvaluationQuery, { caseId: id });
-    return NextResponse.json({ success: true, data: evaluation });
+    const eval_ = await evaluation.getCaseEvaluation(id);
+    return NextResponse.json({ success: true, data: eval_ });
   } catch {
     return NextResponse.json({ success: false, error: 'Error obteniendo evaluacion' }, { status: 500 });
   }
@@ -32,18 +31,15 @@ export async function POST(
 
     const finalScore = Math.round(((punctualityScore + qualityScore + serviceScore) / 3) * 10) / 10;
 
-    const doc: { _type: 'evaluation'; [key: string]: unknown } = {
-      _type: 'evaluation',
-      case: { _type: 'reference', _ref: id },
+    const created = await evaluation.createEvaluation({
+      caseId: id,
+      expertId: expertId || null,
       punctualityScore, qualityScore, serviceScore, finalScore,
       clientFeedback: clientFeedback || '',
       technicalFeedback: technicalFeedback || '',
-    };
+      evaluatedById: userId && userId !== 'admin' ? userId : null,
+    });
 
-    if (expertId) doc.expert = { _type: 'reference', _ref: expertId };
-    if (userId && userId !== 'admin') doc.evaluatedBy = { _type: 'reference', _ref: userId };
-
-    const created = await writeClient.create(doc);
     triggerEvent('evaluation:created', { caseId: id });
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {

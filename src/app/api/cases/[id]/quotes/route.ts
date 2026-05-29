@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { listCaseQuotesQuery, countCaseQuotesQuery, getCaseByIdQuery } from '@/lib/sanity/queries';
+import { cases, quote, caseDocument, payment } from '@/lib/db';
+import { uploadFile } from '@/lib/sanity/assets';
 import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
-import type { Quote, CaseExpanded } from '@/lib/types';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/pusher/server';
 
@@ -15,24 +14,17 @@ export async function GET(
     const userRole = request.headers.get('x-user-role') || '';
     const userId = request.headers.get('x-user-id') || '';
 
-    // Portal clients can only view quotes for their own cases
     if (userRole === 'cliente') {
       const { owns } = await verifyClientOwnsCase(userId, id);
       if (!owns) {
-        return NextResponse.json(
-          { success: false, error: 'No tiene acceso a este caso' },
-          { status: 403 }
-        );
+        return NextResponse.json({ success: false, error: 'No tiene acceso a este caso' }, { status: 403 });
       }
     }
 
-    const quotes = await client.fetch<Quote[]>(listCaseQuotesQuery, { caseId: id });
+    const quotes = await quote.listCaseQuotes(id);
     return NextResponse.json({ success: true, data: quotes });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error obteniendo cotizaciones' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error obteniendo cotizaciones' }, { status: 500 });
   }
 }
 
@@ -44,12 +36,8 @@ export async function POST(
     const { id } = await params;
     const userRole = request.headers.get('x-user-role') || '';
 
-    // Clients cannot create quotes
     if (userRole === 'cliente') {
-      return NextResponse.json(
-        { success: false, error: 'Acceso denegado' },
-        { status: 403 }
-      );
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 
     const userId = request.headers.get('x-user-id');
@@ -58,18 +46,17 @@ export async function POST(
 
     const totalPrice = parseFloat(formData.get('totalPrice') as string);
     const discountPercentage = parseFloat(formData.get('discountPercentage') as string) || 0;
-    const validUntil = formData.get('validUntil') as string || undefined;
-    const notes = formData.get('notes') as string || '';
+    const validUntil = (formData.get('validUntil') as string) || null;
+    const notes = (formData.get('notes') as string) || '';
     const quoteFile = formData.get('quoteDocument') as File | null;
-    const firstPaymentDate = formData.get('firstPaymentDate') as string || undefined;
-    const lastPaymentDate = formData.get('lastPaymentDate') as string || undefined;
+    const firstPaymentDate = (formData.get('firstPaymentDate') as string) || null;
+    const lastPaymentDate = (formData.get('lastPaymentDate') as string) || null;
     const customSplit = formData.get('customSplit') === 'true';
     const firstPaymentPercentage = customSplit
       ? parseFloat(formData.get('firstPaymentPercentage') as string) || 50
       : 50;
 
-    // Verify case exists
-    const existing = await client.fetch<CaseExpanded | null>(getCaseByIdQuery, { id });
+    const existing = await cases.getCaseById(id);
     if (!existing) {
       return NextResponse.json({ success: false, error: 'Caso no encontrado' }, { status: 404 });
     }
@@ -81,63 +68,56 @@ export async function POST(
       );
     }
 
-    // Calculate final value
     const finalValue = totalPrice - (totalPrice * discountPercentage / 100);
+    const count = await quote.countCaseQuotes(id);
+    const version = count + 1;
 
-    // Get next version number
-    const count = await client.fetch<number>(countCaseQuotesQuery, { caseId: id });
-
-    // Upload file if provided
-    let quoteDocumentAsset: { _type: 'reference'; _ref: string } | undefined;
+    // Upload quote document if provided
+    let asset: Awaited<ReturnType<typeof uploadFile>> | null = null;
     if (quoteFile && quoteFile.size > 0) {
       const buffer = Buffer.from(await quoteFile.arrayBuffer());
-      const asset = await writeClient.assets.upload('file', buffer, {
-        filename: quoteFile.name,
-        contentType: quoteFile.type,
-      });
-      quoteDocumentAsset = { _type: 'reference', _ref: asset._id };
+      asset = await uploadFile(buffer, quoteFile.name, quoteFile.type);
     }
 
-    const doc: { _type: 'quote'; [key: string]: unknown } = {
-      _type: 'quote',
-      case: { _type: 'reference', _ref: id },
-      version: count + 1,
+    const created = await quote.createQuote({
+      caseId: id,
+      version,
       totalPrice,
       discountPercentage,
       finalValue,
       status: 'borrador',
       notes,
-      validUntil: validUntil || undefined,
-      firstPaymentDate: firstPaymentDate || undefined,
-      lastPaymentDate: lastPaymentDate || undefined,
+      validUntil,
+      firstPaymentDate,
+      lastPaymentDate,
       customSplit,
       firstPaymentPercentage,
-    };
+      createdById: userId && userId !== 'admin' ? userId : null,
+      fileUrl: asset?.url,
+      fileAssetId: asset?.assetId,
+      fileName: asset?.originalFilename,
+      mimeType: asset?.mimeType,
+      fileSize: asset?.size,
+    });
 
-    if (quoteDocumentAsset) {
-      doc.quoteDocument = { _type: 'file', asset: quoteDocumentAsset };
+    if (!created) {
+      return NextResponse.json({ success: false, error: 'Error creando cotizacion' }, { status: 500 });
     }
-
-    if (userId && userId !== 'admin') {
-      doc.createdBy = { _type: 'reference', _ref: userId };
-    }
-
-    const created = await writeClient.create(doc);
 
     // Also create a caseDocument if file was uploaded
-    if (quoteDocumentAsset && quoteFile) {
-      await writeClient.create({
-        _type: 'caseDocument',
-        case: { _type: 'reference', _ref: id },
+    if (asset && quoteFile) {
+      await caseDocument.createCaseDocument({
+        caseId: id,
         category: 'cotizacion',
         fileName: quoteFile.name,
         fileSize: quoteFile.size,
         mimeType: quoteFile.type,
-        version: count + 1,
+        fileUrl: asset.url,
+        fileAssetId: asset.assetId,
+        version,
         isVisibleToClient: true,
-        description: `Documento de cotizacion v${count + 1}`,
-        file: { _type: 'file', asset: quoteDocumentAsset },
-        ...(userId && userId !== 'admin' ? { createdBy: { _type: 'reference', _ref: userId } } : {}),
+        description: `Documento de cotizacion v${version}`,
+        uploadedById: userId && userId !== 'admin' ? userId : null,
       });
     }
 
@@ -145,36 +125,25 @@ export async function POST(
     const secondPercentage = 100 - firstPaymentPercentage;
     const payment1Amount = Math.round(finalValue * firstPaymentPercentage / 100);
     const payment2Amount = finalValue - payment1Amount;
-
-    const paymentBase = {
-      _type: 'payment' as const,
-      case: { _type: 'reference' as const, _ref: id },
-      quote: { _type: 'reference' as const, _ref: created._id },
-      status: 'pendiente',
-      ...(userId && userId !== 'admin' ? { createdBy: { _type: 'reference' as const, _ref: userId } } : {}),
-    };
+    const createdById = userId && userId !== 'admin' ? userId : null;
 
     await Promise.all([
-      writeClient.create({
-        ...paymentBase,
-        paymentNumber: 1,
-        amount: payment1Amount,
-        percentage: firstPaymentPercentage,
-        dueDate: firstPaymentDate || undefined,
+      payment.createPayment({
+        caseId: id, quoteId: created._id, paymentNumber: 1,
+        amount: payment1Amount, percentage: firstPaymentPercentage,
+        dueDate: firstPaymentDate, status: 'pendiente', createdById,
       }),
-      writeClient.create({
-        ...paymentBase,
-        paymentNumber: 2,
-        amount: payment2Amount,
-        percentage: secondPercentage,
-        dueDate: lastPaymentDate || undefined,
+      payment.createPayment({
+        caseId: id, quoteId: created._id, paymentNumber: 2,
+        amount: payment2Amount, percentage: secondPercentage,
+        dueDate: lastPaymentDate, status: 'pendiente', createdById,
       }),
     ]);
 
     logCaseEvent({
       caseId: id,
       eventType: 'quote_created',
-      description: `Cotizacion v${count + 1} creada por $${finalValue.toLocaleString('es-CO')}`,
+      description: `Cotizacion v${version} creada por $${finalValue.toLocaleString('es-CO')}`,
       userId, userName,
     });
 
@@ -183,9 +152,6 @@ export async function POST(
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (err) {
     console.error('Error creating quote:', err);
-    return NextResponse.json(
-      { success: false, error: 'Error creando cotizacion' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error creando cotizacion' }, { status: 500 });
   }
 }
