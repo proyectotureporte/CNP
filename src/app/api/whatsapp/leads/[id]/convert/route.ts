@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { whatsappLead, crmClient, crmUser } from '@/lib/db';
 import { hashPassword } from '@/lib/auth/passwords';
 import { sendCredentialsEmail } from '@/lib/email';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 export async function POST(
   request: NextRequest,

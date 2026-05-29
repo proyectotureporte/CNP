@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { workPlan, workPlanActivity } from '@/lib/db';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 export async function GET(
   _request: NextRequest,

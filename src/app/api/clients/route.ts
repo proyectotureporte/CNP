@@ -3,7 +3,7 @@ import { crmClient, crmUser, registroPeritus } from '@/lib/db';
 import { verifyToken } from '@/lib/auth/jwt';
 import { hashPassword } from '@/lib/auth/passwords';
 import { sendCredentialsEmail } from '@/lib/email';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 export async function GET(request: NextRequest) {
   try {

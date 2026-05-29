@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { crmUser } from '@/lib/db';
 import { hashPassword } from '@/lib/auth/passwords';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 import { USER_ROLES, type UserRole } from '@/lib/types';
 
 export async function GET() {

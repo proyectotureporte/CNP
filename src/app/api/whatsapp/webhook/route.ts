@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { whatsappLead, whatsappMessage } from '@/lib/db';
 import { uploadFile } from '@/lib/sanity/assets';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 // Public endpoint for n8n automation - protected by API key
 export async function POST(request: NextRequest) {

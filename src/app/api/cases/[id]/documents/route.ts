@@ -4,7 +4,7 @@ import { uploadFile } from '@/lib/sanity/assets';
 import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
 import { DOCUMENT_CATEGORIES, DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '@/lib/types';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 export async function GET(
   request: NextRequest,

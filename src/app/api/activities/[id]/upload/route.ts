@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { workPlanActivity } from '@/lib/db';
 import { uploadFile } from '@/lib/sanity/assets';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 export async function POST(
   request: NextRequest,

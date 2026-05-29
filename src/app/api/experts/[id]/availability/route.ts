@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { expert } from '@/lib/db';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 import type { ExpertAvailability } from '@/lib/types';
 
 export async function PUT(

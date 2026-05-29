@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { whatsappLead } from '@/lib/db';
 import type { LeadStatus } from '@/lib/types';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 export async function GET(
   _request: NextRequest,

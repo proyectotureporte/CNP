@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { workPlanActivity } from '@/lib/db';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 export async function GET(
   _request: NextRequest,

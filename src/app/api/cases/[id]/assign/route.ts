@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cases, crmUser } from '@/lib/db';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 type AssignRole = 'commercial' | 'technicalAnalyst' | 'assignedExpert';
 

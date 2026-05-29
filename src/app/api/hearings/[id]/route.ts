@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hearing } from '@/lib/db';
 import type { HearingResult } from '@/lib/types';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 export async function PUT(
   request: NextRequest,

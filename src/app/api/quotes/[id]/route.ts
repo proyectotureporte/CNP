@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { quote, payment } from '@/lib/db';
 import { uploadFile } from '@/lib/sanity/assets';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 export async function GET(
   request: NextRequest,

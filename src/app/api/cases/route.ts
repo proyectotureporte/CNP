@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cases, crmClient, caseDocument, query } from '@/lib/db';
 import { getClientIdForUser } from '@/lib/auth/clientAccess';
 import { CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES } from '@/lib/types';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 function generateCaseCode(latestCode: string | null, brand: string): string {
   const year = new Date().getFullYear();

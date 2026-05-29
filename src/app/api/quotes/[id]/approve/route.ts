@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { quote } from '@/lib/db';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import type { Quote } from '@/lib/types';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 type QuoteWithCase = Quote & { case?: { _id: string; caseCode: string; title: string } };
 

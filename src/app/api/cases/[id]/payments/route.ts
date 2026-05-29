@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { payment } from '@/lib/db';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {

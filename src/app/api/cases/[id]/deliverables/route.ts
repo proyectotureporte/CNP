@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { deliverable } from '@/lib/db';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 import type { DeliverablePhase } from '@/lib/types';
 
 export async function GET(

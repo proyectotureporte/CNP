@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { getPusherClient } from '@/lib/pusher/client';
-import type { Channel } from 'pusher-js';
+import { realtimeClient } from '@/lib/realtime/client';
 
 /**
- * Subscribe to one or more Pusher events on the 'crm' channel.
- * Calls `onEvent` whenever any of the listed events fires.
+ * Suscribe a uno o más eventos de tiempo real (canal 'crm').
+ * Llama a `onEvent` cada vez que se dispara alguno de los eventos listados.
+ *
+ * (Reimplementado sobre WebSockets nativos; el nombre se mantiene para no
+ * tocar los componentes que ya lo consumen.)
  */
 export function usePusher(
   events: string | string[],
@@ -15,22 +17,14 @@ export function usePusher(
   const callbackRef = useRef(onEvent);
   callbackRef.current = onEvent;
 
+  const key = Array.isArray(events) ? events.join(',') : events;
+
   useEffect(() => {
-    const pusher = getPusherClient();
-    const channel: Channel = pusher.subscribe('crm');
-
     const eventList = Array.isArray(events) ? events : [events];
-
-    const handlers = eventList.map((evt) => {
-      const handler = (data: Record<string, unknown>) => {
-        callbackRef.current(evt, data);
-      };
-      channel.bind(evt, handler);
-      return { evt, handler };
+    const unsubscribe = realtimeClient.subscribe(eventList, (evt, data) => {
+      callbackRef.current(evt, data);
     });
-
-    return () => {
-      handlers.forEach(({ evt, handler }) => channel.unbind(evt, handler));
-    };
-  }, [Array.isArray(events) ? events.join(',') : events]); // eslint-disable-line react-hooks/exhaustive-deps
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 }

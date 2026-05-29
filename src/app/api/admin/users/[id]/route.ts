@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { crmUser } from '@/lib/db';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 export async function DELETE(
   _request: NextRequest,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cases, expert } from '@/lib/db';
 import type { Expert } from '@/lib/types';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 interface ScoredExpert extends Expert {
   score: number;

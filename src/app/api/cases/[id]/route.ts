@@ -5,7 +5,7 @@ import {
   CASE_STATUSES, CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES,
   type CaseStatus,
 } from '@/lib/types';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 // Valid state transitions map
 const VALID_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {

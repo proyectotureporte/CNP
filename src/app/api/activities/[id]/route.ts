@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { workPlanActivity } from '@/lib/db';
 import { ACTIVITY_STATUS_LABELS, type ActivityStatus } from '@/lib/types';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
-import { triggerEvent } from '@/lib/pusher/server';
+import { triggerEvent } from '@/lib/realtime/server';
 
 export async function PUT(
   request: NextRequest,
