@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client } from '@/lib/sanity/client';
-import { listUserNotificationsQuery, countUnreadNotificationsQuery } from '@/lib/sanity/queries';
+import { notification } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,12 +11,11 @@ export async function GET(request: NextRequest) {
     const unreadOnly = searchParams.get('unreadOnly') === 'true';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const start = (page - 1) * limit;
-    const end = start + limit;
+    const offset = (page - 1) * limit;
 
     const [notifications, unreadCount] = await Promise.all([
-      client.fetch(listUserNotificationsQuery, { userId, unreadOnly, start, end }),
-      client.fetch(countUnreadNotificationsQuery, { userId }),
+      notification.listUserNotifications(userId, unreadOnly, limit, offset),
+      notification.countUnreadNotifications(userId),
     ]);
 
     return NextResponse.json({ success: true, data: notifications, unreadCount });

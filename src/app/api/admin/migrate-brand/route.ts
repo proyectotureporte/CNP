@@ -1,30 +1,20 @@
 import { NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
+import { query } from '@/lib/db';
 
 export async function POST() {
   try {
-    // Find all cases that don't have a brand field defined
-    const casesWithoutBrand = await client.fetch<{ _id: string }[]>(
-      `*[_type == "case" && !defined(brand)]{ _id }`
-    );
-
-    if (casesWithoutBrand.length === 0) {
-      return NextResponse.json({
-        success: true,
-        data: { updated: 0, message: 'Todos los casos ya tienen brand asignado' },
-      });
-    }
-
-    // Patch each case to set brand = "CNP"
-    const transaction = writeClient.transaction();
-    for (const c of casesWithoutBrand) {
-      transaction.patch(c._id, (patch) => patch.set({ brand: 'CNP' }));
-    }
-    await transaction.commit();
+    // En PostgreSQL la columna brand es NOT NULL DEFAULT 'CNP', así que no debería
+    // haber casos sin brand. Se mantiene por compatibilidad con el flujo anterior.
+    const updated = await query<{ id: string }>(`UPDATE cases SET brand = 'CNP' WHERE brand IS NULL RETURNING id`);
 
     return NextResponse.json({
       success: true,
-      data: { updated: casesWithoutBrand.length, message: `Se actualizaron ${casesWithoutBrand.length} casos con brand "CNP"` },
+      data: {
+        updated: updated.length,
+        message: updated.length
+          ? `Se actualizaron ${updated.length} casos con brand "CNP"`
+          : 'Todos los casos ya tienen brand asignado',
+      },
     });
   } catch {
     return NextResponse.json({ success: false, error: 'Error en migracion de brand' }, { status: 500 });

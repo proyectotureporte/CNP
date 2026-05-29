@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeClient, client } from '@/lib/sanity/client';
-import { getWhatsappLeadByPhoneQuery } from '@/lib/sanity/queries';
+import { whatsappLead, whatsappMessage } from '@/lib/db';
+import { uploadFile } from '@/lib/sanity/assets';
 import { triggerEvent } from '@/lib/pusher/server';
 
 // Public endpoint for n8n automation - protected by API key
@@ -16,43 +16,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { type } = body;
 
-    if (type === 'message') {
-      return handleMessage(body);
-    } else if (type === 'complete') {
-      return handleComplete(body);
-    } else if (type === 'document') {
-      return handleDocument(request, body);
-    }
+    if (type === 'message') return handleMessage(body);
+    if (type === 'complete') return handleComplete(body);
+    if (type === 'document') return handleDocument(body);
 
     return NextResponse.json({ success: false, error: 'Tipo no válido' }, { status: 400 });
   } catch (err) {
     console.error('[whatsapp/webhook] Error:', err);
     return NextResponse.json({ success: false, error: 'Error procesando webhook' }, { status: 500 });
   }
-}
-
-async function findOrCreateLead(phone: string) {
-  const existing = await client.fetch<{ _id: string; status: string } | null>(
-    getWhatsappLeadByPhoneQuery,
-    { phone }
-  );
-
-  if (existing) return existing._id;
-
-  const lead = await writeClient.create({
-    _type: 'whatsappLead',
-    phone,
-    name: '',
-    city: '',
-    motive: '',
-    brand: 'Peritus',
-    status: 'nuevo',
-    aiCompleted: false,
-    unreadCount: 0,
-    lastMessageAt: new Date().toISOString(),
-  });
-
-  return lead._id;
 }
 
 async function handleMessage(body: {
@@ -67,26 +39,21 @@ async function handleMessage(body: {
     return NextResponse.json({ success: false, error: 'phone y content requeridos' }, { status: 400 });
   }
 
-  const leadId = await findOrCreateLead(phone);
-  const now = new Date().toISOString();
+  const leadId = await whatsappLead.findOrCreateLeadByPhone(phone);
 
-  // Save message
-  await writeClient.create({
-    _type: 'whatsappMessage',
-    lead: { _type: 'reference', _ref: leadId },
+  await whatsappMessage.createWhatsappMessage({
+    leadId,
     direction,
     content,
     sender: sender || (direction === 'incoming' ? 'client' : 'ai'),
-    timestamp: now,
+    timestamp: new Date().toISOString(),
   });
 
-  // Update lead
-  const patch = writeClient.patch(leadId).set({ lastMessageAt: now });
   if (direction === 'incoming') {
-    patch.inc({ unreadCount: 1 });
-    patch.set({ status: 'en_conversacion' });
+    await whatsappLead.touchLeadIncomingMessage(leadId);
+  } else {
+    await whatsappLead.setLeadLastMessageNow(leadId);
   }
-  await patch.commit();
 
   triggerEvent('whatsapp:message', {});
 
@@ -107,13 +74,12 @@ async function handleComplete(body: {
     return NextResponse.json({ success: false, error: 'phone requerido' }, { status: 400 });
   }
 
-  const leadId = await findOrCreateLead(phone);
+  const leadId = await whatsappLead.findOrCreateLeadByPhone(phone);
 
-  // Determine brand based on observacion (CNP: "Sí" = financial)
   const isCNP = observacion?.toLowerCase().includes('s') && observacion?.toLowerCase() !== 'no' && observacion?.toLowerCase() !== 'no aplica';
   const brand = isCNP ? 'CNP' : 'Peritus';
 
-  await writeClient.patch(leadId).set({
+  await whatsappLead.updateWhatsappLead(leadId, {
     name: nombre || '',
     city: ciudad || '',
     motive: motivo || '',
@@ -122,14 +88,14 @@ async function handleComplete(body: {
     aiCompleted: true,
     aiSummary: mensaje || '',
     lastMessageAt: new Date().toISOString(),
-  }).commit();
+  });
 
   triggerEvent('whatsapp:message', {});
 
   return NextResponse.json({ success: true, leadId, brand }, { status: 200 });
 }
 
-async function handleDocument(request: NextRequest, body: {
+async function handleDocument(body: {
   phone: string;
   fileName: string;
   mimeType: string;
@@ -142,43 +108,30 @@ async function handleDocument(request: NextRequest, body: {
     return NextResponse.json({ success: false, error: 'phone y fileName requeridos' }, { status: 400 });
   }
 
-  const leadId = await findOrCreateLead(phone);
+  const leadId = await whatsappLead.findOrCreateLeadByPhone(phone);
 
-  let assetRef: string | undefined;
-
+  let buffer: Buffer | null = null;
   if (fileBase64) {
-    // Upload base64 file to Sanity
-    const buffer = Buffer.from(fileBase64, 'base64');
-    const asset = await writeClient.assets.upload('file', buffer, {
-      filename: fileName,
-      contentType: mimeType || 'application/octet-stream',
-    });
-    assetRef = asset._id;
+    buffer = Buffer.from(fileBase64, 'base64');
   } else if (fileUrl) {
-    // Download from URL and upload to Sanity
     const response = await fetch(fileUrl);
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const asset = await writeClient.assets.upload('file', buffer, {
-      filename: fileName,
-      contentType: mimeType || 'application/octet-stream',
-    });
-    assetRef = asset._id;
+    buffer = Buffer.from(await response.arrayBuffer());
   }
 
-  if (assetRef) {
-    await writeClient.patch(leadId).setIfMissing({ documents: [] }).append('documents', [{
-      _key: crypto.randomUUID().replace(/-/g, '').slice(0, 12),
+  if (buffer) {
+    const asset = await uploadFile(buffer, fileName, mimeType || 'application/octet-stream');
+    await whatsappLead.addLeadDocument({
+      leadId,
+      fileUrl: asset.url,
+      fileAssetId: asset.assetId,
       fileName,
       mimeType: mimeType || 'application/octet-stream',
-      file: { _type: 'file', asset: { _type: 'reference', _ref: assetRef } },
-    }]).commit();
+      fileSize: asset.size,
+    });
   }
 
-  // Also save as a message for the conversation
-  await writeClient.create({
-    _type: 'whatsappMessage',
-    lead: { _type: 'reference', _ref: leadId },
+  await whatsappMessage.createWhatsappMessage({
+    leadId,
     direction: 'incoming',
     content: `Documento enviado: ${fileName}`,
     sender: 'client',
@@ -187,7 +140,7 @@ async function handleDocument(request: NextRequest, body: {
     fileName,
   });
 
-  await writeClient.patch(leadId).set({ lastMessageAt: new Date().toISOString() }).inc({ unreadCount: 1 }).commit();
+  await whatsappLead.touchLeadIncomingMessage(leadId);
 
   triggerEvent('whatsapp:message', {});
 

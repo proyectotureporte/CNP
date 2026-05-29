@@ -16,21 +16,29 @@ types.setTypeParser(1114, (v) => (v === null ? null : new Date(v + 'Z').toISOStr
 // ----------------------------------------------------------------------------
 const globalForPg = globalThis as unknown as { __cnpPgPool?: Pool };
 
-function createPool(): Pool {
+/**
+ * Pool perezoso: se crea en la primera consulta, no al importar el módulo.
+ * Esto evita que `next build` falle cuando DATABASE_URL aún no está definida
+ * (los route handlers se importan en build y leen este módulo).
+ */
+function getPool(): Pool {
+  if (globalForPg.__cnpPgPool) return globalForPg.__cnpPgPool;
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error('DATABASE_URL no está configurada');
   }
-  return new Pool({
+  const pool = new Pool({
     connectionString,
     max: Number(process.env.PG_POOL_MAX ?? 10),
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,
   });
+  globalForPg.__cnpPgPool = pool;
+  return pool;
 }
 
-export const pool: Pool = globalForPg.__cnpPgPool ?? createPool();
-if (process.env.NODE_ENV !== 'production') globalForPg.__cnpPgPool = pool;
+/** Acceso directo al pool (creación perezosa). */
+export const getDbPool = getPool;
 
 // ----------------------------------------------------------------------------
 // Helpers de consulta
@@ -39,7 +47,7 @@ export async function query<T = Record<string, unknown>>(
   text: string,
   params: unknown[] = [],
 ): Promise<T[]> {
-  const res = await pool.query(text, params as unknown[]);
+  const res = await getPool().query(text, params as unknown[]);
   return res.rows as T[];
 }
 
@@ -53,7 +61,7 @@ export async function queryOne<T = Record<string, unknown>>(
 
 /** Ejecuta `fn` dentro de una transacción (BEGIN/COMMIT, ROLLBACK ante error). */
 export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
-  const client = await pool.connect();
+  const client = await getPool().connect();
   try {
     await client.query('BEGIN');
     const result = await fn(client);

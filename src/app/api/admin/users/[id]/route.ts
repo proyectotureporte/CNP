@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeClient } from '@/lib/sanity/client';
+import { crmUser } from '@/lib/db';
 import { triggerEvent } from '@/lib/pusher/server';
 
 export async function DELETE(
@@ -9,18 +9,12 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    await writeClient.patch(id).set({ active: false }).commit();
+    await crmUser.updateUser(id, { active: false });
 
     triggerEvent('user:updated', { id });
 
-    return NextResponse.json({
-      success: true,
-      data: { message: 'Usuario desactivado' },
-    });
+    return NextResponse.json({ success: true, data: { message: 'Usuario desactivado' } });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error desactivando usuario' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error desactivando usuario' }, { status: 500 });
   }
 }

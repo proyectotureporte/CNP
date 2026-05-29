@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
+import { queryOne, crmUser } from '@/lib/db';
 import { hashPassword } from '@/lib/auth/passwords';
 import { sendCredentialsEmail } from '@/lib/email';
 
@@ -10,71 +10,47 @@ export async function POST(
   try {
     const { id } = await params;
 
-    // Get the client data
-    const crmClient = await client.fetch<{ _id: string; name: string; email: string } | null>(
-      `*[_type == "crmClient" && _id == $id][0]{ _id, name, email }`,
-      { id }
+    const clientRow = await queryOne<{ id: string; name: string; email: string | null }>(
+      'SELECT id, name, email FROM crm_client WHERE id = $1',
+      [id]
     );
 
-    if (!crmClient) {
-      return NextResponse.json(
-        { success: false, error: 'Cliente no encontrado' },
-        { status: 404 }
-      );
+    if (!clientRow) {
+      return NextResponse.json({ success: false, error: 'Cliente no encontrado' }, { status: 404 });
+    }
+    if (!clientRow.email) {
+      return NextResponse.json({ success: false, error: 'El cliente no tiene email registrado' }, { status: 400 });
     }
 
-    if (!crmClient.email) {
-      return NextResponse.json(
-        { success: false, error: 'El cliente no tiene email registrado' },
-        { status: 400 }
-      );
-    }
-
-    // Find the associated crmUser
-    const crmUser = await client.fetch<{ _id: string } | null>(
-      `*[_type == "crmUser" && email == $email && role == "cliente" && active == true][0]{ _id }`,
-      { email: crmClient.email }
+    const portalUser = await queryOne<{ id: string }>(
+      `SELECT id FROM crm_user WHERE lower(email) = lower($1) AND role = 'cliente' AND active = TRUE LIMIT 1`,
+      [clientRow.email]
     );
 
-    if (!crmUser) {
-      return NextResponse.json(
-        { success: false, error: 'No existe usuario portal para este cliente' },
-        { status: 404 }
-      );
+    if (!portalUser) {
+      return NextResponse.json({ success: false, error: 'No existe usuario portal para este cliente' }, { status: 404 });
     }
 
-    // Generate new password
-    const suffix = crmClient._id.slice(-4);
+    const suffix = clientRow.id.slice(-4);
     const timestamp = Date.now().toString(36).slice(-3);
     const newPassword = `CNP${suffix}${timestamp}`;
     const passwordHash = await hashPassword(newPassword);
 
-    // Update the user
-    await writeClient.patch(crmUser._id).set({
-      passwordHash,
-      mustChangePassword: true,
-    }).commit();
+    await crmUser.setUserPassword(portalUser.id, passwordHash, true);
 
-    // Fire-and-forget: send email
     sendCredentialsEmail({
-      to: crmClient.email,
-      clientName: crmClient.name,
-      username: crmClient.email,
+      to: clientRow.email,
+      clientName: clientRow.name,
+      username: clientRow.email,
       password: newPassword,
     }).catch((err) => console.error('[reset-password] Email send failed:', err));
 
     return NextResponse.json({
       success: true,
-      data: {
-        message: 'Contraseña reseteada exitosamente',
-        password: newPassword,
-      },
+      data: { message: 'Contraseña reseteada exitosamente', password: newPassword },
     });
   } catch (err) {
     console.error('[reset-password] Error:', err);
-    return NextResponse.json(
-      { success: false, error: 'Error reseteando contraseña' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error reseteando contraseña' }, { status: 500 });
   }
 }

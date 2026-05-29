@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
+import { notification } from '@/lib/db';
 import { triggerEvent } from '@/lib/pusher/server';
 
 export async function PUT(request: NextRequest) {
@@ -9,21 +9,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    const unread = await client.fetch<{ _id: string }[]>(
-      `*[_type == "notification" && user._ref == $userId && isRead == false] { _id }`,
-      { userId }
-    );
-
-    const now = new Date().toISOString();
-    const transaction = writeClient.transaction();
-    for (const n of unread) {
-      transaction.patch(n._id, (p) => p.set({ isRead: true, readAt: now }));
-    }
-    await transaction.commit();
+    await notification.markAllNotificationsRead(userId);
 
     triggerEvent('notification:read', { all: true });
 
-    return NextResponse.json({ success: true, data: { marked: unread.length } });
+    return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ success: false, error: 'Error marcando notificaciones' }, { status: 500 });
   }

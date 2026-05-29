@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { listWhatsappMessagesQuery } from '@/lib/sanity/queries';
+import { whatsappMessage, whatsappLead, queryOne } from '@/lib/db';
 import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const messages = await client.fetch(listWhatsappMessagesQuery, { leadId: id });
+    const messages = await whatsappMessage.listWhatsappMessages(id);
     return NextResponse.json({ success: true, data: messages });
   } catch (err) {
     console.error('[whatsapp/leads/id/messages] GET error:', err);
@@ -32,12 +31,7 @@ export async function POST(
 
     const agentName = request.headers.get('x-user-name') || 'Agente';
 
-    // Get lead phone number
-    const lead = await client.fetch<{ phone: string } | null>(
-      `*[_type == "whatsappLead" && _id == $id][0]{ phone }`,
-      { id }
-    );
-
+    const lead = await queryOne<{ phone: string }>('SELECT phone FROM whatsapp_lead WHERE id = $1', [id]);
     if (!lead) {
       return NextResponse.json({ success: false, error: 'Lead no encontrado' }, { status: 404 });
     }
@@ -53,14 +47,8 @@ export async function POST(
 
     const waResponse = await fetch(`${evolutionUrl}/message/sendText/${evolutionInstance}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: evolutionKey,
-      },
-      body: JSON.stringify({
-        number: lead.phone,
-        text: content.trim(),
-      }),
+      headers: { 'Content-Type': 'application/json', apikey: evolutionKey },
+      body: JSON.stringify({ number: lead.phone, text: content.trim() }),
     });
 
     if (!waResponse.ok) {
@@ -69,24 +57,20 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Error enviando mensaje WhatsApp' }, { status: 502 });
     }
 
-    // Save message in Sanity
-    const now = new Date().toISOString();
-    const message = await writeClient.create({
-      _type: 'whatsappMessage',
-      lead: { _type: 'reference', _ref: id },
+    const messageId = await whatsappMessage.createWhatsappMessage({
+      leadId: id,
       direction: 'outgoing',
       content: content.trim(),
       sender: 'agent',
       agentName,
-      timestamp: now,
+      timestamp: new Date().toISOString(),
     });
 
-    // Update lead timestamp
-    await writeClient.patch(id).set({ lastMessageAt: now }).commit();
+    await whatsappLead.setLeadLastMessageNow(id);
 
     triggerEvent('whatsapp:message', { leadId: id });
 
-    return NextResponse.json({ success: true, data: message }, { status: 201 });
+    return NextResponse.json({ success: true, data: { _id: messageId } }, { status: 201 });
   } catch (err) {
     console.error('[whatsapp/leads/id/messages] POST error:', err);
     return NextResponse.json({ success: false, error: 'Error enviando mensaje' }, { status: 500 });

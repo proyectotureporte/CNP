@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, signToken } from '@/lib/auth/jwt';
-import { writeClient } from '@/lib/sanity/client';
+import { crmUser } from '@/lib/db';
 import { hashPassword } from '@/lib/auth/passwords';
 
 export async function POST(request: NextRequest) {
@@ -19,20 +19,12 @@ export async function POST(request: NextRequest) {
     const { newPassword } = body as { newPassword?: string };
 
     if (!newPassword || newPassword.length < 6) {
-      return NextResponse.json(
-        { success: false, error: 'La contrasena debe tener al menos 6 caracteres' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'La contrasena debe tener al menos 6 caracteres' }, { status: 400 });
     }
 
     const passwordHash = await hashPassword(newPassword);
+    await crmUser.setUserPassword(payload.sub, passwordHash, false);
 
-    await writeClient
-      .patch(payload.sub)
-      .set({ passwordHash, mustChangePassword: false })
-      .commit();
-
-    // Re-sign token with same data
     const newToken = await signToken({
       sub: payload.sub,
       role: payload.role,
@@ -50,9 +42,6 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error cambiando contrasena' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error cambiando contrasena' }, { status: 500 });
   }
 }

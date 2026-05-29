@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { listAllCrmUsersQuery, getCrmUserByEmailQuery } from '@/lib/sanity/queries';
+import { crmUser } from '@/lib/db';
 import { hashPassword } from '@/lib/auth/passwords';
 import { triggerEvent } from '@/lib/pusher/server';
-import type { CrmUser, UserRole } from '@/lib/types';
-import { USER_ROLES } from '@/lib/types';
+import { USER_ROLES, type UserRole } from '@/lib/types';
 
 export async function GET() {
   try {
-    const users = await client.fetch<CrmUser[]>(listAllCrmUsersQuery);
+    const users = await crmUser.listUsers();
     return NextResponse.json({ success: true, data: users });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error obteniendo usuarios' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error obteniendo usuarios' }, { status: 500 });
   }
 }
 
@@ -31,34 +26,22 @@ export async function POST(request: NextRequest) {
     };
 
     if (!email || !displayName || !password) {
-      return NextResponse.json(
-        { success: false, error: 'Email, nombre y contrasena son requeridos' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Email, nombre y contrasena son requeridos' }, { status: 400 });
     }
 
-    // Validate role if provided
     const userRole = role || 'juridico';
     if (!USER_ROLES.includes(userRole)) {
-      return NextResponse.json(
-        { success: false, error: 'Rol invalido' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Rol invalido' }, { status: 400 });
     }
 
-    // Check if email already exists
-    const existing = await client.fetch<CrmUser | null>(getCrmUserByEmailQuery, { email });
+    const existing = await crmUser.getUserByEmail(email);
     if (existing) {
-      return NextResponse.json(
-        { success: false, error: 'El email ya esta registrado' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'El email ya esta registrado' }, { status: 400 });
     }
 
     const passwordHash = await hashPassword(password);
 
-    const user = await writeClient.create({
-      _type: 'crmUser',
+    const user = await crmUser.createUser({
       username: username || displayName,
       displayName,
       email,
@@ -68,25 +51,11 @@ export async function POST(request: NextRequest) {
       active: true,
     });
 
-    triggerEvent('user:created', { id: user._id });
+    if (user) triggerEvent('user:created', { id: user._id });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        _id: user._id,
-        username: username || displayName,
-        displayName,
-        email,
-        phone: phone || '',
-        role: userRole,
-        active: true,
-      },
-    }, { status: 201 });
+    return NextResponse.json({ success: true, data: user }, { status: 201 });
   } catch (error) {
     console.error('Error POST /api/admin/users:', error);
-    return NextResponse.json(
-      { success: false, error: 'Error creando usuario' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error creando usuario' }, { status: 500 });
   }
 }

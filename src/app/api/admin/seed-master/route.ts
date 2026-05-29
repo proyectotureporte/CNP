@@ -1,27 +1,19 @@
 import { NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
+import { crmUser } from '@/lib/db';
 import { hashPassword } from '@/lib/auth/passwords';
 
 const MASTER_EMAIL = 'maestro@cnp.com.co';
 
 export async function POST() {
   try {
-    const existing = await client.fetch<{ _id: string } | null>(
-      `*[_type == "crmUser" && email == $email][0]{ _id }`,
-      { email: MASTER_EMAIL }
-    );
-
+    const existing = await crmUser.getUserByEmail(MASTER_EMAIL);
     if (existing) {
-      return NextResponse.json(
-        { success: false, error: 'El usuario maestro ya existe' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'El usuario maestro ya existe' }, { status: 400 });
     }
 
     const passwordHash = await hashPassword('Prueba1234*');
 
-    await writeClient.create({
-      _type: 'crmUser',
+    await crmUser.createUser({
       username: MASTER_EMAIL,
       email: MASTER_EMAIL,
       displayName: 'Usuario Maestro',
@@ -32,14 +24,8 @@ export async function POST() {
       mustChangePassword: false,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: { message: 'Usuario maestro creado', email: MASTER_EMAIL },
-    });
+    return NextResponse.json({ success: true, data: { message: 'Usuario maestro creado', email: MASTER_EMAIL } });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error creando usuario maestro' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error creando usuario maestro' }, { status: 500 });
   }
 }

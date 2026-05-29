@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client } from '@/lib/sanity/client';
-import { listWhatsappLeadsQuery, countWhatsappLeadsByBrandQuery } from '@/lib/sanity/queries';
+import { whatsappLead } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,8 +8,8 @@ export async function GET(request: NextRequest) {
     const status = request.nextUrl.searchParams.get('status') || '';
 
     const [leads, counts] = await Promise.all([
-      client.fetch(listWhatsappLeadsQuery, { search, brand, status }),
-      client.fetch(countWhatsappLeadsByBrandQuery),
+      whatsappLead.listWhatsappLeads(brand, status, search),
+      whatsappLead.countWhatsappLeadsByBrand(),
     ]);
 
     return NextResponse.json({ success: true, data: leads, counts });

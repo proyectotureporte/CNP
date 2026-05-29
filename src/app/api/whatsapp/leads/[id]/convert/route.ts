@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getWhatsappLeadByIdQuery } from '@/lib/sanity/queries';
+import { whatsappLead, crmClient, crmUser } from '@/lib/db';
 import { hashPassword } from '@/lib/auth/passwords';
 import { sendCredentialsEmail } from '@/lib/email';
 import { triggerEvent } from '@/lib/pusher/server';
-import type { WhatsappLead } from '@/lib/types';
 
 export async function POST(
   request: NextRequest,
@@ -17,26 +15,20 @@ export async function POST(
 
     const agentName = request.headers.get('x-user-name') || 'Sistema';
 
-    // Get lead data
-    const lead = await client.fetch<WhatsappLead | null>(getWhatsappLeadByIdQuery, { id });
-
+    const lead = await whatsappLead.getWhatsappLeadById(id);
     if (!lead) {
       return NextResponse.json({ success: false, error: 'Lead no encontrado' }, { status: 404 });
     }
-
     if (lead.status === 'convertido') {
       return NextResponse.json({ success: false, error: 'Lead ya fue convertido' }, { status: 400 });
     }
 
-    // Use lead data, allow overrides
     const clientName = lead.name || 'Sin nombre';
     const clientPhone = overridePhone || lead.phone || '';
     const clientEmail = email?.trim().toLowerCase() || '';
     const clientBrand = lead.brand || 'Peritus';
 
-    // Create client (same logic as POST /api/clients)
-    const newClient = await writeClient.create({
-      _type: 'crmClient',
+    const newClient = await crmClient.createClient({
       brand: clientBrand,
       name: clientName,
       email: clientEmail,
@@ -48,23 +40,21 @@ export async function POST(
       createdBy: agentName,
     });
 
+    if (!newClient) {
+      return NextResponse.json({ success: false, error: 'Error creando cliente' }, { status: 500 });
+    }
+
     // Auto-create portal user if email provided
     let portalPassword: string | undefined;
     if (clientEmail) {
-      const existingUser = await client.fetch<{ _id: string } | null>(
-        `*[_type == "crmUser" && email == $email && active == true][0]{ _id }`,
-        { email: clientEmail }
-      );
-
-      const clientIdSuffix = newClient._id.slice(-4);
-      portalPassword = `CNP${clientIdSuffix}`;
+      const existingUser = await crmUser.getUserByEmail(clientEmail);
+      portalPassword = `CNP${newClient._id.slice(-4)}`;
       const passwordHash = await hashPassword(portalPassword);
 
       if (existingUser) {
-        await writeClient.patch(existingUser._id).set({ passwordHash, mustChangePassword: true }).commit();
+        await crmUser.setUserPassword(existingUser._id, passwordHash, true);
       } else {
-        await writeClient.create({
-          _type: 'crmUser',
+        await crmUser.createUser({
           username: clientEmail,
           email: clientEmail,
           displayName: clientName,
@@ -76,7 +66,6 @@ export async function POST(
         });
       }
 
-      // Send credentials email
       sendCredentialsEmail({
         to: clientEmail,
         clientName,
@@ -85,11 +74,10 @@ export async function POST(
       }).catch((err) => console.error('[convert] Email send failed:', err));
     }
 
-    // Mark lead as converted
-    await writeClient.patch(id).set({
+    await whatsappLead.updateWhatsappLead(id, {
       status: 'convertido',
-      convertedClient: { _type: 'reference', _ref: newClient._id },
-    }).commit();
+      convertedClientId: newClient._id,
+    });
 
     triggerEvent('whatsapp:lead', { id, converted: true });
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { client } from '@/lib/sanity/client';
+import { webLead } from '@/lib/db';
 import { verifyToken } from '@/lib/auth/jwt';
 import { cookies } from 'next/headers';
 
@@ -11,11 +11,7 @@ export async function GET() {
   const payload = await verifyToken(token).catch(() => null);
   if (!payload) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-  const data = await client.fetch(
-    `*[_type == "webLead"] | order(_createdAt desc) [0...100] {
-      _id, _createdAt, nombre, email, mensaje, origen, estado
-    }`
-  );
+  const data = await webLead.listWebLeads();
 
   return NextResponse.json({ success: true, data });
 }

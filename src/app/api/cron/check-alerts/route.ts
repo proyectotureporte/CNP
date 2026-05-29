@@ -1,22 +1,5 @@
 import { NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import {
-  casesNeedingHearingAlertQuery,
-  casesWithUrgentDeadlineQuery,
-  recentHearingAlertTitlesQuery,
-  recentDeadlineAlertTitlesQuery,
-  listAdminUserIdsQuery,
-} from '@/lib/sanity/queries';
-
-interface AlertCase {
-  _id: string;
-  caseCode: string;
-  title: string;
-  deadlineDate?: string;
-  commercialId?: string;
-  technicalAnalystId?: string;
-  assignedExpertId?: string;
-}
+import { cases, crmUser, notification } from '@/lib/db';
 
 function daysFromNow(dateStr: string): number {
   const target = new Date(dateStr);
@@ -31,37 +14,28 @@ export async function POST() {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
 
-    // Threshold: 7 days from now
     const thresholdDate = new Date(now);
     thresholdDate.setDate(thresholdDate.getDate() + 7);
     const threshold = thresholdDate.toISOString().split('T')[0];
 
-    // Dedup windows
     const fourteenDaysAgo = new Date(now);
     fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
     const sixDaysAgo = new Date(now);
     sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
 
-    // Fetch all data in parallel
-    const [
-      hearingCases,
-      deadlineCases,
-      recentHearingTitles,
-      recentDeadlineTitles,
-      adminIds,
-    ] = await Promise.all([
-      client.fetch<AlertCase[]>(casesNeedingHearingAlertQuery),
-      client.fetch<AlertCase[]>(casesWithUrgentDeadlineQuery, { threshold, today }),
-      client.fetch<string[]>(recentHearingAlertTitlesQuery, { since: fourteenDaysAgo.toISOString() }),
-      client.fetch<string[]>(recentDeadlineAlertTitlesQuery, { since: sixDaysAgo.toISOString() }),
-      client.fetch<string[]>(listAdminUserIdsQuery),
+    const [hearingCases, deadlineCases, recentHearingTitles, recentDeadlineTitles, adminIds] = await Promise.all([
+      cases.casesNeedingHearing(),
+      cases.casesWithUrgentDeadline(today, threshold),
+      notification.listRecentAlertTitles('Alerta de Audiencia:', fourteenDaysAgo.toISOString()),
+      notification.listRecentAlertTitles('Caso Proximo a Vencer:', sixDaysAgo.toISOString()),
+      crmUser.listAdminUserIds(),
     ]);
 
     const recentHearingSet = new Set(recentHearingTitles);
     const recentDeadlineSet = new Set(recentDeadlineTitles);
 
+    const tasks: Promise<unknown>[] = [];
     let createdCount = 0;
-    const transaction = writeClient.transaction();
 
     // --- Hearing Alerts ---
     for (const c of hearingCases) {
@@ -75,16 +49,14 @@ export async function POST() {
       for (const aid of adminIds) recipients.add(aid);
 
       for (const userId of recipients) {
-        transaction.create({
-          _type: 'notification',
+        tasks.push(notification.createNotification({
+          userId,
           type: 'warning',
           priority: 'normal',
           title: alertTitle,
           message: `Verifique si el caso ${c.caseCode} ya tiene audiencia programada`,
           linkUrl: `/crm/cases/${c._id}`,
-          isRead: false,
-          user: { _type: 'reference', _ref: userId },
-        });
+        }));
         createdCount++;
       }
     }
@@ -104,23 +76,19 @@ export async function POST() {
       for (const aid of adminIds) recipients.add(aid);
 
       for (const userId of recipients) {
-        transaction.create({
-          _type: 'notification',
+        tasks.push(notification.createNotification({
+          userId,
           type: 'error',
           priority: 'alta',
           title: alertTitle,
           message: `El caso ${c.caseCode} vence en ${days} dia${days !== 1 ? 's' : ''} (${formattedDate}). Requiere atencion urgente.`,
           linkUrl: `/crm/cases/${c._id}`,
-          isRead: false,
-          user: { _type: 'reference', _ref: userId },
-        });
+        }));
         createdCount++;
       }
     }
 
-    if (createdCount > 0) {
-      await transaction.commit();
-    }
+    await Promise.all(tasks);
 
     return NextResponse.json({
       success: true,
@@ -129,9 +97,6 @@ export async function POST() {
       notificationsCreated: createdCount,
     });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error procesando alertas' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error procesando alertas' }, { status: 500 });
   }
 }

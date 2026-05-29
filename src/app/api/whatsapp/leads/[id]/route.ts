@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getWhatsappLeadByIdQuery } from '@/lib/sanity/queries';
+import { whatsappLead } from '@/lib/db';
+import type { LeadStatus } from '@/lib/types';
 import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const lead = await client.fetch(getWhatsappLeadByIdQuery, { id });
+    const lead = await whatsappLead.getWhatsappLeadById(id);
 
     if (!lead) {
       return NextResponse.json({ success: false, error: 'Lead no encontrado' }, { status: 404 });
@@ -31,13 +31,11 @@ export async function PATCH(
     const body = await request.json();
     const { status, notes, unreadCount } = body;
 
-    const patch = writeClient.patch(id);
-
-    if (status !== undefined) patch.set({ status });
-    if (notes !== undefined) patch.set({ notes });
-    if (unreadCount !== undefined) patch.set({ unreadCount });
-
-    const updated = await patch.commit();
+    const updated = await whatsappLead.updateWhatsappLead(id, {
+      status: status as LeadStatus | undefined,
+      notes,
+      unreadCount,
+    });
 
     triggerEvent('whatsapp:lead', { id });
 

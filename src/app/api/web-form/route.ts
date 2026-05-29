@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeClient } from '@/lib/sanity/client';
+import { webLead } from '@/lib/db';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -17,8 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 });
     }
 
-    await writeClient.create({
-      _type: 'webLead',
+    await webLead.createWebLead({
       nombre: result.data.nombre || '',
       email: result.data.email,
       mensaje: result.data.mensaje || '',
