@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client } from '@/lib/sanity/client';
-import { reportCasesQuery } from '@/lib/sanity/queries';
+import { cases } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,8 +9,8 @@ export async function GET(request: NextRequest) {
     const discipline = searchParams.get('discipline') || '';
     const status = searchParams.get('status') || '';
 
-    const cases = await client.fetch(reportCasesQuery, { startDate, endDate, discipline, status });
-    return NextResponse.json({ success: true, data: cases });
+    const data = await cases.reportCases({ startDate, endDate, discipline, status });
+    return NextResponse.json({ success: true, data });
   } catch {
     return NextResponse.json({ success: false, error: 'Error generando reporte' }, { status: 500 });
   }

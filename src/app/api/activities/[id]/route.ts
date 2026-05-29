@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
+import { workPlanActivity } from '@/lib/db';
 import { ACTIVITY_STATUS_LABELS, type ActivityStatus } from '@/lib/types';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/pusher/server';
-
-const getActivityQuery = `*[_type == "workPlanActivity" && _id == $id][0]{
-  _id, title, description, dueDate, status, startedAt, completedAt,
-  "assignedTo": assignedTo->{ _id, displayName, role },
-  "caseId": case._ref
-}`;
 
 export async function PUT(
   request: NextRequest,
@@ -20,47 +14,41 @@ export async function PUT(
     const userName = request.headers.get('x-user-name');
     const body = await request.json();
 
-    const existing = await client.fetch(getActivityQuery, { id });
+    const existing = await workPlanActivity.getActivityById(id);
     if (!existing) {
       return NextResponse.json({ success: false, error: 'Actividad no encontrada' }, { status: 404 });
     }
+    const caseId = await workPlanActivity.getActivityCaseId(id);
 
-    const updateData: Record<string, unknown> = {};
-    if (body.title !== undefined) updateData.title = body.title;
-    if (body.description !== undefined) updateData.description = body.description;
-    if (body.dueDate !== undefined) updateData.dueDate = body.dueDate || null;
+    const patch: Parameters<typeof workPlanActivity.updateActivity>[1] = {};
+    if (body.title !== undefined) patch.title = body.title;
+    if (body.description !== undefined) patch.description = body.description;
+    if (body.dueDate !== undefined) patch.dueDate = body.dueDate || null;
     if (body.status !== undefined) {
-      updateData.status = body.status;
+      patch.status = body.status;
       if (body.status === 'en_progreso' && !existing.startedAt) {
-        updateData.startedAt = new Date().toISOString();
+        patch.startedAt = new Date().toISOString();
       }
       if (body.status === 'completada') {
-        updateData.completedAt = new Date().toISOString();
-        if (!existing.startedAt) {
-          updateData.startedAt = new Date().toISOString();
-        }
+        patch.completedAt = new Date().toISOString();
+        if (!existing.startedAt) patch.startedAt = new Date().toISOString();
       } else {
-        updateData.completedAt = null;
+        patch.completedAt = null;
       }
       if (body.status === 'pendiente') {
-        updateData.startedAt = null;
-        updateData.completedAt = null;
+        patch.startedAt = null;
+        patch.completedAt = null;
       }
     }
-    if (body.assignedTo !== undefined) {
-      updateData.assignedTo = body.assignedTo
-        ? { _type: 'reference', _ref: body.assignedTo }
-        : null;
-    }
+    if (body.assignedTo !== undefined) patch.assignedToId = body.assignedTo || null;
 
-    const updated = await writeClient.patch(id).set(updateData).commit();
+    const updated = await workPlanActivity.updateActivity(id, patch);
 
-    // Log event for status changes
-    if (body.status !== undefined && body.status !== existing.status && existing.caseId) {
+    if (body.status !== undefined && body.status !== existing.status && caseId) {
       const oldLabel = ACTIVITY_STATUS_LABELS[existing.status as ActivityStatus] || existing.status;
       const newLabel = ACTIVITY_STATUS_LABELS[body.status as ActivityStatus] || body.status;
       logCaseEvent({
-        caseId: existing.caseId,
+        caseId,
         eventType: 'other',
         description: `Actividad "${existing.title}": ${oldLabel} → ${newLabel}`,
         userId, userName,
@@ -84,16 +72,17 @@ export async function DELETE(
     const userId = request.headers.get('x-user-id');
     const userName = request.headers.get('x-user-name');
 
-    const existing = await client.fetch(getActivityQuery, { id });
+    const existing = await workPlanActivity.getActivityById(id);
     if (!existing) {
       return NextResponse.json({ success: false, error: 'Actividad no encontrada' }, { status: 404 });
     }
+    const caseId = await workPlanActivity.getActivityCaseId(id);
 
-    await writeClient.delete(id);
+    await workPlanActivity.deleteActivity(id);
 
-    if (existing.caseId) {
+    if (caseId) {
       logCaseEvent({
-        caseId: existing.caseId,
+        caseId,
         eventType: 'other',
         description: `Actividad eliminada: "${existing.title}"`,
         userId, userName,

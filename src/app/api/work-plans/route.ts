@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client } from '@/lib/sanity/client';
-import { listAllWorkPlansQuery, countAllWorkPlansQuery } from '@/lib/sanity/queries';
+import { workPlan } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,12 +7,11 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || '';
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '20', 10);
-    const start = (page - 1) * limit;
-    const end = start + limit;
+    const offset = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
-      client.fetch(listAllWorkPlansQuery, { status, start, end }),
-      client.fetch(countAllWorkPlansQuery, { status }),
+      workPlan.listAllWorkPlans(status, limit, offset),
+      workPlan.countAllWorkPlans(status),
     ]);
 
     return NextResponse.json({
@@ -22,9 +20,6 @@ export async function GET(request: NextRequest) {
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error obteniendo planes de trabajo' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error obteniendo planes de trabajo' }, { status: 500 });
   }
 }

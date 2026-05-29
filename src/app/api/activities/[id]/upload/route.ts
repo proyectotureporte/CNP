@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
+import { workPlanActivity } from '@/lib/db';
+import { uploadFile } from '@/lib/sanity/assets';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/pusher/server';
 
@@ -12,13 +13,11 @@ export async function POST(
     const userId = request.headers.get('x-user-id');
     const userName = request.headers.get('x-user-name');
 
-    const existing = await client.fetch(
-      `*[_type == "workPlanActivity" && _id == $id][0]{ _id, title, "caseId": case._ref }`,
-      { id }
-    );
+    const existing = await workPlanActivity.getActivityById(id);
     if (!existing) {
       return NextResponse.json({ success: false, error: 'Actividad no encontrada' }, { status: 404 });
     }
+    const caseId = await workPlanActivity.getActivityCaseId(id);
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -26,27 +25,24 @@ export async function POST(
     if (!file) {
       return NextResponse.json({ success: false, error: 'Archivo requerido' }, { status: 400 });
     }
-
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ success: false, error: 'El archivo excede el limite de 10MB' }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const asset = await writeClient.assets.upload('file', buffer, {
-      filename: file.name,
-      contentType: file.type,
+    const asset = await uploadFile(buffer, file.name, file.type);
+
+    await workPlanActivity.updateActivity(id, {
+      fileUrl: asset.url,
+      fileAssetId: asset.assetId,
+      fileName: file.name,
+      mimeType: file.type,
+      fileSize: file.size,
     });
 
-    await writeClient.patch(id).set({
-      file: {
-        _type: 'file',
-        asset: { _type: 'reference', _ref: asset._id },
-      },
-    }).commit();
-
-    if (existing.caseId) {
+    if (caseId) {
       logCaseEvent({
-        caseId: existing.caseId,
+        caseId,
         eventType: 'document_uploaded',
         description: `Documento subido en actividad "${existing.title}": ${file.name}`,
         userId, userName,

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getWorkPlanByIdQuery } from '@/lib/sanity/queries';
+import { workPlan } from '@/lib/db';
 import { triggerEvent } from '@/lib/pusher/server';
 
 export async function POST(
@@ -13,9 +12,10 @@ export async function POST(
     if (!body.rejectionComments) {
       return NextResponse.json({ success: false, error: 'Comentarios de rechazo requeridos' }, { status: 400 });
     }
-    const existing = await client.fetch(getWorkPlanByIdQuery, { id });
+    const existing = await workPlan.getWorkPlanById(id);
     if (!existing) return NextResponse.json({ success: false, error: 'Plan no encontrado' }, { status: 404 });
-    const updated = await writeClient.patch(id).set({ status: 'rechazado', rejectionComments: body.rejectionComments }).commit();
+
+    const updated = await workPlan.updateWorkPlan(id, { status: 'rechazado', rejectionComments: body.rejectionComments });
     triggerEvent('work-plan:rejected', { id });
     return NextResponse.json({ success: true, data: updated });
   } catch {

@@ -22,6 +22,23 @@ export async function listWorkPlanActivities(caseId: string): Promise<WorkPlanAc
   );
 }
 
+export async function listByWorkPlan(workPlanId: string): Promise<WorkPlanActivity[]> {
+  return query<WorkPlanActivity>(
+    `SELECT ${SELECT} FROM work_plan_activity a ${JOINS}
+     WHERE a.work_plan_id = $1 ORDER BY a.created_at ASC`,
+    [workPlanId],
+  );
+}
+
+/** case_id de una actividad (para registrar eventos). */
+export async function getActivityCaseId(id: string): Promise<string | null> {
+  const row = await queryOne<{ case_id: string | null }>(
+    'SELECT case_id FROM work_plan_activity WHERE id = $1',
+    [id],
+  );
+  return row?.case_id ?? null;
+}
+
 export async function getActivityById(id: string): Promise<WorkPlanActivity | null> {
   return queryOne<WorkPlanActivity>(
     `SELECT ${SELECT} FROM work_plan_activity a ${JOINS} WHERE a.id = $1`,

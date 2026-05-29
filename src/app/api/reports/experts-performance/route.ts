@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
-import { client } from '@/lib/sanity/client';
-import { reportExpertsPerformanceQuery } from '@/lib/sanity/queries';
+import { expert } from '@/lib/db';
 
 export async function GET() {
   try {
-    const experts = await client.fetch(reportExpertsPerformanceQuery);
+    const experts = await expert.reportExpertsPerformance();
     return NextResponse.json({ success: true, data: experts });
   } catch {
     return NextResponse.json({ success: false, error: 'Error generando reporte' }, { status: 500 });

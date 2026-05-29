@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { listWorkPlanActivitiesQuery, countActivitiesByStatusQuery } from '@/lib/sanity/queries';
+import { workPlan, workPlanActivity } from '@/lib/db';
 import { triggerEvent } from '@/lib/pusher/server';
 
 export async function GET(
@@ -9,10 +8,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const [activities, counts] = await Promise.all([
-      client.fetch(listWorkPlanActivitiesQuery, { workPlanId: id }),
-      client.fetch(countActivitiesByStatusQuery, { workPlanId: id }),
-    ]);
+    const activities = await workPlanActivity.listByWorkPlan(id);
+    const counts = {
+      total: activities.length,
+      completadas: activities.filter((a) => a.status === 'completada').length,
+      en_progreso: activities.filter((a) => a.status === 'en_progreso').length,
+      pendientes: activities.filter((a) => a.status === 'pendiente').length,
+    };
     return NextResponse.json({ success: true, data: { activities, counts } });
   } catch {
     return NextResponse.json({ success: false, error: 'Error obteniendo actividades' }, { status: 500 });
@@ -32,31 +34,23 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Titulo requerido' }, { status: 400 });
     }
 
-    // Get workPlan to find the case ref
-    const workPlan = await client.fetch(
-      `*[_type == "workPlan" && _id == $id][0]{ _id, "caseId": case._ref }`,
-      { id }
-    );
-    if (!workPlan) {
+    const plan = await workPlan.getWorkPlanById(id);
+    if (!plan) {
       return NextResponse.json({ success: false, error: 'Plan de trabajo no encontrado' }, { status: 404 });
     }
+    const caseId = (plan as { case?: { _id: string } }).case?._id ?? null;
 
-    const doc: { _type: 'workPlanActivity'; [key: string]: unknown } = {
-      _type: 'workPlanActivity',
-      workPlan: { _type: 'reference', _ref: id },
-      case: { _type: 'reference', _ref: workPlan.caseId },
+    const created = await workPlanActivity.createActivity({
+      workPlanId: id,
+      caseId,
       title: body.title.trim(),
       description: body.description || '',
       status: 'pendiente',
-    };
+      dueDate: body.dueDate || null,
+      assignedToId: body.assignedTo || null,
+      createdById: userId && userId !== 'admin' ? userId : null,
+    });
 
-    if (body.dueDate) doc.dueDate = body.dueDate;
-    if (body.assignedTo) doc.assignedTo = { _type: 'reference', _ref: body.assignedTo };
-    if (userId && userId !== 'admin') {
-      doc.createdBy = { _type: 'reference', _ref: userId };
-    }
-
-    const created = await writeClient.create(doc);
     triggerEvent('activity:created', { workPlanId: id });
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch {

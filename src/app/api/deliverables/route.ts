@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client } from '@/lib/sanity/client';
-import { listAllDeliverablesQuery, countAllDeliverablesQuery } from '@/lib/sanity/queries';
+import { deliverable } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,12 +8,11 @@ export async function GET(request: NextRequest) {
     const phase = searchParams.get('phase') || '';
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '20', 10);
-    const start = (page - 1) * limit;
-    const end = start + limit;
+    const offset = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
-      client.fetch(listAllDeliverablesQuery, { status, phase, start, end }),
-      client.fetch(countAllDeliverablesQuery, { status, phase }),
+      deliverable.listAllDeliverables(status, phase, limit, offset),
+      deliverable.countAllDeliverables(status, phase),
     ]);
 
     return NextResponse.json({
@@ -23,9 +21,6 @@ export async function GET(request: NextRequest) {
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Error obteniendo entregas' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Error obteniendo entregas' }, { status: 500 });
   }
 }

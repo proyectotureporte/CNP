@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getDeliverableByIdQuery } from '@/lib/sanity/queries';
+import { deliverable } from '@/lib/db';
+import type { DeliverableStatus } from '@/lib/types';
 import { triggerEvent } from '@/lib/pusher/server';
 
 export async function PUT(
@@ -17,21 +17,20 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Accion debe ser "aprobado" o "rechazado"' }, { status: 400 });
     }
 
-    const existing = await client.fetch(getDeliverableByIdQuery, { id });
+    const existing = await deliverable.getDeliverableById(id);
     if (!existing) return NextResponse.json({ success: false, error: 'Entrega no encontrada' }, { status: 404 });
 
     if (action === 'rechazado' && !rejectionReason) {
       return NextResponse.json({ success: false, error: 'Razon de rechazo requerida' }, { status: 400 });
     }
 
-    const updateData: Record<string, unknown> = { status: action };
-    if (action === 'rechazado') updateData.rejectionReason = rejectionReason;
-    if (userId && userId !== 'admin') {
-      if (action === 'aprobado') updateData.approvedBy = { _type: 'reference', _ref: userId };
-      updateData.reviewedBy = { _type: 'reference', _ref: userId };
-    }
-
-    const updated = await writeClient.patch(id).set(updateData).commit();
+    const reviewerId = userId && userId !== 'admin' ? userId : null;
+    const updated = await deliverable.updateDeliverable(id, {
+      status: action as DeliverableStatus,
+      rejectionReason: action === 'rechazado' ? rejectionReason : undefined,
+      approvedById: action === 'aprobado' ? reviewerId : undefined,
+      reviewedById: reviewerId,
+    });
 
     triggerEvent('deliverable:reviewed', { id });
 

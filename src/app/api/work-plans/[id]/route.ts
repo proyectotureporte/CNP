@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { client, writeClient } from '@/lib/sanity/client';
-import { getWorkPlanByIdQuery } from '@/lib/sanity/queries';
+import { workPlan } from '@/lib/db';
 
 export async function GET(
   _request: NextRequest,
@@ -8,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const plan = await client.fetch(getWorkPlanByIdQuery, { id });
+    const plan = await workPlan.getWorkPlanById(id);
     if (!plan) return NextResponse.json({ success: false, error: 'Plan no encontrado' }, { status: 404 });
     return NextResponse.json({ success: true, data: plan });
   } catch {
@@ -23,21 +22,20 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const existing = await client.fetch(getWorkPlanByIdQuery, { id });
+    const existing = await workPlan.getWorkPlanById(id);
     if (!existing) return NextResponse.json({ success: false, error: 'Plan no encontrado' }, { status: 404 });
     if (existing.status !== 'borrador' && existing.status !== 'rechazado') {
       return NextResponse.json({ success: false, error: 'Solo se pueden editar planes en borrador o rechazados' }, { status: 400 });
     }
 
-    const updateData: Record<string, unknown> = {};
-    if (body.methodology !== undefined) updateData.methodology = body.methodology;
-    if (body.objectives !== undefined) updateData.objectives = body.objectives;
-    if (body.startDate !== undefined) updateData.startDate = body.startDate;
-    if (body.endDate !== undefined) updateData.endDate = body.endDate;
-    if (body.estimatedDays !== undefined) updateData.estimatedDays = body.estimatedDays;
-    if (body.deliverablesDescription !== undefined) updateData.deliverablesDescription = body.deliverablesDescription;
-
-    const updated = await writeClient.patch(id).set(updateData).commit();
+    const updated = await workPlan.updateWorkPlan(id, {
+      methodology: body.methodology,
+      objectives: body.objectives,
+      startDate: body.startDate,
+      endDate: body.endDate,
+      estimatedDays: body.estimatedDays,
+      deliverablesDescription: body.deliverablesDescription,
+    });
     return NextResponse.json({ success: true, data: updated });
   } catch {
     return NextResponse.json({ success: false, error: 'Error actualizando plan' }, { status: 500 });
