@@ -1,0 +1,13 @@
+# Ejecuta cnp-check-alerts 3 veces al día (06:00, 12:00, 18:00).
+# Persistent=true: si el VPS estuvo apagado a la hora, corre al volver.
+
+[Unit]
+Description=Timer de CNP check-alerts (3x/día)
+
+[Timer]
+OnCalendar=*-*-* 06,12,18:00:00
+Persistent=true
+Unit=cnp-check-alerts.service
+
+[Install]
+WantedBy=timers.target

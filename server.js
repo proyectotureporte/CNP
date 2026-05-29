@@ -38,6 +38,33 @@ const JWT_SECRET = process.env.JWT_SECRET || '';
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
+// Headers de seguridad (aplicados aquí porque next.config `headers()` no corre
+// con servidor custom). CSP ajustada: CDN Sanity (img), Google Maps (frame),
+// WebSocket mismo origen (connect). next/font se auto-hostea.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://cdn.sanity.io",
+  "font-src 'self' data:",
+  "connect-src 'self' ws: wss: https://cdn.sanity.io",
+  "frame-src 'self' https://maps.google.com https://www.google.com",
+  "frame-ancestors 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join('; ');
+
+const SECURITY_HEADERS = {
+  'X-DNS-Prefetch-Control': 'on',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Content-Security-Policy': CSP,
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+};
+
 // ── Utilidades de auth (HS256, compatible con jose/signToken) ──
 function getCookie(header, name) {
   if (!header) return null;
@@ -73,6 +100,9 @@ app.prepare().then(() => {
   const upgradeHandler = app.getUpgradeHandler();
 
   const server = createServer((req, res) => {
+    for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+      res.setHeader(key, value);
+    }
     handle(req, res, parse(req.url, true));
   });
 

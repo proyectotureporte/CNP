@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cases, crmUser, notification } from '@/lib/db';
 
 function daysFromNow(dateStr: string): number {
@@ -9,8 +9,15 @@ function daysFromNow(dateStr: string): number {
   return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    // Ruta pública (bypass de middleware): protegida por secreto compartido.
+    const secret = process.env.CRON_SECRET;
+    const provided = request.headers.get('x-cron-secret');
+    if (secret && provided !== secret) {
+      return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+    }
+
     const now = new Date();
     const today = now.toISOString().split('T')[0];
 

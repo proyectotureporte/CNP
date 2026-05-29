@@ -1,0 +1,24 @@
+# Dispara /api/cron/check-alerts (alertas de audiencias y vencimientos).
+#
+# Instalación en el VPS:
+#   1) Crear /etc/cnp/cron.env  con:  CRON_SECRET=<el-mismo-valor-de-.env.local>
+#        sudo install -d /etc/cnp
+#        echo "CRON_SECRET=XXXX" | sudo tee /etc/cnp/cron.env
+#        sudo chmod 600 /etc/cnp/cron.env
+#   2) Copiar las unidades:
+#        sudo cp deploy/systemd/cnp-check-alerts.{service,timer} /etc/systemd/system/
+#   3) Activar el timer:
+#        sudo systemctl daemon-reload
+#        sudo systemctl enable --now cnp-check-alerts.timer
+#   4) Probar el servicio manualmente:  sudo systemctl start cnp-check-alerts.service
+#      Ver logs:  journalctl -u cnp-check-alerts.service
+
+[Unit]
+Description=CNP - Verificar alertas (audiencias / vencimientos)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/cnp/cron.env
+ExecStart=/usr/bin/curl -fsS -X POST -H "x-cron-secret: ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/check-alerts
