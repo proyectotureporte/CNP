@@ -1,19 +1,12 @@
-import { createClient } from 'next-sanity';
-import { createClient as createSanityClient } from '@sanity/client';
+import { createClient } from '@sanity/client';
 
-const baseConfig = {
+// Sanity se conserva ÚNICAMENTE como almacenamiento de archivos (assets).
+// Este cliente con token de escritura se usa solo para subir/borrar assets
+// (ver src/lib/sanity/assets.ts). Toda la data estructurada vive en PostgreSQL.
+export const writeClient = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!,
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET!,
   apiVersion: '2024-01-01',
   useCdn: false,
-};
-
-export const client = createClient({
-  ...baseConfig,
-  perspective: 'published' as const,
-});
-
-export const writeClient = createSanityClient({
-  ...baseConfig,
   token: process.env.SANITY_API_TOKEN!,
 });
