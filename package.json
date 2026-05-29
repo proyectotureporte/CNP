@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:migrate": "node scripts/migrate.mjs"
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:import-sanity": "node --experimental-strip-types scripts/migrate-from-sanity.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
