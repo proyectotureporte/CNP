@@ -440,10 +440,25 @@ const PIPELINE: Array<{ table: string; type: string; map: (d: Doc) => Doc; child
 
 const client = new Client({ connectionString });
 
+// Columnas timestamptz: un string vacío "" de Sanity debe ir como NULL,
+// no como '' (que rompería el INSERT por tipo de dato).
+const DATE_COLS = new Set([
+  'created_at', 'updated_at', 'hearing_date', 'deadline_date', 'fecha_registro', 'valid_until',
+  'sent_at', 'approved_at', 'first_payment_date', 'last_payment_date', 'start_date', 'end_date',
+  'submitted_at', 'due_date', 'started_at', 'completed_at', 'scheduled_date', 'payment_date',
+  'read_at', 'last_message_at', 'ts',
+]);
+
 async function insertRow(table: string, row: Doc): Promise<number> {
-  const entries = Object.entries(row).filter(([, v]) => v !== undefined && v !== null);
-  const cols = entries.map(([k]) => k);
-  const params = entries.map(([, v]) => v);
+  const cols: string[] = [];
+  const params: unknown[] = [];
+  for (const [k, v] of Object.entries(row)) {
+    let val: unknown = v;
+    if (typeof val === 'string' && val.trim() === '' && DATE_COLS.has(k)) val = null;
+    if (val === undefined || val === null) continue;
+    cols.push(k);
+    params.push(val);
+  }
   const ph = cols.map((_, i) => `$${i + 1}`);
   const sql = `INSERT INTO ${table} (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${ph.join(', ')}) ON CONFLICT (id) DO NOTHING`;
   const res = await client.query(sql, params);

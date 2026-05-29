@@ -22,7 +22,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 -- ----------------------------------------------------------------------------
 -- ENUMS
 -- ----------------------------------------------------------------------------
-CREATE TYPE user_role               AS ENUM ('admin','juridico','financiero','administrativo','mercadeo','postventa','cliente');
+CREATE TYPE user_role               AS ENUM ('admin','juridico','financiero','administrativo','mercadeo','postventa','cliente','perito','tecnico');
 CREATE TYPE brand                   AS ENUM ('CNP','Peritus');
 CREATE TYPE company_type            AS ENUM ('firma_abogados','empresa','particular');
 CREATE TYPE client_status           AS ENUM ('activo','inactivo','prospecto');
