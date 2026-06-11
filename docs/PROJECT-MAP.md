@@ -21,7 +21,8 @@ CRM de peritajes judiciales para CNP (Colombia) + marca Peritus. Producción rea
 | `/crm` y `/crm/dashboard` | crm-token | Dashboard con stats |
 | `/crm/cases` (+`/new`, `/[id]`, `/[id]/edit`) | crm-token | Ciclo completo del caso |
 | `/crm/clients`, `/crm/experts` (+new/[id]/edit) | crm-token | CRUD clientes y peritos |
-| `/crm/quotes`, `/crm/payments`, `/crm/commissions`, `/crm/cartera`* | crm-token (financiero/admin) | Cotizaciones, pagos, comisiones |
+| `/crm/quotes`, `/crm/payments`, `/crm/commissions` | crm-token | Cotizaciones, pagos, comisiones |
+| `/crm/cartera` | crm-token (financiero/admin) | Cartera: previsto/cobrado/pendiente, vencimientos, gráfico 12m (comparte `CarteraView` con `/admin/cartera`) |
 | `/crm/work-plans`, `/crm/deliverables`, `/crm/evaluations` | crm-token | Planes, entregables, evaluaciones |
 | `/crm/reports` | crm-token (admin) | Reportes (casos, revenue, performance peritos) |
 | `/crm/mensajes` | **EXENTA en middleware** (¿bug?) | Inbox WhatsApp leads |
@@ -84,5 +85,5 @@ CRM de peritajes judiciales para CNP (Colombia) + marca Peritus. Producción rea
 - 2026-05-29 · Fase 9 pendiente: rotar secretos expuestos en chat (SANITY_API_TOKEN, JWT_SECRET, RESEND_API_KEY, EVOLUTION_API_KEY), limpiar vars Pusher
 - 2026-06-11 · QA: dos fallos de middleware ARREGLADOS — (1) `/api/whatsapp/leads*` y `/crm/mensajes` estaban exentos de auth → fuga pública de PII de leads; ahora exigen sesión (la página los consume con cookie crm-token, no había consumidor server/n8n). (2) `/api/web-form` (POST) estaba bloqueado por el matcher `/api/*` → 401 en el formulario público; ahora exento exacto (`/api/web-form/list` sigue protegido por ser match exacto).
 - 2026-06-11 · QA: quitado `fetch('/api/cron/check-alerts', POST)` de `crm/cases/page.tsx` (daba 401 en cada carga; el cron real corre por systemd `cnp-check-alerts` 3×/día).
-- 2026-06-11 · QA #4 (cosmético, SIN tocar): `/crm/cartera` no existe ni se enlaza (la URL la fabricó el barrido). El nav CRM (`nav-items.ts`) no tiene item Cartera; la página real es `/admin/cartera` (admin only). Residuo: el rol `financiero` lleva permiso `cartera` sin página accesible en CRM — decisión de producto pendiente (¿crear `/crm/cartera` para financiero o quitar el permiso?). No se cambia authz a ciegas.
-- 2026-06-11 · QA #5 (ruido, SIN defecto de app): logs de `cnp` inundados con `Failed to find Server Action "x"`. La app no usa Server Actions (`grep 'use server'` vacío); son bots/escáneres POSTeando ids basura. Recomendación: regla de Nginx/firewall para descartar esos POST y limpiar observabilidad (ámbito vps-admin).
+- 2026-06-11 · QA #4 RESUELTO: creada la página `/crm/cartera` para el rol `financiero`. `CarteraView` extraído a `src/components/crm/CarteraView.tsx` (componente compartido); `admin/cartera/page.tsx` y `crm/cartera/page.tsx` lo re-exportan. Añadido item "Cartera" a `navItems` (CRM) con `permission:'cartera'` y mapeo `/crm/cartera→cartera` en `ROUTE_PERMISSION_MAP`. Verificado en vivo como financiero: ve el item y la página carga (KPIs + tablas, `/api/cartera` 200).
+- 2026-06-11 · QA #5 RESUELTO: regla en Nginx (`/etc/nginx/sites-available/cnp.com.co`) `if ($http_next_action) { return 444; }` — descarta los sondeos de bots a Server Actions (la app no usa Server Actions). Backup en `/root/cnp.com.co.bak-2026-06-11`. Verificado: petición con header `Next-Action` → conexión cerrada (444); tráfico legítimo intacto (GET / 200, web-form 400). Si se reinstala Nginx, re-aplicar la regla.
