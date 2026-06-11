@@ -123,11 +123,6 @@ export default function CrmCasesPage() {
     () => { fetchCases(); }
   );
 
-  // Fire-and-forget alert check on page load
-  useEffect(() => {
-    fetch("/api/cron/check-alerts", { method: "POST" }).catch(() => {});
-  }, []);
-
   function handleSearch() {
     setPage(1);
     fetchCases();

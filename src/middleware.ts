@@ -15,8 +15,7 @@ export async function middleware(request: NextRequest) {
     pathname === '/api/admin/init' ||
     pathname === '/api/whatsapp/webhook' ||
     pathname === '/api/cron/check-alerts' ||
-    pathname === '/crm/mensajes' ||
-    pathname.startsWith('/api/whatsapp/leads')
+    pathname === '/api/web-form'
   ) {
     return NextResponse.next();
   }
