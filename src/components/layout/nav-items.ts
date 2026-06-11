@@ -35,6 +35,7 @@ export const navItems: NavItem[] = [
   { label: 'Planes de Trabajo', href: '/crm/work-plans', icon: ClipboardList, permission: 'work-plans' },
   { label: 'Evaluaciones', href: '/crm/evaluations', icon: Scale, permission: 'evaluations' },
   { label: 'Pagos', href: '/crm/payments', icon: CreditCard, permission: 'payments' },
+  { label: 'Cartera', href: '/crm/cartera', icon: Wallet, permission: 'cartera' },
   { label: 'Comisiones', href: '/crm/commissions', icon: Wallet, permission: 'commissions' },
   { label: 'Reportes', href: '/crm/reports', icon: BarChart3, permission: 'reports' },
   { label: 'Formularios', href: '/crm/formularios', icon: Inbox, permission: 'formularios' },
