@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cases, crmUser } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
+import { guardRole } from '@/lib/auth/guard';
+import { canAssignExpert } from '@/lib/auth/permissions';
 
 type AssignRole = 'commercial' | 'technicalAnalyst' | 'assignedExpert';
 
@@ -18,6 +20,10 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canAssignExpert);
+    if (stop) return stop;
+
     const body = await request.json();
     const { role, userId } = body as { role: string; userId: string };
 

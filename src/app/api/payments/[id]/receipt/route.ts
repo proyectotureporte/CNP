@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { payment, caseDocument } from '@/lib/db';
 import { uploadFile } from '@/lib/sanity/assets';
+import { guardRole } from '@/lib/auth/guard';
+import { canAccessFinances } from '@/lib/auth/permissions';
 import { triggerEvent } from '@/lib/realtime/server';
 
 export async function POST(
@@ -9,6 +11,9 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canAccessFinances);
+    if (stop) return stop;
 
     const existing = await payment.getPaymentById(id);
     if (!existing) {

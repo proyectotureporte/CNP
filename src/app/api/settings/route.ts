@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { systemSetting } from '@/lib/db';
+import { guardRole } from '@/lib/auth/guard';
+import { hasPermission } from '@/lib/auth/permissions';
 
 export async function GET() {
   try {
@@ -12,6 +14,9 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    const stop = guardRole(request, (r) => hasPermission(r, 'settings'));
+    if (stop) return stop;
+
     const body = await request.json();
     const { key, value } = body;
     if (!key) return NextResponse.json({ success: false, error: 'Clave requerida' }, { status: 400 });

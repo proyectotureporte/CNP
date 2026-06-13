@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { quote } from '@/lib/db';
+import { guardRole } from '@/lib/auth/guard';
+import { canCreateQuote } from '@/lib/auth/permissions';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import type { Quote } from '@/lib/types';
 import { triggerEvent } from '@/lib/realtime/server';
@@ -12,6 +14,10 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canCreateQuote);
+    if (stop) return stop;
+
     const userId = request.headers.get('x-user-id');
     const userName = request.headers.get('x-user-name');
 

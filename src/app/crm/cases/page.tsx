@@ -36,6 +36,8 @@ import {
   type CaseDiscipline,
 } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
+import { canCreateCase } from "@/lib/auth/permissions";
+import type { UserRole } from "@/lib/types";
 
 function getDeadlineInfo(deadlineDate?: string) {
   if (!deadlineDate) return null;
@@ -76,6 +78,7 @@ function CasesTableSkeleton() {
 
 export default function CrmCasesPage() {
   const { user } = useAuth();
+  const canCreate = !!user && canCreateCase(user.role as UserRole);
   const [cases, setCases] = useState<CaseExpanded[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -156,12 +159,14 @@ export default function CrmCasesPage() {
             </p>
           </div>
         </div>
-        <Button asChild>
-          <Link href="/crm/cases/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Nuevo Caso
-          </Link>
-        </Button>
+        {canCreate && (
+          <Button asChild>
+            <Link href="/crm/cases/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Nuevo Caso
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Brand filter tabs */}
@@ -305,9 +310,11 @@ export default function CrmCasesPage() {
       ) : cases.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
           <p className="text-sm text-muted-foreground">No se encontraron casos</p>
-          <Button asChild variant="link" className="mt-2">
-            <Link href="/crm/cases/new">Crear el primer caso</Link>
-          </Button>
+          {canCreate && (
+            <Button asChild variant="link" className="mt-2">
+              <Link href="/crm/cases/new">Crear el primer caso</Link>
+            </Button>
+          )}
         </div>
       ) : (
         <>

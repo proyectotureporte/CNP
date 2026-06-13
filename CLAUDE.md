@@ -19,7 +19,7 @@ dev: `node server.js` · build: `npm run build` · typecheck: `npx tsc --noEmit`
 
 ## Reglas de ESTE proyecto
 - Verificación antes de push: `npx tsc --noEmit && npm run build`
-- 7 roles: admin, juridico, financiero, administrativo, mercadeo, postventa, cliente. Permisos en `src/lib/types.ts` (ROLE_PERMISSIONS) + `src/lib/auth/permissions.ts`
+- 7 roles: admin, juridico, financiero, administrativo, mercadeo, postventa, cliente. Permisos en `src/lib/types.ts` (ROLE_PERMISSIONS, ROLE_CASE_TABS) + `src/lib/auth/permissions.ts` (helpers `canX`). Enforcement en servidor: `guardRole(request, canX)` de `src/lib/auth/permissions` vía `src/lib/auth/guard.ts` (lee `x-user-role`); la UI usa los MISMOS helpers. Al tocar permisos, cambiar SIEMPRE en los helpers (fuente única), no a mano en componentes/rutas
 - Cookies: `crm-token` (CRM y portal) y `admin-token` (superadmin sub:'admin', login solo con contraseña maestra)
 - Headers de seguridad en `server.js`, NO en next.config (no corre `headers()` con servidor custom). `output:'standalone'` PROHIBIDO (mataría el hub WS)
 - IDs TEXT (UUID o `_id` heredado de Sanity). Tabla de casos se llama `cases` (palabra reservada)

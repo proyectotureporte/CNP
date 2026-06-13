@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cases, crmClient, caseDocument, query } from '@/lib/db';
+import { guardRole } from '@/lib/auth/guard';
+import { canCreateCase } from '@/lib/auth/permissions';
 import { getClientIdForUser } from '@/lib/auth/clientAccess';
 import { CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES } from '@/lib/types';
 import { triggerEvent } from '@/lib/realtime/server';
@@ -84,6 +86,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const stop = guardRole(request, canCreateCase);
+    if (stop) return stop;
+
     const userId = request.headers.get('x-user-id');
     const userName = request.headers.get('x-user-name') || 'Sistema';
     const body = await request.json();

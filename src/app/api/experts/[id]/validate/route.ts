@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { expert } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
 import type { ExpertValidationStatus } from '@/lib/types';
+import { guardRole } from '@/lib/auth/guard';
+import { canManageExperts } from '@/lib/auth/permissions';
 
 export async function POST(
   request: NextRequest,
@@ -9,6 +11,10 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canManageExperts);
+    if (stop) return stop;
+
     const userId = request.headers.get('x-user-id');
     const body = await request.json();
     const { action, notes } = body;

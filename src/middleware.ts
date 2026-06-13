@@ -59,11 +59,10 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/portal', request.url));
     }
 
-    // Check role-based route access - if role is invalid/removed, clear cookie and redirect to login
+    // Authenticated, but this role has no access to the requested module:
+    // send them to their dashboard instead of logging them out.
     if (!canAccessRoute(payload.role, pathname)) {
-      const response = NextResponse.redirect(new URL('/crm/login', request.url));
-      response.cookies.delete('crm-token');
-      return response;
+      return NextResponse.redirect(new URL('/crm', request.url));
     }
 
     // Inject user info into headers for downstream use

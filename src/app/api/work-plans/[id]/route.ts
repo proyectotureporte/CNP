@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { workPlan } from '@/lib/db';
+import { guardRole } from '@/lib/auth/guard';
+import { canManageWorkPlanActions } from '@/lib/auth/permissions';
 
 export async function GET(
   _request: NextRequest,
@@ -21,6 +23,10 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canManageWorkPlanActions);
+    if (stop) return stop;
+
     const body = await request.json();
     const existing = await workPlan.getWorkPlanById(id);
     if (!existing) return NextResponse.json({ success: false, error: 'Plan no encontrado' }, { status: 404 });

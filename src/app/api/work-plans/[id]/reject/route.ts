@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { workPlan } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
+import { guardRole } from '@/lib/auth/guard';
+import { canManageWorkPlanActions } from '@/lib/auth/permissions';
 
 export async function POST(
   request: NextRequest,
@@ -8,6 +10,10 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canManageWorkPlanActions);
+    if (stop) return stop;
+
     const body = await request.json();
     if (!body.rejectionComments) {
       return NextResponse.json({ success: false, error: 'Comentarios de rechazo requeridos' }, { status: 400 });

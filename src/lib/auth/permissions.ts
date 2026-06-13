@@ -34,7 +34,12 @@ const ROUTE_PERMISSION_MAP: Record<string, string> = {
 export function canAccessRoute(role: UserRole, pathname: string): boolean {
   if (role === 'admin') return true;
 
-  for (const [route, permission] of Object.entries(ROUTE_PERMISSION_MAP)) {
+  // Match the most specific route first (longest prefix) so e.g. /crm/quotes
+  // resolves to 'quotes' instead of the greedy '/crm' -> 'dashboard'.
+  const entries = Object.entries(ROUTE_PERMISSION_MAP).sort(
+    (a, b) => b[0].length - a[0].length
+  );
+  for (const [route, permission] of entries) {
     if (pathname === route || pathname.startsWith(route + '/')) {
       return hasPermission(role, permission);
     }
@@ -52,7 +57,7 @@ export function canCreateCase(role: UserRole): boolean {
 }
 
 export function canCreateClient(role: UserRole): boolean {
-  return ['admin', 'juridico'].includes(role);
+  return ['admin', 'juridico', 'mercadeo'].includes(role);
 }
 
 export function canCreateQuote(role: UserRole): boolean {
@@ -60,7 +65,7 @@ export function canCreateQuote(role: UserRole): boolean {
 }
 
 export function canAssignExpert(role: UserRole): boolean {
-  return role === 'admin';
+  return ['admin', 'administrativo'].includes(role);
 }
 
 export function canApproveQuote(role: UserRole): boolean {
@@ -68,7 +73,7 @@ export function canApproveQuote(role: UserRole): boolean {
 }
 
 export function canReviewDeliverable(role: UserRole): boolean {
-  return role === 'admin';
+  return ['admin', 'juridico'].includes(role);
 }
 
 export function canAccessFinances(role: UserRole): boolean {
@@ -77,4 +82,20 @@ export function canAccessFinances(role: UserRole): boolean {
 
 export function canManageWorkPlanActions(role: UserRole): boolean {
   return ['admin', 'administrativo'].includes(role);
+}
+
+// Expert directory management (create/edit/validate peritos) stays with admin.
+export function canManageExperts(role: UserRole): boolean {
+  return role === 'admin';
+}
+
+// Editing/deleting existing clients + validating Peritus registro: legal owners
+// only (mercadeo only creates/converts leads).
+export function canManageClients(role: UserRole): boolean {
+  return ['admin', 'juridico'].includes(role);
+}
+
+// Post-sale evaluation of the expert: post-venta closes the loop.
+export function canManageEvaluations(role: UserRole): boolean {
+  return ['admin', 'postventa'].includes(role);
 }

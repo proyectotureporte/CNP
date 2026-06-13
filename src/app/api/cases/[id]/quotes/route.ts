@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cases, quote, caseDocument, payment } from '@/lib/db';
+import { guardRole } from '@/lib/auth/guard';
+import { canCreateQuote } from '@/lib/auth/permissions';
 import { uploadFile } from '@/lib/sanity/assets';
 import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
@@ -34,11 +36,9 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const userRole = request.headers.get('x-user-role') || '';
 
-    if (userRole === 'cliente') {
-      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
-    }
+    const stop = guardRole(request, canCreateQuote);
+    if (stop) return stop;
 
     const userId = request.headers.get('x-user-id');
     const userName = request.headers.get('x-user-name');

@@ -23,10 +23,14 @@ import {
   EXPERT_AVAILABILITY_LABELS, EXPERT_AVAILABILITY_COLORS,
   EXPERT_VALIDATION_LABELS, EXPERT_VALIDATION_COLORS,
   type Expert, type CaseDiscipline,
-  type ExpertAvailability, type ExpertValidationStatus,
+  type ExpertAvailability, type ExpertValidationStatus, type UserRole,
 } from "@/lib/types";
+import { useAuth } from "@/hooks/useAuth";
+import { canManageExperts } from "@/lib/auth/permissions";
 
 export default function ExpertsPage() {
+  const { user } = useAuth();
+  const canManage = !!user && canManageExperts(user.role as UserRole);
   const [experts, setExperts] = useState<Expert[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -81,12 +85,14 @@ export default function ExpertsPage() {
             </p>
           </div>
         </div>
-        <Button asChild>
-          <Link href="/crm/experts/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Nuevo Perito
-          </Link>
-        </Button>
+        {canManage && (
+          <Button asChild>
+            <Link href="/crm/experts/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Nuevo Perito
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Filters */}

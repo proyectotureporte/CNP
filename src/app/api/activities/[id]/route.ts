@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { workPlanActivity } from '@/lib/db';
 import { ACTIVITY_STATUS_LABELS, type ActivityStatus } from '@/lib/types';
+import { guardRole } from '@/lib/auth/guard';
+import { canManageWorkPlanActions } from '@/lib/auth/permissions';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
 
@@ -10,6 +12,10 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canManageWorkPlanActions);
+    if (stop) return stop;
+
     const userId = request.headers.get('x-user-id');
     const userName = request.headers.get('x-user-name');
     const body = await request.json();
@@ -69,6 +75,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canManageWorkPlanActions);
+    if (stop) return stop;
+
     const userId = request.headers.get('x-user-id');
     const userName = request.headers.get('x-user-name');
 

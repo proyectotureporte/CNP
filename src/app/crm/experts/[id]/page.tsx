@@ -27,9 +27,10 @@ import {
   EXPERT_AVAILABILITY_LABELS, EXPERT_AVAILABILITY_COLORS,
   EXPERT_VALIDATION_LABELS, EXPERT_VALIDATION_COLORS,
   type Expert, type CaseDiscipline,
-  type ExpertAvailability, type ExpertValidationStatus,
+  type ExpertAvailability, type ExpertValidationStatus, type UserRole,
 } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
+import { canManageExperts } from "@/lib/auth/permissions";
 
 export default function ExpertDetailPage({
   params,
@@ -46,7 +47,7 @@ export default function ExpertDetailPage({
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectNotes, setRejectNotes] = useState("");
 
-  const canValidate = user && ["admin", "comite"].includes(user.role);
+  const canManage = !!user && canManageExperts(user.role as UserRole);
 
   useEffect(() => {
     async function loadExpert() {
@@ -155,13 +156,15 @@ export default function ExpertDetailPage({
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
           </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/crm/experts/${id}/edit`}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Editar
-            </Link>
-          </Button>
-          {canValidate && expert.validationStatus === "pendiente" && (
+          {canManage && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/crm/experts/${id}/edit`}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Editar
+              </Link>
+            </Button>
+          )}
+          {canManage && expert.validationStatus === "pendiente" && (
             <>
               <Button
                 size="sm"

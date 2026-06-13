@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { evaluation } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
+import { guardRole } from '@/lib/auth/guard';
+import { canManageEvaluations } from '@/lib/auth/permissions';
 
 export async function GET(
   _request: NextRequest,
@@ -21,6 +23,10 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canManageEvaluations);
+    if (stop) return stop;
+
     const userId = request.headers.get('x-user-id');
     const body = await request.json();
     const { expertId, punctualityScore, qualityScore, serviceScore, clientFeedback, technicalFeedback } = body;

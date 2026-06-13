@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cases, workPlan } from '@/lib/db';
+import { guardRole } from '@/lib/auth/guard';
+import { canManageWorkPlanActions } from '@/lib/auth/permissions';
 
 export async function GET(
   _request: NextRequest,
@@ -20,6 +22,10 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canManageWorkPlanActions);
+    if (stop) return stop;
+
     const userId = request.headers.get('x-user-id');
     const body = await request.json();
 

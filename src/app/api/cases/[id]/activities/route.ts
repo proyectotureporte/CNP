@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { workPlanActivity } from '@/lib/db';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
+import { guardRole } from '@/lib/auth/guard';
+import { canManageWorkPlanActions } from '@/lib/auth/permissions';
 
 export async function GET(
   _request: NextRequest,
@@ -25,6 +27,10 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canManageWorkPlanActions);
+    if (stop) return stop;
+
     const body = await request.json();
     const userId = request.headers.get('x-user-id');
     const userName = request.headers.get('x-user-name');

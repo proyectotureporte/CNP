@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { workPlan } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
+import { guardRole } from '@/lib/auth/guard';
+import { canManageWorkPlanActions } from '@/lib/auth/permissions';
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canManageWorkPlanActions);
+    if (stop) return stop;
+
     const existing = await workPlan.getWorkPlanById(id);
     if (!existing) return NextResponse.json({ success: false, error: 'Plan no encontrado' }, { status: 404 });
     if (existing.status !== 'borrador' && existing.status !== 'rechazado') {

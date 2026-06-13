@@ -24,9 +24,10 @@ import {
 import {
   QUOTE_STATUS_LABELS, QUOTE_STATUS_COLORS,
   PAYMENT_STATUS_LABELS, PAYMENT_STATUS_COLORS,
-  type Quote, type Payment,
+  type Quote, type Payment, type UserRole,
 } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
+import { canCreateQuote, canApproveQuote } from "@/lib/auth/permissions";
 import QuoteForm from "./QuoteForm";
 
 interface QuoteListProps {
@@ -66,9 +67,9 @@ export default function QuoteList({ caseId, userRole }: QuoteListProps) {
   const [uploadingPaymentId, setUploadingPaymentId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  const role = userRole || user?.role || '';
-  const canManageQuotes = user && ["admin", "juridico", "financiero"].includes(role);
-  const canApproveQuotes = user && ["admin", "cliente"].includes(role);
+  const role = (userRole || user?.role || '') as UserRole;
+  const canManageQuotes = !!user && canCreateQuote(role);
+  const canApproveQuotes = !!user && canApproveQuote(role);
   const isFinanciero = role === "financiero";
 
   const loadQuotes = useCallback(async () => {

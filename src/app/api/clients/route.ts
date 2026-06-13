@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { crmClient, crmUser, registroPeritus } from '@/lib/db';
+import { guardRole } from '@/lib/auth/guard';
+import { canCreateClient } from '@/lib/auth/permissions';
 import { verifyToken } from '@/lib/auth/jwt';
 import { hashPassword } from '@/lib/auth/passwords';
 import { sendCredentialsEmail } from '@/lib/email';
@@ -31,6 +33,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const stop = guardRole(request, canCreateClient);
+    if (stop) return stop;
+
     const body = await request.json();
     const { name, email, phone, company, position, notes, status, brand } = body as {
       name: string;

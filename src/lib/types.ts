@@ -36,11 +36,11 @@ export const ROLE_COLORS: Record<UserRole, { bg: string; text: string; dot: stri
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   admin: ['dashboard', 'cases', 'experts', 'clients', 'users', 'quotes', 'deliverables', 'work-plans', 'evaluations', 'payments', 'commissions', 'reports', 'settings', 'notifications', 'profile', 'audit-logs', 'cartera', 'mensajes'],
-  juridico: ['dashboard', 'cases', 'clients', 'formularios', 'notifications', 'profile', 'mensajes'],
-  financiero: ['dashboard', 'cases', 'quotes', 'payments', 'notifications', 'profile', 'cartera'],
-  administrativo: ['dashboard', 'cases', 'work-plans', 'notifications', 'profile'],
-  mercadeo: ['dashboard', 'cases', 'notifications', 'profile', 'mensajes'],
-  postventa: ['dashboard', 'cases', 'notifications', 'profile'],
+  juridico: ['dashboard', 'cases', 'clients', 'experts', 'deliverables', 'formularios', 'notifications', 'profile', 'mensajes'],
+  financiero: ['dashboard', 'cases', 'quotes', 'payments', 'commissions', 'experts', 'notifications', 'profile', 'cartera'],
+  administrativo: ['dashboard', 'cases', 'work-plans', 'experts', 'notifications', 'profile'],
+  mercadeo: ['dashboard', 'cases', 'clients', 'formularios', 'notifications', 'profile', 'mensajes'],
+  postventa: ['dashboard', 'cases', 'evaluations', 'notifications', 'profile'],
   cliente: ['notifications', 'profile'],
 };
 
@@ -825,9 +825,9 @@ export interface WhatsappMessage {
 
 export const ROLE_CASE_TABS: Record<string, string[]> = {
   admin: ['summary', 'documents', 'quotes', 'work-plan', 'deliverables', 'timeline'],
-  juridico: ['summary', 'documents'],
+  juridico: ['summary', 'documents', 'quotes', 'work-plan', 'deliverables', 'timeline'],
   financiero: ['summary', 'documents', 'quotes', 'work-plan', 'deliverables', 'timeline'],
-  administrativo: ['summary', 'work-plan'],
-  mercadeo: ['summary'],
-  postventa: ['summary'],
+  administrativo: ['summary', 'documents', 'work-plan', 'deliverables', 'timeline'],
+  mercadeo: ['summary', 'timeline'],
+  postventa: ['summary', 'deliverables', 'timeline'],
 };

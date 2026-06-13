@@ -15,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
-import type { CrmClient } from "@/lib/types";
+import { canManageClients } from "@/lib/auth/permissions";
+import type { CrmClient, UserRole } from "@/lib/types";
 
 interface ClientTableProps {
   clients: CrmClient[];
@@ -129,7 +130,7 @@ export default function ClientTable({
   onValidated,
 }: ClientTableProps) {
   const { user } = useAuth();
-  const canValidate = user && ["admin", "juridico"].includes(user.role);
+  const canValidate = !!user && canManageClients(user.role as UserRole);
 
   const [rejectTarget, setRejectTarget] = useState<{ id: string; name: string } | null>(null);
   const [rejectNotes, setRejectNotes] = useState("");

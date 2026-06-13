@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { workPlan } from '@/lib/db';
+import { guardRole } from '@/lib/auth/guard';
+import { canManageWorkPlanActions } from '@/lib/auth/permissions';
 
 export async function GET(request: NextRequest) {
   try {
+    const stop = guardRole(request, canManageWorkPlanActions);
+    if (stop) return stop;
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || '';
     const page = parseInt(searchParams.get('page') || '1', 10);

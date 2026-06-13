@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { whatsappLead, crmClient, crmUser } from '@/lib/db';
+import { guardRole } from '@/lib/auth/guard';
+import { canCreateClient } from '@/lib/auth/permissions';
 import { hashPassword } from '@/lib/auth/passwords';
 import { sendCredentialsEmail } from '@/lib/email';
 import { triggerEvent } from '@/lib/realtime/server';
@@ -10,6 +12,10 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canCreateClient);
+    if (stop) return stop;
+
     const body = await request.json();
     const { email, phone: overridePhone, company, position } = body;
 

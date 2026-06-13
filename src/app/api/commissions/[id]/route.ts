@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { commission } from '@/lib/db';
 import type { CommissionStatus } from '@/lib/types';
+import { guardRole } from '@/lib/auth/guard';
+import { canAccessFinances } from '@/lib/auth/permissions';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -26,6 +28,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canAccessFinances);
+    if (stop) return stop;
+
     const body = await request.json();
     const updated = await commission.updateCommission(id, {
       status: body.status as CommissionStatus | undefined,

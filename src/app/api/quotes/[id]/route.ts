@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { quote, payment } from '@/lib/db';
+import { guardRole } from '@/lib/auth/guard';
+import { canCreateQuote } from '@/lib/auth/permissions';
 import { uploadFile } from '@/lib/sanity/assets';
 import { triggerEvent } from '@/lib/realtime/server';
 
@@ -37,6 +39,9 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canCreateQuote);
+    if (stop) return stop;
 
     const existing = await quote.getQuoteById(id);
     if (!existing) {

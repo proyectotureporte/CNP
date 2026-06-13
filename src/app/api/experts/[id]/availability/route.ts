@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { expert } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
 import type { ExpertAvailability } from '@/lib/types';
+import { guardRole } from '@/lib/auth/guard';
+import { canAssignExpert } from '@/lib/auth/permissions';
 
 export async function PUT(
   request: NextRequest,
@@ -9,6 +11,10 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canAssignExpert);
+    if (stop) return stop;
+
     const body = await request.json();
     const { availability } = body;
 

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { payment } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
+import { guardRole } from '@/lib/auth/guard';
+import { canAccessFinances } from '@/lib/auth/permissions';
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -15,6 +17,10 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canAccessFinances);
+    if (stop) return stop;
+
     const userId = request.headers.get('x-user-id');
     const body = await request.json();
     if (!body.amount) return NextResponse.json({ success: false, error: 'Monto requerido' }, { status: 400 });

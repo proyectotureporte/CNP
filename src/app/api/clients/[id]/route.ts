@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { crmClient, registroPeritus, queryOne } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
+import { guardRole } from '@/lib/auth/guard';
+import { canManageClients } from '@/lib/auth/permissions';
 
 export async function GET(
   _request: NextRequest,
@@ -32,6 +34,10 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canManageClients);
+    if (stop) return stop;
+
     const body = await request.json();
     const { name, email, phone, company, position, notes, status } = body as {
       name?: string;
@@ -59,11 +65,14 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canManageClients);
+    if (stop) return stop;
 
     // Block deletion if client has cases
     const row = await queryOne<{ count: number }>(

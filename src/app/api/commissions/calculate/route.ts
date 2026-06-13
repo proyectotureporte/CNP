@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { evaluation, commission } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
+import { guardRole } from '@/lib/auth/guard';
+import { canAccessFinances } from '@/lib/auth/permissions';
 
 export async function POST(request: NextRequest) {
   try {
+    const stop = guardRole(request, canAccessFinances);
+    if (stop) return stop;
+
     const body = await request.json();
     const { expertId, caseId, baseAmount } = body;
     if (!expertId || !caseId || !baseAmount) {

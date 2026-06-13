@@ -29,6 +29,7 @@ import {
 } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { usePusher } from "@/hooks/usePusher";
+import { canManageWorkPlanActions } from "@/lib/auth/permissions";
 
 interface WorkPlanTabProps { caseId: string; userRole?: string; }
 
@@ -111,8 +112,8 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
   const [newEndDate, setNewEndDate] = useState("");
   const [recalcSaving, setRecalcSaving] = useState(false);
 
-  const role = userRole || user?.role || '';
-  const canEdit = user && ["admin", "financiero"].includes(role);
+  const role = (userRole || user?.role || '') as UserRole;
+  const canEdit = !!user && canManageWorkPlanActions(role);
   const isAdministrativo = role === "administrativo";
 
   const progressPercent = counts.total > 0

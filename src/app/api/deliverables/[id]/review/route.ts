@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { deliverable } from '@/lib/db';
 import type { DeliverableStatus } from '@/lib/types';
 import { triggerEvent } from '@/lib/realtime/server';
+import { guardRole } from '@/lib/auth/guard';
+import { canReviewDeliverable } from '@/lib/auth/permissions';
 
 export async function PUT(
   request: NextRequest,
@@ -9,6 +11,10 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+
+    const stop = guardRole(request, canReviewDeliverable);
+    if (stop) return stop;
+
     const userId = request.headers.get('x-user-id');
     const body = await request.json();
     const { action, rejectionReason } = body;

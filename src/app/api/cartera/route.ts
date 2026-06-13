@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { payment } from '@/lib/db';
+import { guardRole } from '@/lib/auth/guard';
+import { hasPermission } from '@/lib/auth/permissions';
 
 export async function GET(request: NextRequest) {
   try {
+    const stop = guardRole(request, (r) => hasPermission(r, 'cartera'));
+    if (stop) return stop;
+
     const { searchParams } = new URL(request.url);
     const month = parseInt(searchParams.get('month') || String(new Date().getMonth() + 1));
     const year = parseInt(searchParams.get('year') || String(new Date().getFullYear()));

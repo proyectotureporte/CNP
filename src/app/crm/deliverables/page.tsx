@@ -39,8 +39,10 @@ import {
   type Deliverable,
   type DeliverablePhase,
   type DeliverableStatus,
+  type UserRole,
 } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
+import { canReviewDeliverable } from '@/lib/auth/permissions';
 
 interface DeliverableWithCase extends Deliverable {
   case?: { _id: string; caseCode: string; title: string };
@@ -126,7 +128,7 @@ export default function DeliverablesPage() {
     }
   }
 
-  const isAdmin = user?.role === 'admin';
+  const canReview = !!user && canReviewDeliverable(user.role as UserRole);
 
   return (
     <>
@@ -281,7 +283,7 @@ export default function DeliverablesPage() {
                       >
                         <ExternalLink className="h-4 w-4" />
                       </Button>
-                      {isAdmin &&
+                      {canReview &&
                         (d.status === 'enviado' || d.status === 'en_revision') && (
                           <>
                             <Button
