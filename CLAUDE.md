@@ -23,4 +23,5 @@ dev: `node server.js` · build: `npm run build` · typecheck: `npx tsc --noEmit`
 - Cookies: `crm-token` (CRM y portal) y `admin-token` (superadmin sub:'admin', login solo con contraseña maestra)
 - Headers de seguridad en `server.js`, NO en next.config (no corre `headers()` con servidor custom). `output:'standalone'` PROHIBIDO (mataría el hub WS)
 - IDs TEXT (UUID o `_id` heredado de Sanity). Tabla de casos se llama `cases` (palabra reservada)
+- Peritos (`expert`): `seniority` (junior/senior/master) + `category` (7 macro-categorías) + ciclo de vida en `validation_status` = candidato → en_evaluacion → activado (+ rechazado), NO pendiente/aprobado (migración 003 migró los datos). Formación: pregrado/num_especializaciones/num_maestrias/doctorado. Clasificación automática: `src/lib/peritos/clasificacion.ts`. ALTER de `expert` se aplica como `postgres` (la tabla es de cnp_user), no con `db:migrate`
 - Gotchas: PM2 SIEMPRE fork 1 instancia; Nginx debe proxyear upgrade WS en `/ws`; las `NEXT_PUBLIC_` requieren rebuild

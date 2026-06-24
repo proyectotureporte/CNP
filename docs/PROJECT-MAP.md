@@ -55,7 +55,7 @@ CRM de peritajes judiciales para CNP (Colombia) + marca Peritus. Producción rea
 
 ## Modelo de datos (PostgreSQL — `db/migrations/`)
 25 tablas, 30 enums, triggers `updated_at`, índices GIN trgm. IDs `TEXT` (UUID nuevos, `_id` Sanity heredados).
-- Núcleo: `cases` (brand CNP/Peritus, status, discipline, FKs a client/expert/users), `crm_client`, `crm_user` (7 roles), `company`, `expert` (+`expert_certification_file`), `registro_peritus`
+- Núcleo: `cases` (brand CNP/Peritus, status, discipline, FKs a client/expert/users), `crm_client`, `crm_user` (7 roles), `company`, `expert` (+`expert_certification_file`; clasificación migración 003: `seniority` junior/senior/master, `category` 7 macro-categorías, ciclo de vida `validation_status` candidato→en_evaluacion→activado, formación pregrado/num_especializaciones/num_maestrias/doctorado), `registro_peritus`
 - Ciclo del caso: `case_event`, `case_document`, `quote`, `work_plan` (+`work_plan_activity`), `deliverable`, `evaluation`, `hearing`, `payment`, `commission`
 - Sistema: `notification`, `audit_log`, `system_setting`, `admin_config` (hashes contraseña maestra), `whatsapp_lead` (+documents/messages), `web_lead`
 - Capa de acceso: `src/lib/db/pool.ts` (pool singleton, `query/queryOne/withTransaction/buildInsert/buildUpdate/newId`); módulos devuelven shapes estilo Sanity (`_id`, `_createdAt`, refs anidados)
