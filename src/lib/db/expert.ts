@@ -1,12 +1,14 @@
 import { query, queryOne, buildInsert, buildUpdate, newId, pruneUndefined, nestedObj } from './pool';
-import type { Expert, ExpertAvailability, ExpertValidationStatus } from '@/lib/types';
+import type { Expert, ExpertAvailability, ExpertValidationStatus, ExpertSeniority, ExpertCategory } from '@/lib/types';
 
 const userObj = nestedObj('u', { _id: 'u.id', displayName: 'u.display_name', email: 'u.email', phone: 'u.phone' });
 const validatedByObj = nestedObj('vb', { _id: 'vb.id', displayName: 'vb.display_name' });
 
 const LIST_SELECT = `
   e.id AS "_id", e.created_at AS "_createdAt", e.updated_at AS "_updatedAt",
-  e.disciplines, e.specialization, e.experience_years AS "experienceYears",
+  e.disciplines, e.specialization, e.subespecialidad, e.experience_years AS "experienceYears",
+  e.seniority, e.category, e.pregrado, e.num_especializaciones AS "numEspecializaciones",
+  e.num_maestrias AS "numMaestrias", e.doctorado,
   e.professional_card AS "professionalCard", e.city, e.region, e.base_fee AS "baseFee",
   e.fee_currency AS "feeCurrency", e.availability, e.rating, e.total_cases AS "totalCases",
   e.completed_cases AS "completedCases", e.validation_status AS "validationStatus",
@@ -22,6 +24,8 @@ export interface ListExpertsParams {
   city?: string;
   availability?: string;
   validationStatus?: string;
+  seniority?: string;
+  category?: string;
   search?: string;
   limit?: number;
   offset?: number;
@@ -34,6 +38,8 @@ function expertsWhere(p: ListExpertsParams): { clause: string; values: unknown[]
     p.availability ?? '',
     p.validationStatus ?? '',
     p.search ?? '',
+    p.seniority ?? '',
+    p.category ?? '',
   ];
   const clause = `
     ($1 = '' OR $1 = ANY(e.disciplines))
@@ -41,6 +47,8 @@ function expertsWhere(p: ListExpertsParams): { clause: string; values: unknown[]
     AND ($3 = '' OR e.availability = $3::expert_availability)
     AND ($4 = '' OR e.validation_status = $4::expert_validation_status)
     AND ($5 = '' OR e.specialization ILIKE $5 || '%' OR e.city ILIKE $5 || '%' OR e.tax_id ILIKE $5 || '%')
+    AND ($6 = '' OR e.seniority = $6::expert_seniority)
+    AND ($7 = '' OR e.category = $7::expert_category)
   `;
   return { clause, values };
 }
@@ -49,7 +57,7 @@ export async function listExperts(p: ListExpertsParams = {}): Promise<Expert[]> 
   const { clause, values } = expertsWhere(p);
   return query<Expert>(
     `SELECT ${LIST_SELECT} FROM expert e ${JOINS}
-     WHERE ${clause} ORDER BY e.rating DESC LIMIT $6 OFFSET $7`,
+     WHERE ${clause} ORDER BY e.rating DESC LIMIT $8 OFFSET $9`,
     [...values, p.limit ?? 20, p.offset ?? 0],
   );
 }
@@ -85,35 +93,38 @@ export async function getExpertByUserId(userId: string): Promise<Expert | null> 
 export async function listAvailableExpertsForDiscipline(discipline: string): Promise<Expert[]> {
   return query<Expert>(
     `SELECT e.id AS "_id", e.disciplines, e.specialization, e.experience_years AS "experienceYears",
+       e.seniority, e.category,
        e.city, e.region, e.base_fee AS "baseFee", e.availability, e.rating,
        e.total_cases AS "totalCases", e.completed_cases AS "completedCases",
        ${userObj} AS "user"
      FROM expert e LEFT JOIN crm_user u ON u.id = e.user_id
-     WHERE e.validation_status = 'aprobado' AND e.availability = 'disponible' AND $1 = ANY(e.disciplines)
+     WHERE e.validation_status = 'activado' AND e.availability = 'disponible' AND $1 = ANY(e.disciplines)
      ORDER BY e.rating DESC`,
     [discipline],
   );
 }
 
-export async function countExpertsByStatus(): Promise<{ pendiente: number; aprobado: number; rechazado: number; total: number }> {
-  const row = await queryOne<{ pendiente: number; aprobado: number; rechazado: number; total: number }>(
+export async function countExpertsByStatus(): Promise<{ candidato: number; en_evaluacion: number; activado: number; rechazado: number; total: number }> {
+  const row = await queryOne<{ candidato: number; en_evaluacion: number; activado: number; rechazado: number; total: number }>(
     `SELECT
-       count(*) FILTER (WHERE validation_status = 'pendiente')::int AS pendiente,
-       count(*) FILTER (WHERE validation_status = 'aprobado')::int AS aprobado,
+       count(*) FILTER (WHERE validation_status = 'candidato')::int AS candidato,
+       count(*) FILTER (WHERE validation_status = 'en_evaluacion')::int AS en_evaluacion,
+       count(*) FILTER (WHERE validation_status = 'activado')::int AS activado,
        count(*) FILTER (WHERE validation_status = 'rechazado')::int AS rechazado,
        count(*)::int AS total
      FROM expert`,
   );
-  return row ?? { pendiente: 0, aprobado: 0, rechazado: 0, total: 0 };
+  return row ?? { candidato: 0, en_evaluacion: 0, activado: 0, rechazado: 0, total: 0 };
 }
 
 export async function reportExpertsPerformance(): Promise<Expert[]> {
   return query<Expert>(
     `SELECT e.id AS "_id", e.disciplines, e.specialization, e.experience_years AS "experienceYears",
+       e.seniority, e.category,
        e.rating, e.total_cases AS "totalCases", e.completed_cases AS "completedCases", e.availability,
        ${nestedObj('u', { _id: 'u.id', displayName: 'u.display_name', email: 'u.email' })} AS "user"
      FROM expert e LEFT JOIN crm_user u ON u.id = e.user_id
-     WHERE e.validation_status = 'aprobado' ORDER BY e.rating DESC`,
+     WHERE e.validation_status = 'activado' ORDER BY e.rating DESC`,
   );
 }
 
@@ -121,7 +132,14 @@ export interface ExpertInput {
   userId?: string | null;
   disciplines?: string[];
   specialization?: string | null;
+  subespecialidad?: string | null;
   experienceYears?: number | null;
+  seniority?: ExpertSeniority | null;
+  category?: ExpertCategory | null;
+  pregrado?: boolean;
+  numEspecializaciones?: number;
+  numMaestrias?: number;
+  doctorado?: boolean;
   professionalCard?: string | null;
   cvFileUrl?: string | null;
   cvFileAssetId?: string | null;
@@ -150,7 +168,14 @@ function toColumns(input: Partial<ExpertInput>): Record<string, unknown> {
     user_id: input.userId,
     disciplines: input.disciplines,
     specialization: input.specialization,
+    subespecialidad: input.subespecialidad,
     experience_years: input.experienceYears,
+    seniority: input.seniority,
+    category: input.category,
+    pregrado: input.pregrado,
+    num_especializaciones: input.numEspecializaciones,
+    num_maestrias: input.numMaestrias,
+    doctorado: input.doctorado,
     professional_card: input.professionalCard,
     cv_file_url: input.cvFileUrl,
     cv_file_asset_id: input.cvFileAssetId,

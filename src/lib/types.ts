@@ -395,17 +395,85 @@ export const EXPERT_AVAILABILITY_COLORS: Record<ExpertAvailability, { bg: string
   no_disponible: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
 };
 
-export const EXPERT_VALIDATION_STATUSES = ['pendiente', 'aprobado', 'rechazado'] as const;
+// Ciclo de vida del perito en el CRM (reemplaza pendiente/aprobado/rechazado).
+// Candidato → En Evaluación → Activado (+ Rechazado). La columna sigue siendo
+// expert.validation_status; los valores 'pendiente'/'aprobado' quedan deprecados
+// en el enum de PG (migrados a 'candidato'/'activado' en la migración 003).
+export const EXPERT_VALIDATION_STATUSES = ['candidato', 'en_evaluacion', 'activado', 'rechazado'] as const;
 export type ExpertValidationStatus = (typeof EXPERT_VALIDATION_STATUSES)[number];
 
 export const EXPERT_VALIDATION_LABELS: Record<ExpertValidationStatus, string> = {
-  pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 'Rechazado',
+  candidato: 'Perito Candidato', en_evaluacion: 'En Evaluación', activado: 'Activado', rechazado: 'Rechazado',
 };
 
 export const EXPERT_VALIDATION_COLORS: Record<ExpertValidationStatus, { bg: string; text: string; dot: string }> = {
-  pendiente: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
-  aprobado: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+  candidato: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
+  en_evaluacion: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
+  activado: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
   rechazado: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+};
+
+// Nivel de seniority del perito (clasificación por formación + experiencia).
+export const EXPERT_SENIORITIES = ['junior', 'senior', 'master'] as const;
+export type ExpertSeniority = (typeof EXPERT_SENIORITIES)[number];
+
+export const EXPERT_SENIORITY_LABELS: Record<ExpertSeniority, string> = {
+  junior: 'Junior', senior: 'Senior', master: 'Master',
+};
+
+export const EXPERT_SENIORITY_COLORS: Record<ExpertSeniority, { bg: string; text: string; dot: string }> = {
+  junior: { bg: 'bg-slate-50', text: 'text-slate-700', dot: 'bg-slate-400' },
+  senior: { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
+  master: { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' },
+};
+
+// Macro-categorías de perito (agrupación por área de conocimiento).
+export const EXPERT_CATEGORIES = [
+  'medicos', 'psicologos', 'ingenieros_arquitectos', 'tecnologia_informatica',
+  'forense_documental', 'financieros_avaluadores', 'otros',
+] as const;
+export type ExpertCategory = (typeof EXPERT_CATEGORIES)[number];
+
+export const EXPERT_CATEGORY_LABELS: Record<ExpertCategory, string> = {
+  medicos: 'Médicos',
+  psicologos: 'Psicólogos',
+  ingenieros_arquitectos: 'Ingenieros y arquitectos',
+  tecnologia_informatica: 'Tecnología e informática',
+  forense_documental: 'Forense documental',
+  financieros_avaluadores: 'Financieros y avaluadores',
+  otros: 'Otros',
+};
+
+export const EXPERT_CATEGORY_COLORS: Record<ExpertCategory, { bg: string; text: string; dot: string }> = {
+  medicos: { bg: 'bg-rose-50', text: 'text-rose-700', dot: 'bg-rose-500' },
+  psicologos: { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500' },
+  ingenieros_arquitectos: { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500' },
+  tecnologia_informatica: { bg: 'bg-cyan-50', text: 'text-cyan-700', dot: 'bg-cyan-500' },
+  forense_documental: { bg: 'bg-violet-50', text: 'text-violet-700', dot: 'bg-violet-500' },
+  financieros_avaluadores: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  otros: { bg: 'bg-gray-50', text: 'text-gray-700', dot: 'bg-gray-400' },
+};
+
+// Especialidades específicas sugeridas por macro-categoría (formulario dependiente).
+export const EXPERT_CATEGORY_SPECIALTIES: Record<ExpertCategory, string[]> = {
+  medicos: ['Médico laboral', 'Anestesiólogo', 'Cirujano plástico', 'Médico general'],
+  psicologos: ['Psicología jurídica', 'Psicología forense'],
+  ingenieros_arquitectos: ['Ingeniero civil', 'Arquitecto', 'Otro perfil técnico'],
+  tecnologia_informatica: ['Ingeniería de sistemas', 'Seguridad digital', 'Informática forense', 'Auditoría de sistemas'],
+  forense_documental: ['Grafología', 'Dactiloscopia', 'Análisis documental'],
+  financieros_avaluadores: ['Análisis financiero', 'Valoración de activos', 'Avalúos', 'Estudios económicos'],
+  otros: ['Otro'],
+};
+
+// Mapa macro-categoría → disciplinas de caso (para el matching/asignación existente).
+export const EXPERT_CATEGORY_TO_DISCIPLINES: Record<ExpertCategory, CaseDiscipline[]> = {
+  medicos: ['medico'],
+  psicologos: ['otro'],
+  ingenieros_arquitectos: ['ingenieria', 'arquitectura'],
+  tecnologia_informatica: ['informatico'],
+  forense_documental: ['grafologia'],
+  financieros_avaluadores: ['financiero', 'contable', 'valuacion'],
+  otros: ['otro'],
 };
 
 export interface Expert {
@@ -415,7 +483,15 @@ export interface Expert {
   user?: { _id: string; displayName: string; email: string; phone?: string };
   disciplines: string[];
   specialization?: string;
+  subespecialidad?: string;
   experienceYears: number;
+  // Clasificación (PDF Estructura de Clasificación de Peritos)
+  seniority?: ExpertSeniority | null;
+  category?: ExpertCategory | null;
+  pregrado?: boolean;
+  numEspecializaciones?: number;
+  numMaestrias?: number;
+  doctorado?: boolean;
   professionalCard?: string;
   city?: string;
   region?: string;

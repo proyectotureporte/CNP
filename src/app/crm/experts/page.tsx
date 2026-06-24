@@ -16,14 +16,16 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Plus, Search, Star, MapPin, Briefcase, ChevronLeft, ChevronRight, UserSearch,
+  Plus, Search, Star, MapPin, Briefcase, ChevronLeft, ChevronRight, UserSearch, GraduationCap,
 } from "lucide-react";
 import {
   CASE_DISCIPLINES, DISCIPLINE_LABELS,
   EXPERT_AVAILABILITY_LABELS, EXPERT_AVAILABILITY_COLORS,
-  EXPERT_VALIDATION_LABELS, EXPERT_VALIDATION_COLORS,
+  EXPERT_VALIDATION_LABELS, EXPERT_VALIDATION_COLORS, EXPERT_VALIDATION_STATUSES,
+  EXPERT_SENIORITY_LABELS, EXPERT_SENIORITY_COLORS, EXPERT_SENIORITIES,
+  EXPERT_CATEGORY_LABELS, EXPERT_CATEGORIES,
   type Expert, type CaseDiscipline,
-  type ExpertAvailability, type ExpertValidationStatus, type UserRole,
+  type UserRole,
 } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { canManageExperts } from "@/lib/auth/permissions";
@@ -36,6 +38,9 @@ export default function ExpertsPage() {
   const [search, setSearch] = useState("");
   const [discipline, setDiscipline] = useState("");
   const [availability, setAvailability] = useState("");
+  const [validationStatus, setValidationStatus] = useState("");
+  const [seniority, setSeniority] = useState("");
+  const [category, setCategory] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -47,6 +52,9 @@ export default function ExpertsPage() {
       if (search) params.set("search", search);
       if (discipline) params.set("discipline", discipline);
       if (availability) params.set("availability", availability);
+      if (validationStatus) params.set("validationStatus", validationStatus);
+      if (seniority) params.set("seniority", seniority);
+      if (category) params.set("category", category);
       params.set("page", String(page));
       params.set("limit", "12");
 
@@ -61,7 +69,7 @@ export default function ExpertsPage() {
     finally { setLoading(false); }
   }
 
-  useEffect(() => { loadExperts(); }, [page, discipline, availability]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadExperts(); }, [page, discipline, availability, validationStatus, seniority, category]); // eslint-disable-line react-hooks/exhaustive-deps
 
   usePusher(['expert:created', 'expert:updated'], () => { loadExperts(); });
 
@@ -96,7 +104,7 @@ export default function ExpertsPage() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+      <div className="mb-6 flex flex-col gap-3">
         <form onSubmit={handleSearch} className="flex flex-1 gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -109,28 +117,53 @@ export default function ExpertsPage() {
           </div>
           <Button type="submit" variant="secondary">Buscar</Button>
         </form>
-        <Select value={discipline} onValueChange={(v) => { setDiscipline(v === "all" ? "" : v); setPage(1); }}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Disciplina" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            {CASE_DISCIPLINES.map((d) => (
-              <SelectItem key={d} value={d}>{DISCIPLINE_LABELS[d as CaseDiscipline]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={availability} onValueChange={(v) => { setAvailability(v === "all" ? "" : v); setPage(1); }}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Disponibilidad" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            <SelectItem value="disponible">Disponible</SelectItem>
-            <SelectItem value="ocupado">Ocupado</SelectItem>
-            <SelectItem value="no_disponible">No Disponible</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <Select value={validationStatus || "all"} onValueChange={(v) => { setValidationStatus(v === "all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-full sm:w-[170px]"><SelectValue placeholder="Estado" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los estados</SelectItem>
+              {EXPERT_VALIDATION_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>{EXPERT_VALIDATION_LABELS[s]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={seniority || "all"} onValueChange={(v) => { setSeniority(v === "all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Nivel" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los niveles</SelectItem>
+              {EXPERT_SENIORITIES.map((s) => (
+                <SelectItem key={s} value={s}>{EXPERT_SENIORITY_LABELS[s]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={category || "all"} onValueChange={(v) => { setCategory(v === "all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Categoría" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las categorías</SelectItem>
+              {EXPERT_CATEGORIES.map((c) => (
+                <SelectItem key={c} value={c}>{EXPERT_CATEGORY_LABELS[c]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={discipline || "all"} onValueChange={(v) => { setDiscipline(v === "all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Disciplina" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {CASE_DISCIPLINES.map((d) => (
+                <SelectItem key={d} value={d}>{DISCIPLINE_LABELS[d as CaseDiscipline]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={availability || "all"} onValueChange={(v) => { setAvailability(v === "all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Disponibilidad" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              <SelectItem value="disponible">Disponible</SelectItem>
+              <SelectItem value="ocupado">Ocupado</SelectItem>
+              <SelectItem value="no_disponible">No Disponible</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Expert Cards */}
@@ -152,33 +185,40 @@ export default function ExpertsPage() {
           {experts.map((expert) => {
             const availColor = EXPERT_AVAILABILITY_COLORS[expert.availability];
             const valColor = EXPERT_VALIDATION_COLORS[expert.validationStatus];
+            const senColor = expert.seniority ? EXPERT_SENIORITY_COLORS[expert.seniority] : null;
             return (
               <Link key={expert._id} href={`/crm/experts/${expert._id}`}>
                 <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                   <CardContent className="pt-6 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-semibold">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate">
                           {expert.user?.displayName || "Sin nombre"}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {expert.specialization || "Sin especializacion"}
+                        <p className="text-xs text-muted-foreground truncate">
+                          {expert.category ? EXPERT_CATEGORY_LABELS[expert.category] : (expert.specialization || "Sin categoría")}
                         </p>
                       </div>
-                      <Badge className={`${valColor?.bg} ${valColor?.text} border-0 text-xs`}>
+                      <Badge className={`${valColor?.bg} ${valColor?.text} border-0 text-xs whitespace-nowrap`}>
                         {EXPERT_VALIDATION_LABELS[expert.validationStatus]}
                       </Badge>
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5">
-                      {expert.disciplines?.slice(0, 3).map((d) => (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {senColor && (
+                        <Badge className={`${senColor.bg} ${senColor.text} border-0 text-xs`}>
+                          <GraduationCap className="mr-1 h-3 w-3" />
+                          {EXPERT_SENIORITY_LABELS[expert.seniority!]}
+                        </Badge>
+                      )}
+                      {expert.disciplines?.slice(0, 2).map((d) => (
                         <Badge key={d} variant="outline" className="text-xs">
                           {DISCIPLINE_LABELS[d as CaseDiscipline] || d}
                         </Badge>
                       ))}
-                      {(expert.disciplines?.length || 0) > 3 && (
+                      {(expert.disciplines?.length || 0) > 2 && (
                         <Badge variant="outline" className="text-xs">
-                          +{expert.disciplines.length - 3}
+                          +{expert.disciplines.length - 2}
                         </Badge>
                       )}
                     </div>

@@ -21,7 +21,9 @@ import {
 } from "lucide-react";
 import {
   CASE_DISCIPLINES, DISCIPLINE_LABELS,
-  type Expert, type CaseDiscipline,
+  EXPERT_CATEGORIES, EXPERT_CATEGORY_LABELS,
+  EXPERT_SENIORITIES, EXPERT_SENIORITY_LABELS,
+  type Expert, type CaseDiscipline, type ExpertCategory, type ExpertSeniority,
 } from "@/lib/types";
 
 interface ExpertFormProps {
@@ -37,7 +39,7 @@ interface UserOption {
 
 const STEPS = [
   { id: 1, label: "Datos Personales", icon: User },
-  { id: 2, label: "Especialidades", icon: BookOpen },
+  { id: 2, label: "Clasificación", icon: BookOpen },
   { id: 3, label: "Datos Bancarios", icon: CreditCardIcon },
 ];
 
@@ -55,9 +57,20 @@ export default function ExpertForm({ initialData, expertId }: ExpertFormProps) {
   const [taxId, setTaxId] = useState(initialData?.taxId || "");
   const [professionalCard, setProfessionalCard] = useState(initialData?.professionalCard || "");
 
-  // Step 2: Especialidades
+  // Step 2: Clasificación, especialidades y experiencia
   const [disciplines, setDisciplines] = useState<string[]>(initialData?.disciplines || []);
+  const [category, setCategory] = useState<string>(initialData?.category || "");
   const [specialization, setSpecialization] = useState(initialData?.specialization || "");
+  const [subespecialidad, setSubespecialidad] = useState(initialData?.subespecialidad || "");
+  const [seniority, setSeniority] = useState<string>(initialData?.seniority || "");
+  const [pregrado, setPregrado] = useState<boolean>(initialData?.pregrado ?? false);
+  const [numEspecializaciones, setNumEspecializaciones] = useState(
+    initialData?.numEspecializaciones != null ? String(initialData.numEspecializaciones) : "0"
+  );
+  const [numMaestrias, setNumMaestrias] = useState(
+    initialData?.numMaestrias != null ? String(initialData.numMaestrias) : "0"
+  );
+  const [doctorado, setDoctorado] = useState<boolean>(initialData?.doctorado ?? false);
   const [experienceYears, setExperienceYears] = useState(
     initialData?.experienceYears ? String(initialData.experienceYears) : ""
   );
@@ -134,7 +147,14 @@ export default function ExpertForm({ initialData, expertId }: ExpertFormProps) {
       const payload = {
         userRef: userRef || undefined,
         disciplines,
+        category: category || null,
         specialization,
+        subespecialidad,
+        seniority: seniority || null,
+        pregrado,
+        numEspecializaciones: parseInt(numEspecializaciones) || 0,
+        numMaestrias: parseInt(numMaestrias) || 0,
+        doctorado,
         experienceYears: parseInt(experienceYears) || 0,
         professionalCard,
         city,
@@ -279,13 +299,40 @@ export default function ExpertForm({ initialData, expertId }: ExpertFormProps) {
         </Card>
       )}
 
-      {/* Step 2: Especialidades */}
+      {/* Step 2: Clasificación */}
       {step === 2 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Especialidades y Experiencia</CardTitle>
+            <CardTitle className="text-base">Clasificación, Especialidad y Experiencia</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Macro-categoría</Label>
+                <Select value={category || "none"} onValueChange={(v) => setCategory(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar categoría..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin categoría</SelectItem>
+                    {EXPERT_CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>{EXPERT_CATEGORY_LABELS[c as ExpertCategory]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Nivel (seniority)</Label>
+                <Select value={seniority || "none"} onValueChange={(v) => setSeniority(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Sin clasificar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin clasificar</SelectItem>
+                    {EXPERT_SENIORITIES.map((s) => (
+                      <SelectItem key={s} value={s}>{EXPERT_SENIORITY_LABELS[s as ExpertSeniority]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label>Disciplinas *</Label>
               <div className="flex flex-wrap gap-2">
@@ -306,17 +353,52 @@ export default function ExpertForm({ initialData, expertId }: ExpertFormProps) {
               </p>
             </div>
 
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="specialization">Especialidad</Label>
+                <Input
+                  id="specialization"
+                  value={specialization}
+                  onChange={(e) => setSpecialization(e.target.value)}
+                  placeholder="Ej: Contabilidad forense, Medicina laboral..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="subespecialidad">Subespecialidad</Label>
+                <Input
+                  id="subespecialidad"
+                  value={subespecialidad}
+                  onChange={(e) => setSubespecialidad(e.target.value)}
+                  placeholder="Opcional"
+                />
+              </div>
+            </div>
+
             <Separator />
 
-            <div className="space-y-2">
-              <Label htmlFor="specialization">Especializacion</Label>
-              <Input
-                id="specialization"
-                value={specialization}
-                onChange={(e) => setSpecialization(e.target.value)}
-                placeholder="Ej: Contabilidad forense, Valuacion inmobiliaria..."
-              />
+            <div>
+              <Label className="text-sm">Formación académica (base para el nivel)</Label>
+              <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={pregrado} onChange={(e) => setPregrado(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+                  Pregrado profesional
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={doctorado} onChange={(e) => setDoctorado(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+                  Doctorado
+                </label>
+                <div className="space-y-2">
+                  <Label htmlFor="numEsp">Nº de especializaciones</Label>
+                  <Input id="numEsp" type="number" min="0" value={numEspecializaciones} onChange={(e) => setNumEspecializaciones(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="numMaes">Nº de maestrías</Label>
+                  <Input id="numMaes" type="number" min="0" value={numMaestrias} onChange={(e) => setNumMaestrias(e.target.value)} />
+                </div>
+              </div>
             </div>
+
+            <Separator />
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">

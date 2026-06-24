@@ -36,7 +36,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
        (SELECT count(*) FROM cases)::int AS "totalCases",
        (SELECT count(*) FROM cases WHERE status = 'gestionado')::int AS "activeCases",
        (SELECT count(*) FROM crm_client)::int AS "totalClients",
-       (SELECT count(*) FROM expert WHERE validation_status = 'aprobado')::int AS "totalExperts",
+       (SELECT count(*) FROM expert WHERE validation_status = 'activado')::int AS "totalExperts",
        (SELECT count(*) FROM payment WHERE status = 'pendiente')::int AS "pendingPayments",
        (SELECT count(*) FROM cases WHERE status = 'creado')::int AS creado,
        (SELECT count(*) FROM cases WHERE status = 'gestionado')::int AS gestionado,

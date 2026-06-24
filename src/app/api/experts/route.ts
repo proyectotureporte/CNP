@@ -11,12 +11,14 @@ export async function GET(request: NextRequest) {
     const city = searchParams.get('city') || '';
     const availability = searchParams.get('availability') || '';
     const validationStatus = searchParams.get('validationStatus') || '';
+    const seniority = searchParams.get('seniority') || '';
+    const category = searchParams.get('category') || '';
     const search = searchParams.get('search') || '';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
 
-    const filters = { discipline, city, availability, validationStatus, search };
+    const filters = { discipline, city, availability, validationStatus, seniority, category, search };
 
     const [experts, total] = await Promise.all([
       expert.listExperts({ ...filters, limit, offset }),
@@ -41,7 +43,8 @@ export async function POST(request: NextRequest) {
     const userId = request.headers.get('x-user-id');
     const body = await request.json();
     const {
-      userRef, disciplines, specialization, experienceYears, professionalCard,
+      userRef, disciplines, specialization, subespecialidad, experienceYears, professionalCard,
+      seniority, category, pregrado, numEspecializaciones, numMaestrias, doctorado,
       city, region, baseFee, feeCurrency, taxId,
       bankName, bankAccountType, bankAccountNumber,
     } = body;
@@ -54,14 +57,21 @@ export async function POST(request: NextRequest) {
       userId: userRef || (userId && userId !== 'admin' ? userId : null),
       disciplines,
       specialization: specialization || '',
+      subespecialidad: subespecialidad || '',
       experienceYears: experienceYears || 0,
+      seniority: seniority || null,
+      category: category || null,
+      pregrado: pregrado ?? false,
+      numEspecializaciones: numEspecializaciones ?? 0,
+      numMaestrias: numMaestrias ?? 0,
+      doctorado: doctorado ?? false,
       professionalCard: professionalCard || '',
       city: city || '',
       region: region || '',
       baseFee: baseFee || 0,
       feeCurrency: feeCurrency || 'COP',
       availability: 'disponible',
-      validationStatus: 'pendiente',
+      validationStatus: 'candidato',
       taxId: taxId || '',
       bankName: bankName || '',
       bankAccountType: bankAccountType || null,

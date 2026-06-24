@@ -38,13 +38,15 @@ export async function PUT(
     }
 
     const {
-      disciplines, specialization, experienceYears, professionalCard,
+      disciplines, specialization, subespecialidad, experienceYears, professionalCard,
+      seniority, category, pregrado, numEspecializaciones, numMaestrias, doctorado,
       city, region, baseFee, feeCurrency, taxId,
       bankName, bankAccountType, bankAccountNumber,
     } = body;
 
     const updated = await expert.updateExpert(id, {
-      disciplines, specialization, experienceYears, professionalCard,
+      disciplines, specialization, subespecialidad, experienceYears, professionalCard,
+      seniority, category, pregrado, numEspecializaciones, numMaestrias, doctorado,
       city, region, baseFee, feeCurrency, taxId, bankName, bankAccountNumber,
       bankAccountType: bankAccountType === undefined ? undefined : (bankAccountType || null),
     });
