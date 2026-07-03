@@ -56,3 +56,71 @@ export async function sendCredentialsEmail({
 
   return data;
 }
+
+// El nombre viene de un formulario público: escapar antes de interpolarlo en el HTML.
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export async function sendWebFormConfirmationEmail({
+  to,
+  nombre,
+  origen,
+}: {
+  to: string;
+  nombre?: string;
+  origen: 'landing' | 'abogados' | 'empresas' | 'jueces' | 'masterclass';
+}) {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not configured, skipping email');
+    return null;
+  }
+
+  const emailFrom = process.env.EMAIL_FROM || 'CNP Portal <noreply@cnp.com.co>';
+  const replyTo = process.env.EMAIL_REPLY_TO || 'soporte@cnp.com.co';
+
+  const esMasterclass = origen === 'masterclass';
+  const saludo = nombre ? `Hola ${nombre.trim()},` : 'Hola,';
+  const subject = esMasterclass
+    ? 'Recibimos tu reserva de cupo — MasterClass CNP + Peritus'
+    : 'Recibimos tu solicitud — Centro Nacional de Pruebas';
+  const recibido = esMasterclass
+    ? 'hemos recibido tu solicitud de reserva de cupo para la próxima MasterClass.'
+    : 'hemos recibido tu solicitud a través de nuestro sitio web.';
+  const whatsappUrl = 'https://wa.me/573164071992?text=quiero%20hablar%20con%20un%20agente%20de%20CNP';
+
+  const { data, error } = await getResend().emails.send({
+    from: emailFrom,
+    to,
+    replyTo,
+    subject,
+    text: `${saludo}\n\nGracias por escribirnos: ${recibido}\n\nUn miembro de nuestro equipo te contactara en un maximo de 24 horas.\n\nSi tu consulta es urgente, puedes escribirnos por WhatsApp: ${whatsappUrl}\n\nCNP | Peritus\nhttps://cnp.com.co`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: #0a2a6e; border-radius: 8px; padding: 18px 24px; margin-bottom: 20px;">
+          <h2 style="color: #ffffff; margin: 0; font-size: 20px;">${esMasterclass ? 'Reserva recibida' : 'Solicitud recibida'}</h2>
+        </div>
+        <p>${escapeHtml(saludo)}</p>
+        <p>Gracias por escribirnos: ${recibido}</p>
+        <div style="background: #f4f4f5; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <p style="margin: 0;"><strong>Un miembro de nuestro equipo te contactar&aacute; en un m&aacute;ximo de 24 horas.</strong></p>
+        </div>
+        <p style="color: #666; font-size: 14px;">Si tu consulta es urgente, tambi&eacute;n puedes <a href="${whatsappUrl}" style="color: #1b5697;">escribirnos por WhatsApp</a>.</p>
+        <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 24px 0;" />
+        <p style="color: #999; font-size: 12px;">Este es un correo autom&aacute;tico del sistema CNP | Peritus. No es necesario responderlo.</p>
+      </div>
+    `,
+  });
+
+  if (error) {
+    console.error('[email] Error sending web-form confirmation email:', error);
+    return null;
+  }
+
+  return data;
+}

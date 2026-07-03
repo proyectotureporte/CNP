@@ -11,6 +11,7 @@ interface WebLead {
   _createdAt: string;
   nombre?: string;
   email: string;
+  telefono?: string;
   mensaje?: string;
   origen: string;
   estado: string;
@@ -85,9 +86,17 @@ export default function FormulariosPage() {
               <Card key={lead._id}>
                 <CardContent className="pt-4 space-y-2">
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold">{lead.nombre || "Sin nombre"}</span>
                       <span className="text-sm text-muted-foreground">{lead.email}</span>
+                      {lead.telefono && (
+                        <a
+                          href={`tel:${lead.telefono.replace(/[^+0-9]/g, "")}`}
+                          className="text-sm text-muted-foreground hover:underline"
+                        >
+                          · {lead.telefono}
+                        </a>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-xs">{ORIGEN_LABELS[lead.origen] ?? lead.origen}</Badge>

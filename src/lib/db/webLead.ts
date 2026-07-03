@@ -5,6 +5,7 @@ export interface WebLead {
   _createdAt: string;
   nombre?: string;
   email?: string;
+  telefono?: string;
   mensaje?: string;
   origen: 'landing' | 'abogados' | 'empresas' | 'jueces' | 'masterclass';
   estado: 'nuevo' | 'en_gestion' | 'convertido' | 'descartado';
@@ -12,7 +13,7 @@ export interface WebLead {
 }
 
 const SELECT = `
-  id AS "_id", created_at AS "_createdAt", nombre, email, mensaje, origen, estado, notas
+  id AS "_id", created_at AS "_createdAt", nombre, email, telefono, mensaje, origen, estado, notas
 `;
 
 export async function listWebLeads(estado = '', origen = ''): Promise<WebLead[]> {
@@ -31,6 +32,7 @@ export async function getWebLeadById(id: string): Promise<WebLead | null> {
 export interface WebLeadInput {
   nombre?: string | null;
   email?: string | null;
+  telefono?: string | null;
   mensaje?: string | null;
   origen?: WebLead['origen'];
   estado?: WebLead['estado'];
@@ -43,6 +45,7 @@ export async function createWebLead(input: WebLeadInput): Promise<WebLead | null
     id,
     nombre: input.nombre ?? null,
     email: input.email ?? null,
+    telefono: input.telefono ?? null,
     mensaje: input.mensaje ?? null,
     origen: input.origen ?? 'landing',
     estado: input.estado ?? 'nuevo',
@@ -56,6 +59,7 @@ export async function updateWebLead(id: string, patch: Partial<WebLeadInput>): P
   const data = pruneUndefined({
     nombre: patch.nombre,
     email: patch.email,
+    telefono: patch.telefono,
     mensaje: patch.mensaje,
     origen: patch.origen,
     estado: patch.estado,

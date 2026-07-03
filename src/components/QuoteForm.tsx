@@ -20,6 +20,7 @@ export default function QuoteForm({ origen = "landing" }: Props) {
   const { titulo, boton1 } = config[origen] ?? config.landing;
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
+  const [telefono, setTelefono] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
 
@@ -30,12 +31,13 @@ export default function QuoteForm({ origen = "landing" }: Props) {
       const res = await fetch("/api/web-form", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, email, mensaje, origen }),
+        body: JSON.stringify({ nombre, email, telefono, mensaje, origen }),
       });
       if (res.ok) {
         setStatus("ok");
         setNombre("");
         setEmail("");
+        setTelefono("");
         setMensaje("");
       } else {
         setStatus("error");
@@ -107,10 +109,11 @@ export default function QuoteForm({ origen = "landing" }: Props) {
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
               <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: "24px" }}>
                 <div>
-                  <label style={labelStyle}>Nombre</label>
+                  <label style={labelStyle}>Nombre *</label>
                   <input
                     type="text"
                     placeholder="Ingrese su nombre"
+                    required
                     value={nombre}
                     onChange={(e) => setNombre(e.target.value)}
                     style={inputStyle}
@@ -134,10 +137,27 @@ export default function QuoteForm({ origen = "landing" }: Props) {
               </div>
 
               <div>
-                <label style={labelStyle}>Mensaje</label>
+                <label style={labelStyle}>Tel&eacute;fono *</label>
+                <input
+                  type="tel"
+                  placeholder="Ej: 316 407 1992"
+                  required
+                  pattern="^\+?[0-9\s()\-]{7,20}$"
+                  title="Ingrese un número de teléfono válido (solo dígitos, espacios, guiones o paréntesis)"
+                  value={telefono}
+                  onChange={(e) => setTelefono(e.target.value)}
+                  style={inputStyle}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.5)"; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; }}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Mensaje *</label>
                 <textarea
                   placeholder="Describa brevemente su consulta"
                   rows={5}
+                  required
                   value={mensaje}
                   onChange={(e) => setMensaje(e.target.value)}
                   style={{ ...inputStyle, resize: "none" as const }}
