@@ -35,16 +35,19 @@ export async function sendCredentialsEmail({
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h2 style="color: #1a1a1a;">Bienvenido al Portal CNP</h2>
-        <p>Hola <strong>${clientName}</strong>,</p>
-        <p>Se ha creado tu cuenta de acceso al portal de clientes. A continuaci&oacute;n encontrar&aacute;s tus credenciales:</p>
-        <div style="background: #f4f4f5; border-radius: 8px; padding: 16px; margin: 16px 0;">
-          <p style="margin: 4px 0;"><strong>Usuario:</strong> ${username}</p>
-          <p style="margin: 4px 0;"><strong>Contrase&ntilde;a:</strong> <code style="background: #e4e4e7; padding: 2px 6px; border-radius: 4px;">${password}</code></p>
+        <p style="color: #333333;">Hola <strong>${clientName}</strong>,</p>
+        <p style="color: #333333;">Se ha creado tu cuenta de acceso al portal de clientes. A continuaci&oacute;n encontrar&aacute;s tus credenciales:</p>
+        <!-- background-image (gradient) fija el navy: los clientes en modo oscuro
+             (Gmail) invierten background-color pero no background-image, así las
+             letras blancas siempre quedan sobre fondo oscuro. -->
+        <div style="background-color: #0a2a6e; background-image: linear-gradient(#0a2a6e, #0a2a6e); border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <p style="margin: 4px 0; color: #ffffff;"><strong>Usuario:</strong> ${username}</p>
+          <p style="margin: 4px 0; color: #ffffff;"><strong>Contrase&ntilde;a:</strong> <code style="background-color: #132e5e; background-image: linear-gradient(#132e5e, #132e5e); color: #ffffff; padding: 2px 6px; border-radius: 4px;">${password}</code></p>
         </div>
-        <p>Puedes acceder al portal en: <a href="${portalUrl}">Iniciar Sesi&oacute;n</a></p>
-        <p style="color: #666; font-size: 14px;">Te recomendamos cambiar tu contrase&ntilde;a despu&eacute;s del primer inicio de sesi&oacute;n.</p>
+        <p style="color: #333333;">Puedes acceder al portal en: <a href="${portalUrl}" style="color: #1b5697;">Iniciar Sesi&oacute;n</a></p>
+        <p style="color: #666666; font-size: 14px;">Te recomendamos cambiar tu contrase&ntilde;a despu&eacute;s del primer inicio de sesi&oacute;n.</p>
         <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 24px 0;" />
-        <p style="color: #999; font-size: 12px;">Este es un correo autom&aacute;tico del sistema CNP | Peritus.</p>
+        <p style="color: #999999; font-size: 12px;">Este es un correo autom&aacute;tico del sistema CNP | Peritus.</p>
       </div>
     `,
   });
@@ -102,17 +105,20 @@ export async function sendWebFormConfirmationEmail({
     text: `${saludo}\n\nGracias por escribirnos: ${recibido}\n\nUn miembro de nuestro equipo te contactara en un maximo de 24 horas.\n\nSi tu consulta es urgente, puedes escribirnos por WhatsApp: ${whatsappUrl}\n\nCNP | Peritus\nhttps://cnp.com.co`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #0a2a6e; border-radius: 8px; padding: 18px 24px; margin-bottom: 20px;">
+        <!-- background-image (gradient) fija el navy: los clientes en modo oscuro
+             (Gmail) invierten background-color pero no background-image, así las
+             letras blancas siempre quedan sobre fondo oscuro. -->
+        <div style="background-color: #0a2a6e; background-image: linear-gradient(#0a2a6e, #0a2a6e); border-radius: 8px; padding: 18px 24px; margin-bottom: 20px;">
           <h2 style="color: #ffffff; margin: 0; font-size: 20px;">${esMasterclass ? 'Reserva recibida' : 'Solicitud recibida'}</h2>
         </div>
-        <p>${escapeHtml(saludo)}</p>
-        <p>Gracias por escribirnos: ${recibido}</p>
-        <div style="background: #f4f4f5; border-radius: 8px; padding: 16px; margin: 16px 0;">
-          <p style="margin: 0;"><strong>Un miembro de nuestro equipo te contactar&aacute; en un m&aacute;ximo de 24 horas.</strong></p>
+        <p style="color: #333333;">${escapeHtml(saludo)}</p>
+        <p style="color: #333333;">Gracias por escribirnos: ${recibido}</p>
+        <div style="background-color: #0a2a6e; background-image: linear-gradient(#0a2a6e, #0a2a6e); border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <p style="margin: 0; color: #ffffff;"><strong>Un miembro de nuestro equipo te contactar&aacute; en un m&aacute;ximo de 24 horas.</strong></p>
         </div>
-        <p style="color: #666; font-size: 14px;">Si tu consulta es urgente, tambi&eacute;n puedes <a href="${whatsappUrl}" style="color: #1b5697;">escribirnos por WhatsApp</a>.</p>
+        <p style="color: #666666; font-size: 14px;">Si tu consulta es urgente, tambi&eacute;n puedes <a href="${whatsappUrl}" style="color: #1b5697;">escribirnos por WhatsApp</a>.</p>
         <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 24px 0;" />
-        <p style="color: #999; font-size: 12px;">Este es un correo autom&aacute;tico del sistema CNP | Peritus. No es necesario responderlo.</p>
+        <p style="color: #999999; font-size: 12px;">Este es un correo autom&aacute;tico del sistema CNP | Peritus. No es necesario responderlo.</p>
       </div>
     `,
   });
