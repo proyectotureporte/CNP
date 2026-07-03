@@ -8,6 +8,7 @@ const navItems = [
   { label: "Servicios", href: "#servicios" },
   { label: "Soluciones", href: "#soluciones" },
   { label: "Peritus By CNP", href: "https://peritus.com.co", external: true },
+  { label: "MasterClass", href: "/masterclass" },
   { label: "Nosotros", href: "#quienes" },
   { label: "Contacto", href: "#contacto" },
 ];

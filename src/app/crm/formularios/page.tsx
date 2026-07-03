@@ -35,6 +35,7 @@ const ORIGEN_LABELS: Record<string, string> = {
   abogados: "Abogados",
   empresas: "Empresas",
   jueces:   "Jueces",
+  masterclass: "Masterclass",
 };
 
 function formatDate(d: string) {

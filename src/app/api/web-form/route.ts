@@ -6,7 +6,7 @@ const schema = z.object({
   nombre: z.string().max(100).optional(),
   email: z.string().email(),
   mensaje: z.string().max(2000).optional(),
-  origen: z.enum(['landing', 'abogados', 'empresas', 'jueces']).default('landing'),
+  origen: z.enum(['landing', 'abogados', 'empresas', 'jueces', 'masterclass']).default('landing'),
 });
 
 export async function POST(req: NextRequest) {

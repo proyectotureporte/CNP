@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useReveal } from "@/hooks/useReveal";
 
 interface Props {
-  origen?: "landing" | "abogados" | "empresas" | "jueces";
+  origen?: "landing" | "abogados" | "empresas" | "jueces" | "masterclass";
 }
 
 const config: Record<string, { titulo: string; boton1: string }> = {
@@ -12,6 +12,7 @@ const config: Record<string, { titulo: string; boton1: string }> = {
   abogados:  { titulo: "Completa el formulario y evaluaremos tu caso.",                    boton1: "Evaluar mi caso jurídico" },
   empresas:  { titulo: "Completa el formulario para recibir tu análisis empresarial.",     boton1: "Evaluar mi empresa" },
   jueces:    { titulo: "Cuéntanos tu caso para realizar una evaluación objetiva",          boton1: "Solicitar evaluación imparcial" },
+  masterclass: { titulo: "Reserva tu cupo en la próxima MasterClass",                      boton1: "Reservar mi cupo" },
 };
 
 export default function QuoteForm({ origen = "landing" }: Props) {

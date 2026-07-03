@@ -6,7 +6,7 @@ export interface WebLead {
   nombre?: string;
   email?: string;
   mensaje?: string;
-  origen: 'landing' | 'abogados' | 'empresas' | 'jueces';
+  origen: 'landing' | 'abogados' | 'empresas' | 'jueces' | 'masterclass';
   estado: 'nuevo' | 'en_gestion' | 'convertido' | 'descartado';
   notas?: string;
 }

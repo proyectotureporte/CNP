@@ -40,15 +40,17 @@ const handle = app.getRequestHandler();
 
 // Headers de seguridad (aplicados aquí porque next.config `headers()` no corre
 // con servidor custom). CSP ajustada: CDN Sanity (img), Google Maps (frame),
-// WebSocket mismo origen (connect). next/font se auto-hostea.
+// WebSocket mismo origen (connect), GTM/GA4 (script/img/connect/frame — si se
+// agregan tags de otros proveedores al contenedor GTM, hay que permitir aquí
+// sus dominios). next/font se auto-hostea.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.googletagmanager.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://cdn.sanity.io",
+  "img-src 'self' data: blob: https://cdn.sanity.io https://*.googletagmanager.com https://*.google-analytics.com",
   "font-src 'self' data:",
-  "connect-src 'self' ws: wss: https://cdn.sanity.io",
-  "frame-src 'self' https://maps.google.com https://www.google.com",
+  "connect-src 'self' ws: wss: https://cdn.sanity.io https://*.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com",
+  "frame-src 'self' https://maps.google.com https://www.google.com https://*.googletagmanager.com",
   "frame-ancestors 'self'",
   "base-uri 'self'",
   "form-action 'self'",
