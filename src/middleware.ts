@@ -15,7 +15,11 @@ export async function middleware(request: NextRequest) {
     pathname === '/api/admin/init' ||
     pathname === '/api/whatsapp/webhook' ||
     pathname === '/api/cron/check-alerts' ||
-    pathname === '/api/web-form'
+    pathname === '/api/web-form' ||
+    // Server-to-server desde el panel /santiago (se auto-protegen con
+    // x-content-secret === CONTENT_ADMIN_SECRET dentro del handler)
+    pathname.startsWith('/api/site-content/') ||
+    pathname === '/api/blog/admin'
   ) {
     return NextResponse.next();
   }

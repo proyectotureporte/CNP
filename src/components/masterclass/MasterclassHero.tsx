@@ -2,7 +2,17 @@
 
 import Image from "next/image";
 
-export default function MasterclassHero() {
+export interface MasterclassHeroContenido {
+  titulo?: string; parrafo?: string; imagen?: string; botonTexto?: string;
+}
+
+export default function MasterclassHero({ contenido }: { contenido?: MasterclassHeroContenido }) {
+  const c = {
+    titulo: contenido?.titulo || "MasterClass Especializadas",
+    parrafo: contenido?.parrafo || "Formación de alto nivel para abogados, litigantes y profesionales del sector jurídico y pericial que buscan fortalecer su criterio técnico, dominar la prueba y alcanzar resultados con rigor y excelencia.",
+    imagen: contenido?.imagen || "/images/masterclass/hero.webp",
+    botonTexto: contenido?.botonTexto || "Reservar cupo",
+  };
   return (
     <section
       style={{
@@ -16,7 +26,7 @@ export default function MasterclassHero() {
 
       <div className="mc-hero-media">
         <Image
-          src="/images/masterclass/hero.webp"
+          src={c.imagen}
           alt="Profesionales del sector jurídico y pericial analizando documentos financieros"
           fill
           priority
@@ -47,7 +57,7 @@ export default function MasterclassHero() {
               margin: "0 0 20px",
             }}
           >
-            MasterClass Especializadas
+            {c.titulo}
           </h1>
           <p
             className="mc-fade-up mc-delay-1"
@@ -59,9 +69,7 @@ export default function MasterclassHero() {
               margin: "0 0 30px",
             }}
           >
-            Formación de alto nivel para abogados, litigantes y profesionales del
-            sector jurídico y pericial que buscan fortalecer su criterio técnico,
-            dominar la prueba y alcanzar resultados con rigor y excelencia.
+            {c.parrafo}
           </p>
           <div
             className="mc-fade-up mc-delay-2"
@@ -95,7 +103,7 @@ export default function MasterclassHero() {
                 e.currentTarget.style.transform = "translateY(0)";
               }}
             >
-              Reservar cupo
+              {c.botonTexto}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
             </a>
 

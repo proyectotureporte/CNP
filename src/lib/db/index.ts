@@ -26,3 +26,5 @@ export * as whatsappLead from './whatsappLead';
 export * as whatsappMessage from './whatsappMessage';
 export * as webLead from './webLead';
 export * as stats from './stats';
+export * as blogPost from './blogPost';
+export * as siteContent from './siteContent';

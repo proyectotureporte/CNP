@@ -3,8 +3,31 @@
 import Image from "next/image";
 import { useReveal } from "@/hooks/useReveal";
 
-export default function Hero() {
+export interface HeroContenido {
+  imagen?: string;
+  titulo1?: string;
+  tituloAcento?: string;
+  titulo2?: string;
+  colorAcento?: string;
+  parrafo?: string;
+  boton1Texto?: string;
+  boton2Texto?: string;
+  colorBoton?: string;
+}
+
+export default function Hero({ contenido }: { contenido?: HeroContenido }) {
   const ref = useReveal();
+  const c = {
+    imagen: contenido?.imagen || "/images/herologo.png",
+    titulo1: contenido?.titulo1 || "Prueba técnica para el litigio: Transformamos casos complejos en",
+    tituloAcento: contenido?.tituloAcento || "dictámenes claros, comprensibles y sustentables",
+    titulo2: contenido?.titulo2 || "ante el juez",
+    colorAcento: contenido?.colorAcento || "#fbbf24",
+    parrafo: contenido?.parrafo || "Apoyamos a abogados, firmas y empresas en la elaboración de dictámenes financieros especializados, valoración técnica de pruebas, estrategia probatoria para litigio",
+    boton1Texto: contenido?.boton1Texto || "Solicitar diagnóstico",
+    boton2Texto: contenido?.boton2Texto || "Solicitar Dictamen Pericial",
+    colorBoton: contenido?.colorBoton || "#ea580c",
+  };
 
   return (
     <section
@@ -18,7 +41,7 @@ export default function Hero() {
       }}
     >
       <Image
-  src="/images/herologo.png"
+  src={c.imagen}
   alt="Background"
   fill
   style={{ objectFit: "cover", objectPosition: "top"}}
@@ -55,9 +78,9 @@ export default function Hero() {
               marginBottom: "24px",
             }}
           >
-            Prueba técnica para el litigio: Transformamos casos <br />complejos en
-             <span style={{ color: "#fbbf24" }}> dictámenes claros, comprensibles y sustentables
-            </span> ante el juez
+            {c.titulo1}{" "}
+             <span style={{ color: c.colorAcento }}>{c.tituloAcento}
+            </span> {c.titulo2}
           </h1>
           <p
             className="reveal-left"
@@ -70,8 +93,7 @@ export default function Hero() {
               marginBottom: "40px",
             }}
           >
-            Apoyamos a abogados, firmas y empresas en la elaboración de dictámenes financieros especializados,<br /> valoración
-técnica de pruebas, estrategia probatoria para litigio
+            {c.parrafo}
           </p>
           <div className="reveal" style={{ display: "flex", flexWrap: "wrap", gap: "28px" }}>
             <a
@@ -82,7 +104,7 @@ técnica de pruebas, estrategia probatoria para litigio
                 fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
                 fontSize: "16px",
                 fontWeight: 800,
-                backgroundColor: "#ea580c",
+                backgroundColor: c.colorBoton,
                 color: "#ffffff",
                 borderRadius: "10px",
                 padding: "16px 40px",
@@ -91,7 +113,7 @@ técnica de pruebas, estrategia probatoria para litigio
                 textTransform: "uppercase",
               }}
             >
-              Solicitar diagnóstico
+              {c.boton1Texto}
             </a>
             <a
               href="#contacto"
@@ -101,7 +123,7 @@ técnica de pruebas, estrategia probatoria para litigio
                 fontFamily: "var(--font-montserrat), Montserrat, sans-serif",
                 fontSize: "16px",
                 fontWeight: 800,
-                backgroundColor: "#ea580c",
+                backgroundColor: c.colorBoton,
                 color: "#ffffff",
                 borderRadius: "10px",
                 padding: "16px 40px",
@@ -110,7 +132,7 @@ técnica de pruebas, estrategia probatoria para litigio
                 textTransform: "uppercase",
               }}
             >
-              Solicitar Dictamen Pericial
+              {c.boton2Texto}
             </a>
           </div>
         </div>

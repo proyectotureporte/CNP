@@ -7,48 +7,46 @@ import QuoteForm from "@/components/QuoteForm";
 import Clients from "@/components/Clients";
 import NationalOperation from "@/components/NationalOperation";
 import Footer from "@/components/Footer";
+import { mergeContenido } from "@/lib/content/tipos";
+import { DEFAULTS } from "@/lib/content/paginas/empresas";
+import { siteContent } from "@/lib/db";
 
-const cards = [
-  {
-    title: "Liquidaciones de Contratos",
-    image: "/images/liquidaciones.jpg",
-    text: "Ejecutamos liquidaciones de contratos, créditos y obligaciones con precisión contable y plena validez probatoria, garantizando claridad en cada cifra presentada.",
-  },
-  {
-    title: "Valoración de Daños Económicos",
-    image: "/images/2.png",
-    text: "Valoramos los daños económicos sufridos por su empresa con enfoque financiero y metodología probada, facilitando la reclamación efectiva ante instancias judiciales o arbitrales.",
-  },
-  {
-    title: "Análisis Tributario Especializado",
-    image: "/images/3.png",
-    text: "Ofrecemos análisis tributario especializado para procesos de fiscalización y controversias con entidades estatales, con sustento técnico sólido y argumentación estratégica.",
-  },
-];
+// Contenido editable desde el panel /santiago (tabla site_content).
+export const dynamic = "force-dynamic";
 
-export default function EmpresasPage() {
+export default async function EmpresasPage() {
+  let overrides: Record<string, unknown> | null = null;
+  try {
+    const row = await siteContent.getSiteContent("cnp", "empresas");
+    overrides = row?.valor ?? null;
+  } catch { /* sin overrides: defaults */ }
+  const c = mergeContenido(DEFAULTS, overrides);
+
+  const cards = [
+    { title: c.contenido.tarjeta1Titulo, image: c.contenido.tarjeta1Imagen, text: c.contenido.tarjeta1Texto },
+    { title: c.contenido.tarjeta2Titulo, image: c.contenido.tarjeta2Imagen, text: c.contenido.tarjeta2Texto },
+    { title: c.contenido.tarjeta3Titulo, image: c.contenido.tarjeta3Imagen, text: c.contenido.tarjeta3Texto },
+  ];
+
   return (
     <>
       <SmoothScroll />
       <Header />
-      <main>
+      <main style={{ fontFamily: c.estilos.fuente }}>
         <InnerHero
-          title="Soporte técnico integral para la defensa y protección de su patrimonio."
-          subtitle="Acompañamos a empresas del sector real con análisis contable, tributario y económico en sus procesos judiciales, contractuales y de reclamación."
-          bgImage="/images/office-meeting.jpg"
+          title={c.hero.titulo}
+          subtitle={c.hero.subtitulo}
+          bgImage={c.hero.imagen}
           showButtons
-          btn1Label="Evaluar mi empresa"
-          btn2Label="Hablar con un agente"
+          btn1Label={c.hero.boton1}
+          btn2Label={c.hero.boton2}
         />
         <InnerContent
-          sectionTitle="Servicios diseñados para empresas"
-          sectionText="CNP ofrece a las empresas el respaldo técnico y pericial necesario para tomar decisiones fundamentadas en controversias judiciales, liquidaciones y procesos de reclamación económica."
+          sectionTitle={c.contenido.titulo}
+          sectionText={c.contenido.texto}
           cards={cards}
         />
-        <InnerBanner
-          title="Proteja el patrimonio de su empresa"
-          text="Nuestros expertos están listos para acompañarle en cada etapa del proceso con el rigor técnico y la experiencia que su empresa merece."
-        />
+        <InnerBanner title={c.banner.titulo} text={c.banner.texto} />
         <QuoteForm origen="empresas" />
         <Clients />
         <NationalOperation />

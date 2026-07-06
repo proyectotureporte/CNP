@@ -36,15 +36,29 @@ const features = [
   },
 ];
 
-export default function WhyAttend() {
+export interface WhyAttendContenido {
+  titulo?: string;
+  f1Titulo?: string; f1Texto?: string;
+  f2Titulo?: string; f2Texto?: string;
+  f3Titulo?: string; f3Texto?: string;
+  f4Titulo?: string; f4Texto?: string;
+}
+
+export default function WhyAttend({ contenido }: { contenido?: WhyAttendContenido }) {
   const ref = useReveal();
+  const items = features.map((f, i) => ({
+    ...f,
+    title: [contenido?.f1Titulo, contenido?.f2Titulo, contenido?.f3Titulo, contenido?.f4Titulo][i] || f.title,
+    text: [contenido?.f1Texto, contenido?.f2Texto, contenido?.f3Texto, contenido?.f4Texto][i] || f.text,
+  }));
+  const tituloSeccion = contenido?.titulo || "¿POR QUÉ ASISTIR?";
 
   return (
     <section style={{ padding: "64px 0", backgroundColor: "#ffffff" }}>
       <div ref={ref} style={{ width: "100%", maxWidth: "1120px", margin: "0 auto", padding: "0 24px" }}>
-        <SectionHead title="¿POR QUÉ ASISTIR?" />
+        <SectionHead title={tituloSeccion} />
         <div className="reveal-stagger grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {features.map((feature) => (
+          {items.map((feature) => (
             <div
               key={feature.title}
               className="mc-card"

@@ -7,46 +7,46 @@ import QuoteForm from "@/components/QuoteForm";
 import Clients from "@/components/Clients";
 import NationalOperation from "@/components/NationalOperation";
 import Footer from "@/components/Footer";
+import { mergeContenido } from "@/lib/content/tipos";
+import { DEFAULTS } from "@/lib/content/paginas/abogados";
+import { siteContent } from "@/lib/db";
 
-const cards = [
-  {
-    title: "Dictámenes Periciales",
-    image: "/images/1.png",
-    text: "Elaboramos dictámenes con plena validez probatoria para respaldar sus pretensiones en procesos judiciales y arbitrales, con rigor técnico y trazabilidad metodológica.",
-  },
-  {
-    title: "Cálculo de Perjuicios",
-    image: "/images/2.png",
-    text: "Cuantificamos lucro cesante, daño emergente y perjuicios morales con metodología técnica rigurosa, aportando solidez numérica a cada pretensión económica del proceso.",
-  },
-  {
-    title: "Estrategia Probatoria",
-    image: "/images/3.png",
-    text: "Definimos junto a usted la estrategia probatoria que genere ventajas competitivas, estructurando argumentos técnicos que contribuyan a persuadir con claridad y precisión.",
-  },
-];
+// Contenido editable desde el panel /santiago (tabla site_content).
+export const dynamic = "force-dynamic";
 
-export default function AbogadosPage() {
+export default async function AbogadosPage() {
+  let overrides: Record<string, unknown> | null = null;
+  try {
+    const row = await siteContent.getSiteContent("cnp", "abogados");
+    overrides = row?.valor ?? null;
+  } catch { /* sin overrides: defaults */ }
+  const c = mergeContenido(DEFAULTS, overrides);
+
+  const cards = [
+    { title: c.contenido.tarjeta1Titulo, image: c.contenido.tarjeta1Imagen, text: c.contenido.tarjeta1Texto },
+    { title: c.contenido.tarjeta2Titulo, image: c.contenido.tarjeta2Imagen, text: c.contenido.tarjeta2Texto },
+    { title: c.contenido.tarjeta3Titulo, image: c.contenido.tarjeta3Imagen, text: c.contenido.tarjeta3Texto },
+  ];
+
   return (
     <>
       <SmoothScroll />
       <Header />
-      <main>
+      <main style={{ fontFamily: c.estilos.fuente }}>
         <InnerHero
-          title="No improvise la prueba técnica. Fortalecemos su teoría del caso."
-          subtitle="Aportamos sustento financiero y pericial para fortalecer cada pretensión de su caso con precisión, rigor y credibilidad técnica."
-          bgImage="/images/lawyers-office.jpg"
+          title={c.hero.titulo}
+          subtitle={c.hero.subtitulo}
+          bgImage={c.hero.imagen}
           showButtons
+          btn1Label={c.hero.boton1}
+          btn2Label={c.hero.boton2}
         />
         <InnerContent
-          sectionTitle="Cómo fortalecemos su práctica jurídica"
-          sectionText="En CNP acompañamos a abogados litigantes con dictámenes, cálculos y análisis que aportan la precisión técnica que sus casos necesitan para prosperar en cualquier instancia judicial o arbitral."
+          sectionTitle={c.contenido.titulo}
+          sectionText={c.contenido.texto}
           cards={cards}
         />
-        <InnerBanner
-          title="¿Listo para fortalecer su caso?"
-          text="Contáctenos hoy y uno de nuestros expertos analizará su situación sin costo inicial. Estamos disponibles para responder con la celeridad que su proceso exige."
-        />
+        <InnerBanner title={c.banner.titulo} text={c.banner.texto} />
         <QuoteForm origen="abogados" />
         <Clients />
         <NationalOperation />

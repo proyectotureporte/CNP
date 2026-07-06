@@ -12,34 +12,61 @@ const ClockIcon = ({ size, stroke, strokeWidth }: { size: number; stroke: string
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
 );
 
-const metaItems = [
+const buildMetaItems = (fechaTexto: string, horaMeta: string, modalidad: string, cupoTexto: string) => [
   {
     label: "Fecha",
-    value: "16 de julio de 2026",
+    value: fechaTexto,
     icon: <CalendarIcon size={20} stroke="currentColor" strokeWidth={1.8} />,
   },
   {
     label: "Hora",
-    value: "10:00 a. m. (hora Colombia)",
+    value: horaMeta,
     icon: <ClockIcon size={20} stroke="currentColor" strokeWidth={1.8} />,
   },
   {
     label: "Modalidad",
-    value: "Online en vivo",
+    value: modalidad,
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="13" rx="2" /><path d="M8 21h8M12 17v4" /></svg>
     ),
   },
   {
     label: "Cupo limitado",
-    value: "Reserva tu lugar",
+    value: cupoTexto,
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.2" /><path d="M3.5 20v-1a5.5 5.5 0 0 1 11 0v1" /><circle cx="17" cy="9" r="2.6" /><path d="M15.5 14.6a4.5 4.5 0 0 1 6 4.4v1" /></svg>
     ),
   },
 ];
 
-export default function FeaturedMasterclass() {
+export interface FeaturedContenido {
+  mes?: string; dia?: string; anio?: string;
+  fechaTexto?: string; hora?: string; horaNota?: string; horaMeta?: string;
+  modalidad?: string; cupoTexto?: string;
+  titulo?: string; descripcion?: string;
+  ponenteNombre?: string; ponenteCargo?: string; ponenteFoto?: string;
+  botonTexto?: string;
+}
+
+export default function FeaturedMasterclass({ contenido }: { contenido?: FeaturedContenido }) {
+  const c = {
+    mes: contenido?.mes || "Julio",
+    dia: contenido?.dia || "16",
+    anio: contenido?.anio || "2026",
+    fechaTexto: contenido?.fechaTexto || "16 de julio de 2026",
+    hora: contenido?.hora || "10:00 a. m.",
+    horaNota: contenido?.horaNota || "(Hora Colombia)",
+    horaMeta: contenido?.horaMeta || "10:00 a. m. (hora Colombia)",
+    modalidad: contenido?.modalidad || "Online en vivo",
+    cupoTexto: contenido?.cupoTexto || "Reserva tu lugar",
+    titulo: contenido?.titulo || "Lucro cesante y daño emergente: cómo se prueban y cómo se controvierten",
+    descripcion: contenido?.descripcion || "Una sesión especializada que aborda, desde una perspectiva técnico-probatoria, las claves para acreditar y controvertir el lucro cesante y el daño emergente en el marco de la práctica judicial.",
+    ponenteNombre: contenido?.ponenteNombre || "Dr. Freddy Armando Oliveros Carvajal",
+    ponenteCargo: contenido?.ponenteCargo || "Director CNP",
+    ponenteFoto: contenido?.ponenteFoto || "/images/masterclass/ponente-freddy-oliveros.webp",
+    botonTexto: contenido?.botonTexto || "Reservar cupo",
+  };
+  const metaItems = buildMetaItems(c.fechaTexto, c.horaMeta, c.modalidad, c.cupoTexto);
   return (
     <section style={{ backgroundColor: "#ffffff" }}>
       <div style={{ width: "100%", maxWidth: "1120px", margin: "0 auto", padding: "0 24px" }}>
@@ -94,16 +121,16 @@ export default function FeaturedMasterclass() {
                 textAlign: "center",
               }}
             >
-              <div style={{ fontFamily: montserrat, fontSize: "12px", fontWeight: 700, letterSpacing: "0.14em", color: "#9db4de", textTransform: "uppercase" }}>Julio</div>
-              <div style={{ fontFamily: montserrat, fontSize: "46px", fontWeight: 800, lineHeight: 1, margin: "4px 0 2px" }}>16</div>
-              <div style={{ fontFamily: montserrat, fontSize: "13px", color: "#9db4de" }}>2026</div>
+              <div style={{ fontFamily: montserrat, fontSize: "12px", fontWeight: 700, letterSpacing: "0.14em", color: "#9db4de", textTransform: "uppercase" }}>{c.mes}</div>
+              <div style={{ fontFamily: montserrat, fontSize: "46px", fontWeight: 800, lineHeight: 1, margin: "4px 0 2px" }}>{c.dia}</div>
+              <div style={{ fontFamily: montserrat, fontSize: "13px", color: "#9db4de" }}>{c.anio}</div>
             </div>
 
             <div className="flex items-center justify-center gap-2" style={{ fontFamily: montserrat, fontSize: "13px", color: "#d7e0f2" }}>
               <ClockIcon size={15} stroke="#9db4de" strokeWidth={2} />
               <span>
-                10:00&nbsp;a.&nbsp;m.
-                <small style={{ display: "block", color: "#9db4de" }}>(Hora Colombia)</small>
+                {c.hora}
+                <small style={{ display: "block", color: "#9db4de" }}>{c.horaNota}</small>
               </span>
             </div>
           </div>
@@ -138,29 +165,27 @@ export default function FeaturedMasterclass() {
                 margin: "0 0 18px",
               }}
             >
-              Lucro cesante y daño emergente: cómo se prueban y cómo se controvierten
+              {c.titulo}
             </h2>
 
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
               <Image
-                src="/images/masterclass/ponente-freddy-oliveros.webp"
-                alt="Dr. Freddy Armando Oliveros Carvajal"
+                src={c.ponenteFoto}
+                alt={c.ponenteNombre}
                 width={38}
                 height={38}
                 style={{ borderRadius: "50%", objectFit: "cover", backgroundColor: "#d7deea", flex: "0 0 auto" }}
               />
               <div>
                 <div style={{ fontFamily: montserrat, fontSize: "13px", fontWeight: 700, color: "#1a2540", lineHeight: 1.15 }}>
-                  Dr. Freddy Armando Oliveros Carvajal
+                  {c.ponenteNombre}
                 </div>
-                <div style={{ fontFamily: montserrat, fontSize: "12px", color: "#697089" }}>Director CNP</div>
+                <div style={{ fontFamily: montserrat, fontSize: "12px", color: "#697089" }}>{c.ponenteCargo}</div>
               </div>
             </div>
 
             <p style={{ fontFamily: montserrat, fontSize: "14px", color: "#697089", margin: 0 }}>
-              Una sesión especializada que aborda, desde una perspectiva
-              técnico-probatoria, las claves para acreditar y controvertir el lucro
-              cesante y el daño emergente en el marco de la práctica judicial.
+              {c.descripcion}
             </p>
           </div>
 
@@ -205,7 +230,7 @@ export default function FeaturedMasterclass() {
                 e.currentTarget.style.transform = "translateY(0)";
               }}
             >
-              Reservar cupo
+              {c.botonTexto}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
             </a>
           </div>

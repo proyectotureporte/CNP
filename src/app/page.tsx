@@ -18,14 +18,27 @@ import QuoteForm from "@/components/QuoteForm";
 import Clients from "@/components/Clients";
 import NationalOperation from "@/components/NationalOperation";
 import Footer from "@/components/Footer";
+import { mergeContenido } from "@/lib/content/tipos";
+import { DEFAULTS } from "@/lib/content/paginas/home";
+import { siteContent } from "@/lib/db";
 
-export default function Home() {
+// Contenido del hero editable desde el panel /santiago.
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  let overrides: Record<string, unknown> | null = null;
+  try {
+    const row = await siteContent.getSiteContent("cnp", "home");
+    overrides = row?.valor ?? null;
+  } catch { /* sin overrides: defaults */ }
+  const c = mergeContenido(DEFAULTS, overrides);
+
   return (
     <>
       <SmoothScroll />
       <Header />
-      <main>
-        <Hero />
+      <main style={{ fontFamily: c.estilos.fuente }}>
+        <Hero contenido={{ ...c.hero, colorBoton: c.estilos.colorBoton }} />
         <SolucionesClientes />
         <AudienceCards />
         <Benefits
