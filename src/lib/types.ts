@@ -67,7 +67,7 @@ export const DISCIPLINE_LABELS: Record<CaseDiscipline, string> = {
 // ============================================
 
 export const CASE_STATUSES = [
-  'creado', 'gestionado', 'cancelado',
+  'creado', 'gestionado', 'cancelado', 'archivado',
 ] as const;
 
 export type CaseStatus = (typeof CASE_STATUSES)[number];
@@ -76,12 +76,54 @@ export const CASE_STATUS_LABELS: Record<CaseStatus, string> = {
   creado: 'Creado',
   gestionado: 'Gestionado',
   cancelado: 'Cancelado',
+  archivado: 'Archivado',
 };
 
 export const CASE_STATUS_COLORS: Record<CaseStatus, { bg: string; text: string; dot: string }> = {
   creado: { bg: 'bg-gray-50', text: 'text-gray-700', dot: 'bg-gray-500' },
   gestionado: { bg: 'bg-violet-50', text: 'text-violet-700', dot: 'bg-violet-500' },
   cancelado: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+  archivado: { bg: 'bg-slate-100', text: 'text-slate-600', dot: 'bg-slate-400' },
+};
+
+// ============================================
+// PIPELINE COMERCIAL (separado del estado técnico)
+// ============================================
+
+export const COMMERCIAL_STATUSES = [
+  'prospecto', 'en_analisis', 'propuesta_enviada', 'negociacion', 'ganado', 'perdido',
+] as const;
+
+export type CommercialStatus = (typeof COMMERCIAL_STATUSES)[number];
+
+export const COMMERCIAL_STATUS_LABELS: Record<CommercialStatus, string> = {
+  prospecto: 'Prospecto',
+  en_analisis: 'En Análisis',
+  propuesta_enviada: 'Propuesta Enviada',
+  negociacion: 'Negociación',
+  ganado: 'Ganado',
+  perdido: 'Perdido',
+};
+
+export const COMMERCIAL_STATUS_COLORS: Record<CommercialStatus, { bg: string; text: string; dot: string }> = {
+  prospecto: { bg: 'bg-sky-50', text: 'text-sky-700', dot: 'bg-sky-500' },
+  en_analisis: { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
+  propuesta_enviada: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
+  negociacion: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
+  ganado: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+  perdido: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+};
+
+// ============================================
+// CANAL DE ORIGEN DEL CASO
+// ============================================
+
+export const CASE_CHANNELS = ['web', 'whatsapp', 'referido', 'directo', 'masterclass', 'otro'] as const;
+export type CaseChannel = (typeof CASE_CHANNELS)[number];
+
+export const CASE_CHANNEL_LABELS: Record<CaseChannel, string> = {
+  web: 'Web', whatsapp: 'WhatsApp', referido: 'Referido',
+  directo: 'Directo', masterclass: 'Masterclass', otro: 'Otro',
 };
 
 // ============================================
@@ -180,6 +222,13 @@ export interface PeritusRegistro {
   fechaRegistro?: string;
 }
 
+export const CLIENT_TYPES = ['abogado', 'empresa', 'juez', 'particular'] as const;
+export type ClientType = (typeof CLIENT_TYPES)[number];
+
+export const CLIENT_TYPE_LABELS: Record<ClientType, string> = {
+  abogado: 'Abogado', empresa: 'Empresa', juez: 'Juez', particular: 'Particular',
+};
+
 export interface CrmClient extends SanityDocument {
   _type: 'crmClient';
   brand: 'CNP' | 'Peritus';
@@ -190,6 +239,7 @@ export interface CrmClient extends SanityDocument {
   position: string;
   notes: string;
   status: 'activo' | 'inactivo' | 'prospecto';
+  clientType?: ClientType;
   createdBy: string;
   peritusRegistro?: PeritusRegistro;
 }
@@ -225,6 +275,11 @@ export interface Case extends SanityDocument {
   statusChangedByRole?: string;
   complexity: CaseComplexity;
   priority: CasePriority;
+  channel?: CaseChannel;
+  commercialStatus?: CommercialStatus;
+  lossReason?: string;
+  executionStartDate?: string;
+  executionDeadline?: string;
   estimatedAmount?: number;
   hasHearing?: boolean;
   hearingDate?: string;
@@ -250,6 +305,11 @@ export interface CaseExpanded {
   statusChangedByRole?: string;
   complexity: CaseComplexity;
   priority: CasePriority;
+  channel?: CaseChannel;
+  commercialStatus?: CommercialStatus;
+  lossReason?: string;
+  executionStartDate?: string;
+  executionDeadline?: string;
   estimatedAmount?: number;
   hasHearing?: boolean;
   hearingDate?: string;
@@ -271,7 +331,8 @@ export const CASE_EVENT_TYPES = [
   'case_created', 'status_changed', 'assignment', 'document_uploaded',
   'quote_created', 'quote_approved', 'quote_rejected',
   'deliverable_submitted', 'deliverable_approved',
-  'payment_recorded', 'comment', 'other',
+  'payment_recorded', 'comment', 'follow_up', 'committee_decision',
+  'execution_started', 'other',
 ] as const;
 
 export type CaseEventType = (typeof CASE_EVENT_TYPES)[number];
@@ -282,7 +343,9 @@ export const CASE_EVENT_LABELS: Record<CaseEventType, string> = {
   quote_created: 'Cotizacion Creada', quote_approved: 'Cotizacion Aprobada',
   quote_rejected: 'Cotizacion Rechazada', deliverable_submitted: 'Entrega Enviada',
   deliverable_approved: 'Entrega Aprobada', payment_recorded: 'Pago Registrado',
-  comment: 'Comentario', other: 'Otro',
+  comment: 'Comentario', follow_up: 'Seguimiento',
+  committee_decision: 'Decisión de Comité', execution_started: 'Ejecución Iniciada',
+  other: 'Otro',
 };
 
 export interface CaseEvent {
@@ -314,6 +377,13 @@ export const QUOTE_STATUS_COLORS: Record<QuoteStatus, { bg: string; text: string
   expirada: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
 };
 
+export const QUOTE_CHANNELS = ['email', 'whatsapp', 'presencial', 'otro'] as const;
+export type QuoteChannel = (typeof QUOTE_CHANNELS)[number];
+
+export const QUOTE_CHANNEL_LABELS: Record<QuoteChannel, string> = {
+  email: 'Email', whatsapp: 'WhatsApp', presencial: 'Presencial', otro: 'Otro',
+};
+
 export interface Quote {
   _id: string;
   _createdAt: string;
@@ -327,6 +397,10 @@ export interface Quote {
   approvedAt?: string;
   approvedBy?: { _id: string; displayName: string };
   rejectionReason?: string;
+  acceptanceNotes?: string;
+  channel?: QuoteChannel;
+  parentQuoteId?: string;
+  nextFollowUpDate?: string;
   notes?: string;
   createdBy?: { _id: string; displayName: string };
   quoteDocumentUrl?: string;
@@ -356,13 +430,28 @@ export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
   pago: 'Pago', otro: 'Otro',
 };
 
+export const CASE_DOCUMENT_STATUSES = ['no_recibido', 'parcial', 'recibido'] as const;
+export type CaseDocumentStatus = (typeof CASE_DOCUMENT_STATUSES)[number];
+
+export const CASE_DOCUMENT_STATUS_LABELS: Record<CaseDocumentStatus, string> = {
+  no_recibido: 'No Recibido', parcial: 'Parcial', recibido: 'Recibido',
+};
+
+export const CASE_DOCUMENT_STATUS_COLORS: Record<CaseDocumentStatus, { bg: string; text: string; dot: string }> = {
+  no_recibido: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+  parcial: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
+  recibido: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+};
+
 export interface CaseDocument {
   _id: string;
   _createdAt: string;
   category: DocumentCategory;
-  fileName: string;
-  fileSize: number;
-  mimeType: string;
+  status: CaseDocumentStatus;
+  isRequired: boolean;
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
   version: number;
   isVisibleToClient: boolean;
   description?: string;
@@ -780,6 +869,37 @@ export interface AppNotification {
 }
 
 // ============================================
+// COMITÉ (RF-07)
+// ============================================
+
+export const COMMITTEE_VIABILITIES = ['viable', 'no_viable', 'condicionada'] as const;
+export type CommitteeViability = (typeof COMMITTEE_VIABILITIES)[number];
+
+export const COMMITTEE_VIABILITY_LABELS: Record<CommitteeViability, string> = {
+  viable: 'Viable', no_viable: 'No Viable', condicionada: 'Viable con Condiciones',
+};
+
+export const COMMITTEE_VIABILITY_COLORS: Record<CommitteeViability, { bg: string; text: string; dot: string }> = {
+  viable: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+  no_viable: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+  condicionada: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
+};
+
+export interface CommitteeReview {
+  _id: string;
+  _createdAt: string;
+  viability?: CommitteeViability;
+  viabilityReason?: string;
+  scope?: string;
+  fees?: number;
+  deliverablesDescription?: string;
+  estimatedDays?: number;
+  notes?: string;
+  decidedAt?: string;
+  decidedBy?: { _id: string; displayName: string };
+}
+
+// ============================================
 // AUDIT LOG
 // ============================================
 
@@ -900,9 +1020,9 @@ export interface WhatsappMessage {
 }
 
 export const ROLE_CASE_TABS: Record<string, string[]> = {
-  admin: ['summary', 'documents', 'quotes', 'work-plan', 'deliverables', 'timeline'],
-  juridico: ['summary', 'documents', 'quotes', 'work-plan', 'deliverables', 'timeline'],
-  financiero: ['summary', 'documents', 'quotes', 'work-plan', 'deliverables', 'timeline'],
+  admin: ['summary', 'documents', 'committee', 'quotes', 'contract', 'work-plan', 'deliverables', 'timeline'],
+  juridico: ['summary', 'documents', 'committee', 'quotes', 'work-plan', 'deliverables', 'timeline'],
+  financiero: ['summary', 'documents', 'quotes', 'contract', 'work-plan', 'deliverables', 'timeline'],
   administrativo: ['summary', 'documents', 'work-plan', 'deliverables', 'timeline'],
   mercadeo: ['summary', 'timeline'],
   postventa: ['summary', 'deliverables', 'timeline'],

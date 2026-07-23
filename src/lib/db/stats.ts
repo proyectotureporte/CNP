@@ -7,6 +7,10 @@ export interface DashboardStats {
   totalExperts: number;
   pendingPayments: number;
   casesByStatus: { creado: number; gestionado: number; cancelado: number };
+  casesByChannel: Array<{ channel: string; count: number }>;
+  commercialPipeline: Array<{ status: string; count: number }>;
+  quotesByStatus: Array<{ status: string; count: number }>;
+  lossReasons: Array<{ reason: string; count: number }>;
   recentCases: Array<{
     _id: string;
     caseCode: string;
@@ -51,6 +55,29 @@ export async function getDashboardStats(): Promise<DashboardStats> {
      ORDER BY c.created_at DESC LIMIT 5`,
   );
 
+  // RF-11: métricas por canal, pipeline comercial, propuestas y motivos de pérdida
+  const casesByChannel = await query<{ channel: string; count: number }>(
+    `SELECT channel::text AS channel, count(*)::int AS count
+     FROM cases GROUP BY channel ORDER BY count DESC`,
+  );
+  const commercialPipeline = await query<{ status: string; count: number }>(
+    `SELECT commercial_status::text AS status, count(*)::int AS count
+     FROM cases GROUP BY commercial_status ORDER BY count DESC`,
+  );
+  const quotesByStatus = await query<{ status: string; count: number }>(
+    `SELECT status::text AS status, count(*)::int AS count
+     FROM quote GROUP BY status ORDER BY count DESC`,
+  );
+  const lossReasons = await query<{ reason: string; count: number }>(
+    `SELECT reason, count(*)::int AS count FROM (
+       SELECT COALESCE(NULLIF(trim(loss_reason), ''), 'Sin motivo registrado') AS reason
+       FROM cases WHERE commercial_status = 'perdido'
+       UNION ALL
+       SELECT COALESCE(NULLIF(trim(rejection_reason), ''), 'Sin motivo registrado') AS reason
+       FROM quote WHERE status = 'rechazada'
+     ) x GROUP BY reason ORDER BY count DESC LIMIT 10`,
+  );
+
   return {
     totalCases: counts?.totalCases ?? 0,
     activeCases: counts?.activeCases ?? 0,
@@ -62,6 +89,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       gestionado: counts?.gestionado ?? 0,
       cancelado: counts?.cancelado ?? 0,
     },
+    casesByChannel,
+    commercialPipeline,
+    quotesByStatus,
+    lossReasons,
     recentCases,
     totalRevenue: counts?.totalRevenue ?? 0,
     pendingActions: counts?.creado ?? 0,

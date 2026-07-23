@@ -18,6 +18,9 @@ import DocumentList from "@/components/cases/DocumentList";
 import QuoteList from "@/components/quotes/QuoteList";
 import WorkPlanTab from "@/components/cases/WorkPlanTab";
 import DeliverablesTab from "@/components/cases/DeliverablesTab";
+import CommitteeTab from "@/components/cases/CommitteeTab";
+import ContractTab from "@/components/cases/ContractTab";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -40,17 +43,15 @@ import {
   COMPLEXITY_LABELS, COMPLEXITY_COLORS,
   PRIORITY_LABELS, PRIORITY_COLORS,
   CASE_EVENT_LABELS,
+  CASE_CHANNEL_LABELS,
+  COMMERCIAL_STATUS_LABELS, COMMERCIAL_STATUS_COLORS,
   ROLE_CASE_TABS,
   type CaseExpanded, type CaseStatus, type CaseComplexity, type CasePriority,
-  type CaseEvent, type CaseEventType,
+  type CaseEvent, type CaseEventType, type CaseChannel, type CommercialStatus,
 } from "@/lib/types";
+import { VALID_TRANSITIONS, COMMERCIAL_TRANSITIONS } from "@/lib/cases/stateMachine";
+import { canChangeCommercialStatus } from "@/lib/auth/permissions";
 import { useAuth } from "@/hooks/useAuth";
-
-const VALID_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
-  creado: ['gestionado', 'cancelado'],
-  gestionado: ['creado', 'cancelado'],
-  cancelado: ['creado'],
-};
 
 // Returns available transitions based on role and chain
 function getAvailableTransitions(
@@ -119,6 +120,11 @@ export default function CrmCaseDetailPage({
   const [showFinancieroDialog, setShowFinancieroDialog] = useState(false);
   const [financieroUsers, setFinancieroUsers] = useState<{ _id: string; displayName: string; role: string }[]>([]);
   const [selectedFinancieroId, setSelectedFinancieroId] = useState("");
+  const [commercialChanging, setCommercialChanging] = useState(false);
+  const [showLossDialog, setShowLossDialog] = useState(false);
+  const [lossReason, setLossReason] = useState("");
+  const [noteText, setNoteText] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
 
   const userRole = user?.role || 'admin';
   const visibleTabs = ROLE_CASE_TABS[userRole] || ROLE_CASE_TABS.admin;
@@ -235,6 +241,64 @@ export default function CrmCaseDetailPage({
     executeStatusChange('gestionado', selectedFinancieroId);
   }
 
+  // --- Pipeline comercial (RF-18) ---
+  async function executeCommercialChange(next: string, reason?: string) {
+    setCommercialChanging(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/cases/${id}/commercial-status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commercialStatus: next, lossReason: reason }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCaseData((prev) => (prev ? { ...prev, commercialStatus: next as CommercialStatus, lossReason: reason ?? prev.lossReason } : null));
+        setShowLossDialog(false);
+        setLossReason("");
+      } else {
+        setError(data.error || "Error cambiando la etapa comercial");
+      }
+    } catch {
+      setError("Error de conexion");
+    } finally {
+      setCommercialChanging(false);
+    }
+  }
+
+  function handleCommercialChange(next: string) {
+    if (next === "perdido") {
+      setLossReason("");
+      setShowLossDialog(true);
+      return;
+    }
+    executeCommercialChange(next);
+  }
+
+  // --- Nota manual del timeline (RF-04) ---
+  async function handleAddNote() {
+    if (!noteText.trim()) return;
+    setNoteSaving(true);
+    try {
+      const res = await fetch(`/api/cases/${id}/events`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventType: "comment", description: noteText.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNoteText("");
+        await loadEvents();
+      } else {
+        setError(data.error || "Error agregando la nota");
+      }
+    } catch {
+      setError("Error de conexion");
+    } finally {
+      setNoteSaving(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -259,6 +323,11 @@ export default function CrmCaseDetailPage({
   const priorityColor = PRIORITY_COLORS[caseData.priority as CasePriority];
   const validNext = getAvailableTransitions(caseData.status, userRole, caseData.statusChangedByRole);
   const isReadOnlyForJuridico = userRole === 'juridico' && caseData.status !== 'creado';
+  const commercialStatus = (caseData.commercialStatus ?? 'prospecto') as CommercialStatus;
+  const commercialColor = COMMERCIAL_STATUS_COLORS[commercialStatus];
+  const commercialNext = canChangeCommercialStatus(userRole as Parameters<typeof canChangeCommercialStatus>[0])
+    ? COMMERCIAL_TRANSITIONS[commercialStatus] || []
+    : [];
 
   return (
     <>
@@ -306,8 +375,19 @@ export default function CrmCaseDetailPage({
               <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${statusColor?.dot}`} />
               {CASE_STATUS_LABELS[caseData.status]}
             </Badge>
+            <Badge className={`${commercialColor?.bg} ${commercialColor?.text} border-0`}>
+              <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${commercialColor?.dot}`} />
+              {COMMERCIAL_STATUS_LABELS[commercialStatus]}
+            </Badge>
           </div>
-          <p className="mt-1 font-mono text-sm text-muted-foreground">{caseData.caseCode}</p>
+          <p className="mt-1 font-mono text-sm text-muted-foreground">
+            {caseData.caseCode}
+            {caseData.channel && (
+              <span className="ml-2 font-sans text-xs">
+                · Canal: {CASE_CHANNEL_LABELS[caseData.channel as CaseChannel] || caseData.channel}
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => router.push("/crm/cases")}>
@@ -339,6 +419,20 @@ export default function CrmCaseDetailPage({
               </SelectContent>
             </Select>
           )}
+          {commercialNext.length > 0 && (
+            <Select onValueChange={handleCommercialChange} disabled={commercialChanging}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Etapa comercial..." />
+              </SelectTrigger>
+              <SelectContent>
+                {commercialNext.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {COMMERCIAL_STATUS_LABELS[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
@@ -347,7 +441,9 @@ export default function CrmCaseDetailPage({
         <TabsList>
           {visibleTabs.includes('summary') && <TabsTrigger value="summary">Resumen</TabsTrigger>}
           {visibleTabs.includes('documents') && <TabsTrigger value="documents">Documentos</TabsTrigger>}
+          {visibleTabs.includes('committee') && <TabsTrigger value="committee">Comité</TabsTrigger>}
           {visibleTabs.includes('quotes') && <TabsTrigger value="quotes">Cotizaciones</TabsTrigger>}
+          {visibleTabs.includes('contract') && <TabsTrigger value="contract">Contratación</TabsTrigger>}
           {visibleTabs.includes('work-plan') && <TabsTrigger value="work-plan">Plan de Trabajo</TabsTrigger>}
           {visibleTabs.includes('deliverables') && <TabsTrigger value="deliverables">Entregas</TabsTrigger>}
           {visibleTabs.includes('timeline') && <TabsTrigger value="timeline">Timeline</TabsTrigger>}
@@ -543,7 +639,18 @@ export default function CrmCaseDetailPage({
               <CardTitle className="text-base">Documentos</CardTitle>
             </CardHeader>
             <CardContent>
-              <DocumentList caseId={id} />
+              <DocumentList caseId={id} userRole={userRole} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="committee" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Comité</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CommitteeTab caseId={id} userRole={userRole} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -557,6 +664,14 @@ export default function CrmCaseDetailPage({
               <QuoteList caseId={id} userRole={userRole} />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="contract" className="mt-6">
+          <ContractTab
+            caseId={id}
+            executionStartDate={caseData.executionStartDate}
+            executionDeadline={caseData.executionDeadline}
+          />
         </TabsContent>
 
         <TabsContent value="work-plan" className="mt-6">
@@ -587,6 +702,22 @@ export default function CrmCaseDetailPage({
               <CardTitle className="text-base">Historial de Eventos</CardTitle>
             </CardHeader>
             <CardContent>
+              {/* RF-04: nota manual a la bitácora */}
+              <div className="mb-6 space-y-2">
+                <Label>Agregar nota</Label>
+                <Textarea
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  placeholder="Escriba una nota o novedad del caso..."
+                  rows={2}
+                />
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={handleAddNote} disabled={noteSaving || !noteText.trim()}>
+                    {noteSaving ? "Guardando..." : "Agregar al timeline"}
+                  </Button>
+                </div>
+              </div>
+              <Separator className="mb-6" />
               {events.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
                   No hay eventos registrados
@@ -623,6 +754,42 @@ export default function CrmCaseDetailPage({
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Loss reason dialog (RF-10/RF-11) */}
+      <Dialog open={showLossDialog} onOpenChange={setShowLossDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Marcar caso como perdido
+            </DialogTitle>
+            <DialogDescription>
+              Indique el motivo de pérdida. Este dato alimenta las métricas del dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label>Motivo de pérdida *</Label>
+            <Textarea
+              value={lossReason}
+              onChange={(e) => setLossReason(e.target.value)}
+              placeholder="Precio, tiempos, eligió otro proveedor..."
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLossDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => executeCommercialChange('perdido', lossReason.trim())}
+              disabled={!lossReason.trim() || commercialChanging}
+            >
+              {commercialChanging ? "Guardando..." : "Confirmar pérdida"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Financiero assignment dialog */}
       <Dialog open={showFinancieroDialog} onOpenChange={setShowFinancieroDialog}>

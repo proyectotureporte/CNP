@@ -3,7 +3,8 @@ import type { CrmClient } from '@/lib/types';
 
 const BASE = `
   c.id AS "_id", 'crmClient' AS "_type", c.created_at AS "_createdAt", c.updated_at AS "_updatedAt",
-  c.brand, c.name, c.email, c.phone, c.company, c.position, c.notes, c.status, c.created_by AS "createdBy"
+  c.brand, c.name, c.email, c.phone, c.company, c.position, c.notes, c.status,
+  c.client_type AS "clientType", c.created_by AS "createdBy"
 `;
 
 // peritusRegistro resumido (lista): { _id, estadoDocumentacion }
@@ -109,6 +110,7 @@ export interface CrmClientInput {
   position?: string | null;
   notes?: string | null;
   status?: CrmClient['status'] | null;
+  clientType?: CrmClient['clientType'] | null;
   createdBy?: string | null;
 }
 
@@ -124,6 +126,7 @@ export async function createClient(input: CrmClientInput): Promise<CrmClient | n
     position: input.position ?? null,
     notes: input.notes ?? null,
     status: input.status ?? null,
+    client_type: input.clientType ?? 'particular',
     created_by: input.createdBy ?? null,
   });
   await query(text, values);
@@ -140,6 +143,7 @@ export async function updateClient(id: string, patch: Partial<CrmClientInput>): 
     position: patch.position,
     notes: patch.notes,
     status: patch.status,
+    client_type: patch.clientType,
     created_by: patch.createdBy,
   });
   const upd = buildUpdate('crm_client', id, data);

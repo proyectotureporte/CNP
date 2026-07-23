@@ -1,6 +1,6 @@
 # PROJECT-MAP — CNP | Peritus
 
-Actualizado: 2026-06-13 · Commit: 6a1ad0d+ (coherencia de roles)
+Actualizado: 2026-07-24 · (backlog RF-01..RF-14 implementado — migración 007)
 
 ## Identidad y stack
 CRM de peritajes judiciales para CNP (Colombia) + marca Peritus. Producción real en `https://cnp.com.co`, autoalojado en VPS `restaurar` (82.223.109.156): PM2 (`cnp`, fork ×1) + Nginx (TLS, proxy a :3000 con upgrade WS en `/ws`) + PostgreSQL 17 local (BD `cnp`, user `cnp_user`).
@@ -40,9 +40,9 @@ CRM de peritajes judiciales para CNP (Colombia) + marca Peritus. Producción rea
 |---|---|---|
 | Auth | `POST /api/auth/login` (type admin/crm/portal), `/logout`, `GET /api/auth/me` | Públicas (exentas) |
 | Admin | `/api/admin/users` (+[id]), `/change-password`, `/clients/[id]/reset-password`, `/init`, `/seed-master`, `/migrate-brand` | Requiere role admin (middleware). `/init` es PÚBLICO |
-| Casos | `/api/cases` (+[id], `/assign`, `/status`, `/events`, `/documents`, `/activities`, `/deliverables`, `/hearings`, `/payments`, `/quotes`, `/evaluation`, `/work-plan`, `/suggest-expert`) | Núcleo del negocio |
+| Casos | `/api/cases` (+[id], `/assign`, `/status`, `/commercial-status`, `/committee`, `/events`, `/documents`, `/activities`, `/deliverables`, `/hearings`, `/payments`, `/quotes`, `/evaluation`, `/work-plan`, `/suggest-expert`) | Núcleo del negocio. `commercial-status` (pipeline RF-18, motivo pérdida obligatorio) y `committee` (RF-07) desde migración 007 |
 | Clientes/Empresas/Peritos | `/api/clients` (+[id], `/validate`), `/api/companies`, `/api/experts` (+[id], `/validate`, `/availability`) | |
-| Cotizaciones | `/api/quotes/[id]` (+`/approve`, `/reject`, `/send`) | approve/reject los usa el portal cliente |
+| Cotizaciones | `/api/quotes/[id]` (+`/approve`, `/reject`, `/send`, `/revise`, PATCH seguimiento) | approve/reject los usa el portal cliente. `send` valida obligatorios + canal (email envía correo al cliente) y mueve pipeline; `revise` crea nueva versión con `parent_quote_id`; PATCH registra novedad + `next_follow_up_date` |
 | Work plans | `/api/work-plans` (+[id], `/activities`, `/approve`, `/reject`, `/submit`) | |
 | Entregables/Evaluaciones/Audiencias | `/api/deliverables` (+`/[id]/review`), `/api/evaluations`, `/api/hearings/[id]` | |
 | Pagos/Comisiones | `/api/payments/[id]` (+`/quote`, `/receipt`), `/api/commissions` (+`/calculate`), `/api/cartera` | |
@@ -56,7 +56,8 @@ CRM de peritajes judiciales para CNP (Colombia) + marca Peritus. Producción rea
 ## Modelo de datos (PostgreSQL — `db/migrations/`)
 25 tablas, 30 enums, triggers `updated_at`, índices GIN trgm. IDs `TEXT` (UUID nuevos, `_id` Sanity heredados).
 - Núcleo: `cases` (brand CNP/Peritus, status, discipline, FKs a client/expert/users), `crm_client`, `crm_user` (7 roles), `company`, `expert` (+`expert_certification_file`; clasificación migración 003: `seniority` junior/senior/master, `category` 7 macro-categorías, ciclo de vida `validation_status` candidato→en_evaluacion→activado, formación pregrado/num_especializaciones/num_maestrias/doctorado), `registro_peritus`
-- Ciclo del caso: `case_event`, `case_document`, `quote`, `work_plan` (+`work_plan_activity`), `deliverable`, `evaluation`, `hearing`, `payment`, `commission`
+- Ciclo del caso: `case_event`, `case_document`, `quote`, `work_plan` (+`work_plan_activity`), `deliverable`, `evaluation`, `hearing`, `payment`, `commission`, `committee_review` (007: 1 fila/caso — viabilidad/alcance/honorarios/entregables/tiempo)
+- Migración 007 (backlog RF): `cases` +`channel` (canal origen) +`commercial_status` (pipeline prospecto→ganado/perdido, separado del `status` técnico) +`loss_reason` +`execution_start_date/execution_deadline` (reloj 15 días hábiles, arranca al validar el 1er pago — `src/lib/cases/execution.ts` + `src/lib/dates/businessDays.ts` con festivos Colombia); `case_document` +`status` (no_recibido/parcial/recibido) +`is_required` y archivos nullable (checklist con placeholders); `quote` +`channel` +`parent_quote_id` +`next_follow_up_date` +`acceptance_notes`; `crm_client` +`client_type` (abogado/empresa/juez/particular); `crm_user` +`client_id` FK (portal; fallback email con autoreparación en `clientAccess.ts`)
 - Sistema: `notification`, `audit_log`, `system_setting`, `admin_config` (hashes contraseña maestra), `whatsapp_lead` (+documents/messages), `web_lead`
 - Capa de acceso: `src/lib/db/pool.ts` (pool singleton, `query/queryOne/withTransaction/buildInsert/buildUpdate/newId`); módulos devuelven shapes estilo Sanity (`_id`, `_createdAt`, refs anidados)
 
@@ -71,7 +72,10 @@ CRM de peritajes judiciales para CNP (Colombia) + marca Peritus. Producción rea
 - **WhatsApp lead**: Evolution API → n8n → `POST /api/whatsapp/webhook` (WHATSAPP_WEBHOOK_SECRET) → `whatsapp_lead` → inbox `/crm/mensajes` → convert a caso
 - **Web lead**: landing → `POST /api/web-form` → `web_lead` → `/crm/formularios`
 - **Uploads**: route → `src/lib/sanity/assets.ts` (6 puntos) → Sanity CDN → URL en PG
-- **Cron**: systemd `cnp-check-alerts.timer` (06/12/18 UTC) → check-alerts → notificaciones/emails
+- **Cron**: systemd `cnp-check-alerts.timer` (06/12/18 UTC) → check-alerts → 7 automatizaciones (item 21): audiencias, vencimientos con ventana por `priority` (RF-06: urgente 14d/alta 10d/normal 7d/baja 4d), docs requeridos pendientes (cadencia por priority), expiración de quotes por `valid_until`, seguimientos vencidos, propuestas sin respuesta >7d, ejecución por vencer (≤3 días hábiles)
+- **Notificaciones (RF-13)**: TODO pasa por `src/lib/notify.ts` (`notifyUsers`/`notifyUsersAndAdmins`): persiste + push WS `notification:new` (bug del push arreglado) + correo opcional al buzón configurado. Buzones (item 17) en `system_setting`: `email_admin`, `email_comite`, `email_comunicaciones` — editables en /admin/settings
+- **Auditoría (item 19)**: `src/lib/audit.ts` (`auditEntityChange` con diff campo a campo old/new) — cableada en cases (create/PUT/DELETE/status/assign/commercial), quotes (send/approve/reject/revise), payments, committee, documentos checklist. UI con diff en /admin/audit-logs
+- **Máquina de estados**: fuente única en `src/lib/cases/stateMachine.ts` (VALID_TRANSITIONS + COMMERCIAL_TRANSITIONS) — importada por API y UI; `archivado` ya mapeado (gestionado→archivado→gestionado)
 
 ## Dependencias compartidas (alto impacto)
 `src/middleware.ts` · `src/lib/db/pool.ts` · `src/lib/types.ts` (roles/enums/interfaces, `ROLE_PERMISSIONS`, `ROLE_CASE_TABS`) · `src/lib/auth/*` (`permissions.ts` helpers + `guard.ts` `guardRole`) · `server.js` (¡los headers de seguridad y el hub WS viven aquí!) · `src/components/layout/` (AppLayout/Sidebar/Header) · `src/hooks/useAuth.ts`, `useNotifications.ts`, `usePusher` · `src/lib/email.ts`

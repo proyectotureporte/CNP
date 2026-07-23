@@ -3,7 +3,71 @@ import { quote, payment } from '@/lib/db';
 import { guardRole } from '@/lib/auth/guard';
 import { canCreateQuote } from '@/lib/auth/permissions';
 import { uploadFile } from '@/lib/sanity/assets';
+import { logCaseEvent } from '@/lib/sanity/logEvent';
+import type { Quote } from '@/lib/types';
 import { triggerEvent } from '@/lib/realtime/server';
+
+type QuoteWithCase = Quote & { case?: { _id: string; caseCode: string; title: string } };
+
+/**
+ * Seguimiento comercial de la propuesta (RF-10): registrar una novedad y/o la
+ * fecha del próximo seguimiento sobre una cotización ENVIADA (que es inmutable
+ * en el resto de campos).
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    const stop = guardRole(request, canCreateQuote);
+    if (stop) return stop;
+
+    const userId = request.headers.get('x-user-id');
+    const userName = request.headers.get('x-user-name');
+    const body = (await request.json().catch(() => ({}))) as {
+      nextFollowUpDate?: string | null;
+      followUpNote?: string;
+    };
+
+    const existing = (await quote.getQuoteById(id)) as QuoteWithCase | null;
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'Cotizacion no encontrada' }, { status: 404 });
+    }
+    if (!['enviada', 'borrador'].includes(existing.status)) {
+      return NextResponse.json(
+        { success: false, error: 'El seguimiento solo aplica a cotizaciones en borrador o enviadas' },
+        { status: 400 }
+      );
+    }
+    if (body.nextFollowUpDate === undefined && !body.followUpNote?.trim()) {
+      return NextResponse.json(
+        { success: false, error: 'Indique una novedad o la fecha del próximo seguimiento' },
+        { status: 400 }
+      );
+    }
+
+    const updated =
+      body.nextFollowUpDate !== undefined
+        ? await quote.updateQuote(id, { nextFollowUpDate: body.nextFollowUpDate || null })
+        : existing;
+
+    if (body.followUpNote?.trim() && existing.case?._id) {
+      await logCaseEvent({
+        caseId: existing.case._id,
+        eventType: 'follow_up',
+        description: `Seguimiento cotización v${existing.version}: ${body.followUpNote.trim()}`,
+        userId, userName,
+      });
+    }
+
+    triggerEvent('quote:updated', { id });
+    return NextResponse.json({ success: true, data: updated });
+  } catch {
+    return NextResponse.json({ success: false, error: 'Error registrando el seguimiento' }, { status: 500 });
+  }
+}
 
 export async function GET(
   request: NextRequest,

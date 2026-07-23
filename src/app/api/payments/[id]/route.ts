@@ -4,6 +4,9 @@ import type { PaymentStatus } from '@/lib/types';
 import { guardRole } from '@/lib/auth/guard';
 import { canAccessFinances } from '@/lib/auth/permissions';
 import { triggerEvent } from '@/lib/realtime/server';
+import { logCaseEvent } from '@/lib/sanity/logEvent';
+import { maybeStartExecutionClock } from '@/lib/cases/execution';
+import { auditEntityChange } from '@/lib/audit';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -44,6 +47,30 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       transactionReference: body.transactionReference,
       notes: body.notes,
     });
+
+    // Item 20: si el pago pasa a validado, arranca el reloj de ejecución.
+    if (body.status === 'validado' && existing.status !== 'validado' && existing.caseRef?._id) {
+      const userId = request.headers.get('x-user-id');
+      const userName = request.headers.get('x-user-name');
+      logCaseEvent({
+        caseId: existing.caseRef._id,
+        eventType: 'payment_recorded',
+        description: `Pago ${existing.paymentNumber} validado`,
+        userId, userName,
+      });
+      await maybeStartExecutionClock(existing.caseRef._id, { userId, userName });
+    }
+
+    if (body.status && body.status !== existing.status) {
+      auditEntityChange({
+        request,
+        action: 'update',
+        entityType: 'payment',
+        entityId: id,
+        before: { status: existing.status },
+        after: { status: body.status },
+      });
+    }
 
     triggerEvent('payment:updated', { id });
 

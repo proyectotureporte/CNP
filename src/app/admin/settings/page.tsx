@@ -1,11 +1,63 @@
 "use client";
 
-import { useState } from "react";
-import { Settings } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Settings, Mail } from "lucide-react";
 import PasswordChangeForm from "@/components/crm/PasswordChangeForm";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+
+// Item 17: buzones por tipo de destinatario, guardados en system_setting.
+const MAILBOX_KEYS = [
+  { key: "email_admin", label: "Correo del administrador", hint: "Recibe alertas internas clave (cambios de estado, propuestas, pagos)" },
+  { key: "email_comite", label: "Correo del comité", hint: "Recibe decisiones de comité y planes de trabajo por revisar" },
+  { key: "email_comunicaciones", label: "Correo de comunicaciones", hint: "Recibe avisos de leads y formularios web" },
+] as const;
 
 export default function AdminSettingsPage() {
   const [successMessage, setSuccessMessage] = useState("");
+  const [mailboxes, setMailboxes] = useState<Record<string, string>>({});
+  const [mailboxSaving, setMailboxSaving] = useState(false);
+  const [mailboxMessage, setMailboxMessage] = useState("");
+
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const res = await fetch("/api/settings");
+        const data = await res.json();
+        if (data.success) {
+          const map: Record<string, string> = {};
+          for (const s of data.data as Array<{ key: string; value: string | null }>) {
+            map[s.key] = s.value ?? "";
+          }
+          setMailboxes(map);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    loadSettings();
+  }, []);
+
+  async function handleSaveMailboxes() {
+    setMailboxSaving(true);
+    setMailboxMessage("");
+    try {
+      for (const { key, hint } of MAILBOX_KEYS) {
+        await fetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key, value: mailboxes[key] ?? "", description: hint }),
+        });
+      }
+      setMailboxMessage("Correos guardados correctamente.");
+      setTimeout(() => setMailboxMessage(""), 5000);
+    } catch {
+      setMailboxMessage("Error guardando los correos.");
+    } finally {
+      setMailboxSaving(false);
+    }
+  }
 
   function handlePasswordChangeSuccess() {
     setSuccessMessage("Contraseña cambiada correctamente.");
@@ -24,6 +76,46 @@ export default function AdminSettingsPage() {
               <p className="text-sm text-muted-foreground">
                 Ajustes de seguridad y preferencias del sistema
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Item 17: separación de destinatarios de correo */}
+        <div className="mx-auto mb-8 max-w-lg rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2969b0]/10">
+              <Mail className="h-5 w-5 text-[#2969b0]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Correos por tipo de destinatario</h2>
+              <p className="text-xs text-gray-500">
+                Cada tipo de alerta se envía a su buzón. Si un buzón queda vacío, solo se genera la alerta interna.
+              </p>
+            </div>
+          </div>
+          <div className="space-y-4">
+            {MAILBOX_KEYS.map(({ key, label, hint }) => (
+              <div key={key} className="space-y-1.5">
+                <Label htmlFor={key}>{label}</Label>
+                <Input
+                  id={key}
+                  type="email"
+                  placeholder="correo@cnp.com.co"
+                  value={mailboxes[key] ?? ""}
+                  onChange={(e) => setMailboxes((prev) => ({ ...prev, [key]: e.target.value }))}
+                />
+                <p className="text-xs text-gray-500">{hint}</p>
+              </div>
+            ))}
+            {mailboxMessage && (
+              <p className={`text-sm font-medium ${mailboxMessage.startsWith("Error") ? "text-red-600" : "text-green-700"}`}>
+                {mailboxMessage}
+              </p>
+            )}
+            <div className="flex justify-end">
+              <Button onClick={handleSaveMailboxes} disabled={mailboxSaving}>
+                {mailboxSaving ? "Guardando..." : "Guardar correos"}
+              </Button>
             </div>
           </div>
         </div>

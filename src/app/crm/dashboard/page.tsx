@@ -40,7 +40,13 @@ import {
 import {
   CASE_STATUS_LABELS,
   CASE_STATUS_COLORS,
+  CASE_CHANNEL_LABELS,
+  COMMERCIAL_STATUS_LABELS,
+  QUOTE_STATUS_LABELS,
   type CaseStatus,
+  type CaseChannel,
+  type CommercialStatus,
+  type QuoteStatus,
   type CaseExpanded,
 } from "@/lib/types";
 
@@ -57,6 +63,10 @@ interface DashboardStatsData {
   totalRevenue: number;
   pendingActions: number;
   casesByStatus: Record<string, number>;
+  casesByChannel: Array<{ channel: string; count: number }>;
+  commercialPipeline: Array<{ status: string; count: number }>;
+  quotesByStatus: Array<{ status: string; count: number }>;
+  lossReasons: Array<{ reason: string; count: number }>;
   recentCases: CaseExpanded[];
 }
 
@@ -315,6 +325,61 @@ export default function ExecutiveDashboardPage() {
             </CardContent>
           </Card>
 
+          {/* RF-11: canal, pipeline comercial, propuestas y motivos de pérdida */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <MiniBarCard
+              title="Casos por Canal"
+              description="Origen de los casos (web, WhatsApp, referido...)"
+              data={(stats.casesByChannel ?? []).map((r) => ({
+                name: CASE_CHANNEL_LABELS[r.channel as CaseChannel] ?? r.channel,
+                casos: r.count,
+              }))}
+            />
+            <MiniBarCard
+              title="Pipeline Comercial"
+              description="Etapa comercial de los casos (prospecto → ganado/perdido)"
+              data={(stats.commercialPipeline ?? []).map((r) => ({
+                name: COMMERCIAL_STATUS_LABELS[r.status as CommercialStatus] ?? r.status,
+                casos: r.count,
+              }))}
+            />
+            <MiniBarCard
+              title="Propuestas por Estado"
+              description="Cotizaciones según su estado"
+              data={(stats.quotesByStatus ?? []).map((r) => ({
+                name: QUOTE_STATUS_LABELS[r.status as QuoteStatus] ?? r.status,
+                casos: r.count,
+              }))}
+            />
+            <Card>
+              <CardHeader>
+                <CardTitle>Motivos de Pérdida</CardTitle>
+                <CardDescription>
+                  Casos perdidos y propuestas rechazadas, por motivo
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {(stats.lossReasons ?? []).length > 0 ? (
+                  <div className="space-y-2">
+                    {stats.lossReasons.map((r) => (
+                      <div
+                        key={r.reason}
+                        className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+                      >
+                        <span className="text-sm truncate">{r.reason}</span>
+                        <Badge variant="outline" className="shrink-0">{r.count}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    Sin pérdidas registradas. 🎉
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Recent Cases Table */}
           <Card>
             <CardHeader>
@@ -408,6 +473,50 @@ function getBarColor(status: CaseStatus): string {
     creado: "#6b7280",
     gestionado: "#8b5cf6",
     cancelado: "#ef4444",
+    archivado: "#94a3b8",
   };
   return colorMap[status] || "#6b7280";
+}
+
+// Mini gráfico de barras reutilizable para las métricas RF-11
+function MiniBarCard({
+  title,
+  description,
+  data,
+}: {
+  title: string;
+  description: string;
+  data: Array<{ name: string; casos: number }>;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {data.length > 0 ? (
+          <div className="h-56 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 40 }}>
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "8px",
+                    border: "1px solid var(--border)",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  }}
+                  formatter={(value) => [String(value), "Casos"]}
+                />
+                <Bar dataKey="casos" radius={[4, 4, 0, 0]} maxBarSize={40} fill="var(--chart-1)" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="py-8 text-center text-sm text-muted-foreground">Sin datos.</p>
+        )}
+      </CardContent>
+    </Card>
+  );
 }

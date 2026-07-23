@@ -99,3 +99,18 @@ export function canManageClients(role: UserRole): boolean {
 export function canManageEvaluations(role: UserRole): boolean {
   return ['admin', 'postventa'].includes(role);
 }
+
+// Comité (RF-07): viabilidad/alcance/honorarios los decide el área jurídica + admin.
+export function canManageCommittee(role: UserRole): boolean {
+  return ['admin', 'juridico'].includes(role);
+}
+
+// Pipeline comercial (RF-18): quien gestiona la relación comercial del caso.
+export function canChangeCommercialStatus(role: UserRole): boolean {
+  return ['admin', 'juridico', 'financiero', 'mercadeo'].includes(role);
+}
+
+// Checklist documental (RF-05): definir requeridos y marcar estado.
+export function canManageDocumentChecklist(role: UserRole): boolean {
+  return ['admin', 'juridico', 'administrativo'].includes(role);
+}

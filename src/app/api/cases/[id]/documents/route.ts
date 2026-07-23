@@ -3,6 +3,8 @@ import { cases, caseDocument, query } from '@/lib/db';
 import { uploadFile } from '@/lib/sanity/assets';
 import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
 import { DOCUMENT_CATEGORIES, DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '@/lib/types';
+import { guardRole } from '@/lib/auth/guard';
+import { canManageDocumentChecklist } from '@/lib/auth/permissions';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
 
@@ -90,8 +92,49 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Caso no encontrado' }, { status: 404 });
     }
 
+    // Checklist documental (RF-05): con JSON se crea un documento REQUERIDO
+    // pendiente (placeholder sin archivo, estado "no_recibido").
+    const contentType = request.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const stop = guardRole(request, canManageDocumentChecklist);
+      if (stop) return stop;
+
+      const body = await request.json();
+      const reqCategory = (body.category as string) || 'otro';
+      const reqName = (body.description as string) || '';
+      if (!reqName.trim()) {
+        return NextResponse.json(
+          { success: false, error: 'Indique el nombre del documento requerido' },
+          { status: 400 }
+        );
+      }
+      if (!DOCUMENT_CATEGORIES.includes(reqCategory as DocumentCategory)) {
+        return NextResponse.json({ success: false, error: 'Categoria no valida' }, { status: 400 });
+      }
+
+      const placeholder = await caseDocument.createCaseDocument({
+        caseId: id,
+        category: reqCategory as DocumentCategory,
+        status: 'no_recibido',
+        isRequired: true,
+        description: reqName.trim(),
+        uploadedById: userId && userId !== 'admin' ? userId : null,
+        uploadedByName: userName || 'Sistema',
+      });
+
+      logCaseEvent({
+        caseId: id,
+        eventType: 'document_uploaded',
+        description: `Documento requerido creado en el checklist: "${reqName.trim()}"`,
+        userId, userName,
+      });
+      triggerEvent('document:created', { caseId: id });
+      return NextResponse.json({ success: true, data: placeholder }, { status: 201 });
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
+    const targetDocumentId = (formData.get('documentId') as string) || '';
 
     const isClientUpload = userRole === 'cliente';
     const category = isClientUpload ? 'soporte_tecnico' : ((formData.get('category') as string) || 'otro');
@@ -111,9 +154,36 @@ export async function POST(
     const buffer = Buffer.from(await file.arrayBuffer());
     const asset = await uploadFile(buffer, file.name, file.type);
 
+    // Subida sobre un requerido del checklist: completa el placeholder y lo marca recibido.
+    if (targetDocumentId && !isClientUpload) {
+      const target = await caseDocument.getCaseDocumentById(targetDocumentId);
+      if (!target) {
+        return NextResponse.json({ success: false, error: 'Documento requerido no encontrado' }, { status: 404 });
+      }
+      const updated = await caseDocument.updateCaseDocument(targetDocumentId, {
+        status: 'recibido',
+        fileUrl: asset.url,
+        fileAssetId: asset.assetId,
+        fileName: file.name,
+        mimeType: file.type,
+        fileSize: file.size,
+        uploadedById: userId ?? undefined,
+        uploadedByName: userName || 'Sistema',
+      });
+      logCaseEvent({
+        caseId: id,
+        eventType: 'document_uploaded',
+        description: `Documento requerido recibido: "${target.description || file.name}"`,
+        userId, userName,
+      });
+      triggerEvent('document:created', { caseId: id });
+      return NextResponse.json({ success: true, data: updated }, { status: 200 });
+    }
+
     const created = await caseDocument.createCaseDocument({
       caseId: id,
       category: category as DocumentCategory,
+      status: 'recibido',
       fileName: file.name,
       fileSize: file.size,
       mimeType: file.type,

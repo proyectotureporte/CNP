@@ -37,6 +37,8 @@ import {
   COMPLEXITY_LABELS,
   CASE_PRIORITIES,
   PRIORITY_LABELS,
+  CASE_CHANNELS,
+  CASE_CHANNEL_LABELS,
   type CaseExpanded,
 } from "@/lib/types";
 import { COLOMBIA_CITIES } from "@/lib/colombia-cities";
@@ -63,6 +65,7 @@ export default function CaseForm({ initialData, caseId }: CaseFormProps) {
   const [discipline, setDiscipline] = useState<string>(initialData?.discipline || "otro");
   const [complexity, setComplexity] = useState<string>(initialData?.complexity || "media");
   const [priority, setPriority] = useState<string>(initialData?.priority || "normal");
+  const [channel, setChannel] = useState<string>(initialData?.channel || "directo");
   const [clientId, setClientId] = useState(initialData?.client?._id || "");
   const [clientOpen, setClientOpen] = useState(false);
   const [estimatedAmount, setEstimatedAmount] = useState(
@@ -125,6 +128,7 @@ export default function CaseForm({ initialData, caseId }: CaseFormProps) {
         discipline,
         complexity,
         priority,
+        channel,
         clientId: clientId || undefined,
         estimatedAmount: estimatedAmount ? Number(estimatedAmount) : undefined,
         hasHearing,
@@ -297,6 +301,11 @@ export default function CaseForm({ initialData, caseId }: CaseFormProps) {
             </div>
           )}
 
+          {/* ── Sección: Datos básicos ── */}
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider pt-2">
+            Datos básicos
+          </h3>
+
           {/* Title */}
           <div className="space-y-2">
             <Label htmlFor="title">Titulo del caso *</Label>
@@ -309,20 +318,25 @@ export default function CaseForm({ initialData, caseId }: CaseFormProps) {
             />
           </div>
 
-          {/* Description */}
+          {/* Necesidad / resumen (RF-01) */}
           <div className="space-y-2">
-            <Label htmlFor="description">Descripcion</Label>
+            <Label htmlFor="description">Necesidad / resumen del caso</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Descripcion detallada del caso..."
+              placeholder="Qué necesita el cliente y resumen de la situación..."
               rows={4}
             />
           </div>
 
-          {/* Discipline + Complexity + Priority */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {/* ── Sección: Clasificación del caso ── */}
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider pt-2">
+            Clasificación
+          </h3>
+
+          {/* Discipline + Complexity + Priority + Channel */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <Label>Disciplina</Label>
               <Select value={discipline} onValueChange={setDiscipline}>
@@ -362,7 +376,25 @@ export default function CaseForm({ initialData, caseId }: CaseFormProps) {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Canal de origen</Label>
+              <Select value={channel} onValueChange={setChannel}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CASE_CHANNELS.map((c) => (
+                    <SelectItem key={c} value={c}>{CASE_CHANNEL_LABELS[c]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
+          {/* ── Sección: Alcance económico y plazos ── */}
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider pt-2">
+            Monto y plazos
+          </h3>
 
           {/* Estimated Amount */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

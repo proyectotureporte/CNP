@@ -39,7 +39,7 @@ export async function PUT(
     if (stop) return stop;
 
     const body = await request.json();
-    const { name, email, phone, company, position, notes, status } = body as {
+    const { name, email, phone, company, position, notes, status, clientType } = body as {
       name?: string;
       email?: string;
       phone?: string;
@@ -47,10 +47,11 @@ export async function PUT(
       position?: string;
       notes?: string;
       status?: 'activo' | 'inactivo' | 'prospecto';
+      clientType?: 'abogado' | 'empresa' | 'juez' | 'particular';
     };
 
     const updated = await crmClient.updateClient(id, {
-      name, email, phone, company, position, notes, status,
+      name, email, phone, company, position, notes, status, clientType,
     });
 
     triggerEvent('client:updated', { id });

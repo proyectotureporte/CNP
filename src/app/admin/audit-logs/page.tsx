@@ -27,6 +27,47 @@ const ACTION_COLORS: Record<string, string> = {
   logout: 'bg-gray-50 text-gray-700',
 };
 
+function parseValues(raw?: string): Record<string, unknown> | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function renderValue(v: unknown): string {
+  if (v === null || v === undefined || v === '') return '—';
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
+// Item 19: muestra el diff campo a campo (valor anterior → valor nuevo)
+function DiffTable({ oldValues, newValues }: { oldValues?: string; newValues?: string }) {
+  const before = parseValues(oldValues);
+  const after = parseValues(newValues);
+  if (!before && !after) return null;
+  const keys = [...new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})])];
+  if (keys.length === 0) return null;
+  return (
+    <div className="mt-2 rounded-md border bg-muted/30 px-3 py-2 space-y-1">
+      {keys.map((k) => (
+        <div key={k} className="flex flex-wrap items-baseline gap-2 text-xs">
+          <span className="font-mono font-medium">{k}:</span>
+          {before && k in before && (
+            <span className="text-red-600 line-through break-all">{renderValue(before[k])}</span>
+          )}
+          {before && after && k in before && k in after && <span aria-hidden>→</span>}
+          {after && k in after && (
+            <span className="text-green-700 break-all">{renderValue(after[k])}</span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AuditLogsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,10 +146,11 @@ export default function AuditLogsPage() {
       ) : (
         <div className="space-y-2">
           {logs.map((log) => {
-            const colorClass = ACTION_COLORS[log.action] || 'bg-gray-50 text-gray-700';
+            const actionPrefix = log.action?.split(':')[0] ?? log.action;
+            const colorClass = ACTION_COLORS[actionPrefix] || ACTION_COLORS[log.action] || 'bg-gray-50 text-gray-700';
             return (
               <Card key={log._id}>
-                <CardContent className="flex items-center justify-between pt-3 pb-3">
+                <CardContent className="pt-3 pb-3">
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
                       <Badge className={`${colorClass} border-0 text-xs`}>{log.action}</Badge>
@@ -124,6 +166,7 @@ export default function AuditLogsPage() {
                       {log.ipAddress && ` | IP: ${log.ipAddress}`}
                     </p>
                   </div>
+                  <DiffTable oldValues={log.oldValues} newValues={log.newValues} />
                 </CardContent>
               </Card>
             );

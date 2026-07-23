@@ -3,8 +3,10 @@ import { cases, crmClient, caseDocument, query } from '@/lib/db';
 import { guardRole } from '@/lib/auth/guard';
 import { canCreateCase } from '@/lib/auth/permissions';
 import { getClientIdForUser } from '@/lib/auth/clientAccess';
-import { CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES } from '@/lib/types';
+import { CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES, CASE_CHANNELS } from '@/lib/types';
+import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
+import { auditEntityChange } from '@/lib/audit';
 
 function generateCaseCode(latestCode: string | null, brand: string): string {
   const year = new Date().getFullYear();
@@ -93,7 +95,7 @@ export async function POST(request: NextRequest) {
     const userName = request.headers.get('x-user-name') || 'Sistema';
     const body = await request.json();
     const {
-      title, description, discipline, complexity, priority,
+      title, description, discipline, complexity, priority, channel,
       clientId, estimatedAmount, hasHearing, hearingDate, hearingLink, deadlineDate,
       city, courtName, caseNumber, brand: bodyBrand,
     } = body;
@@ -109,6 +111,9 @@ export async function POST(request: NextRequest) {
     }
     if (priority && !CASE_PRIORITIES.includes(priority)) {
       return NextResponse.json({ success: false, error: 'Prioridad no valida' }, { status: 400 });
+    }
+    if (channel && !CASE_CHANNELS.includes(channel)) {
+      return NextResponse.json({ success: false, error: 'Canal de origen no valido' }, { status: 400 });
     }
 
     // Validate Peritus client approval before case creation
@@ -140,6 +145,8 @@ export async function POST(request: NextRequest) {
       status: 'creado',
       complexity: complexity || 'media',
       priority: priority || 'normal',
+      channel: channel || 'directo',
+      commercialStatus: 'prospecto',
       estimatedAmount: estimatedAmount || 0,
       hasHearing: hasHearing || false,
       hearingDate: hearingDate || null,
@@ -194,6 +201,21 @@ export async function POST(request: NextRequest) {
         console.error('[cases] Auto-transfer WhatsApp docs error:', docErr);
       }
     }
+
+    logCaseEvent({
+      caseId: created._id,
+      eventType: 'case_created',
+      description: `Caso ${caseCode} creado por ${userName}`,
+      userId, userName,
+    });
+
+    auditEntityChange({
+      request,
+      action: 'create',
+      entityType: 'case',
+      entityId: created._id,
+      after: { caseCode, title, discipline: discipline || 'otro', clientId: clientId || null, channel: channel || 'directo' },
+    });
 
     triggerEvent('case:created', { id: created._id });
 

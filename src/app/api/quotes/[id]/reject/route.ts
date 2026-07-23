@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { quote } from '@/lib/db';
+import { quote, cases } from '@/lib/db';
 import { guardRole } from '@/lib/auth/guard';
 import { canApproveQuote } from '@/lib/auth/permissions';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import type { Quote } from '@/lib/types';
 import { triggerEvent } from '@/lib/realtime/server';
+import { notifyUsersAndAdmins } from '@/lib/notify';
+import { auditEntityChange } from '@/lib/audit';
 
 type QuoteWithCase = Quote & { case?: { _id: string; caseCode: string; title: string } };
 
@@ -36,14 +38,43 @@ export async function POST(
 
     const updated = await quote.updateQuote(id, { status: 'rechazada', rejectionReason });
 
-    if (existing.case?._id) {
+    const caseId = existing.case?._id;
+    if (caseId) {
       await logCaseEvent({
-        caseId: existing.case._id,
+        caseId,
         eventType: 'quote_rejected',
         description: `Cotizacion rechazada: ${rejectionReason}`,
         userId, userName,
       });
+
+      // RF-18: propuesta rechazada devuelve el pipeline a negociación (el
+      // comercial decide si ajusta con nueva versión o marca el caso perdido).
+      const caseRow = await cases.getCaseById(caseId);
+      if (caseRow && caseRow.commercialStatus === 'propuesta_enviada') {
+        await cases.updateCase(caseId, { commercialStatus: 'negociacion' });
+      }
+
+      notifyUsersAndAdmins({
+        userIds: [caseRow?.commercial?._id, caseRow?.createdBy?._id, caseRow?.assignedFinanciero?._id].filter(
+          (uid) => uid !== userId,
+        ),
+        type: 'warning',
+        priority: 'alta',
+        title: `Propuesta rechazada: ${caseRow?.caseCode ?? ''}`,
+        message: `La cotización v${existing.version} del caso "${caseRow?.title ?? ''}" fue rechazada. Motivo: ${rejectionReason}`,
+        linkUrl: `/crm/cases/${caseId}`,
+        mailbox: 'admin',
+      }).catch((err) => console.error('[quote:reject] Error notificando:', err));
     }
+
+    auditEntityChange({
+      request,
+      action: 'update',
+      entityType: 'quote',
+      entityId: id,
+      before: { status: existing.status },
+      after: { status: 'rechazada', rejectionReason },
+    });
 
     triggerEvent('quote:rejected', { id });
 

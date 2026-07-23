@@ -166,6 +166,7 @@ export default function ClientForm({
     company: initialData?.company ?? "",
     position: initialData?.position ?? "",
     status: initialData?.status ?? "prospecto",
+    clientType: initialData?.clientType ?? "particular",
     notes: initialData?.notes ?? "",
   });
 
@@ -312,8 +313,30 @@ export default function ClientForm({
           />
         </div>
 
+        {/* Tipo de cliente (RF-14: abogado/empresa/juez/particular) */}
+        <div>
+          <label
+            htmlFor="clientType"
+            className="mb-1.5 block text-sm font-medium text-gray-700"
+          >
+            Tipo de cliente
+          </label>
+          <select
+            id="clientType"
+            name="clientType"
+            value={formData.clientType}
+            onChange={handleChange}
+            className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition-all duration-200 focus:border-[#2969b0] focus:outline-none focus:ring-2 focus:ring-[#2969b0]/20"
+          >
+            <option value="abogado">Abogado</option>
+            <option value="empresa">Empresa</option>
+            <option value="juez">Juez</option>
+            <option value="particular">Particular</option>
+          </select>
+        </div>
+
         {/* Status */}
-        <div className="sm:col-span-2">
+        <div>
           <label
             htmlFor="status"
             className="mb-1.5 block text-sm font-medium text-gray-700"

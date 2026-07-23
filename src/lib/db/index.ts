@@ -9,6 +9,7 @@ export * as cases from './cases';
 export * as caseEvent from './caseEvent';
 export * as caseDocument from './caseDocument';
 export * as quote from './quote';
+export * as committeeReview from './committeeReview';
 export * as expert from './expert';
 export * as workPlan from './workPlan';
 export * as workPlanActivity from './workPlanActivity';

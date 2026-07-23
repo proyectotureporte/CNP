@@ -19,12 +19,20 @@ import { Label } from "@/components/ui/label";
 import {
   Plus, CheckCircle, XCircle, DollarSign,
   Loader2, Clock, FileText, Pencil, Upload, ExternalLink,
-  AlertTriangle, Info,
+  AlertTriangle, Info, Send, CopyPlus, CalendarClock,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   QUOTE_STATUS_LABELS, QUOTE_STATUS_COLORS,
   PAYMENT_STATUS_LABELS, PAYMENT_STATUS_COLORS,
-  type Quote, type Payment, type UserRole,
+  QUOTE_CHANNELS, QUOTE_CHANNEL_LABELS,
+  type Quote, type Payment, type UserRole, type QuoteChannel,
 } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { canCreateQuote, canApproveQuote } from "@/lib/auth/permissions";
@@ -64,6 +72,14 @@ export default function QuoteList({ caseId, userRole }: QuoteListProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectDialogQuote, setRejectDialogQuote] = useState<Quote | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [approveDialogQuote, setApproveDialogQuote] = useState<Quote | null>(null);
+  const [acceptanceNotes, setAcceptanceNotes] = useState("");
+  const [sendDialogQuote, setSendDialogQuote] = useState<Quote | null>(null);
+  const [sendChannel, setSendChannel] = useState<string>("email");
+  const [sendFollowUpDate, setSendFollowUpDate] = useState("");
+  const [followUpDialogQuote, setFollowUpDialogQuote] = useState<Quote | null>(null);
+  const [followUpDate, setFollowUpDate] = useState("");
+  const [followUpNote, setFollowUpNote] = useState("");
   const [uploadingPaymentId, setUploadingPaymentId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -102,13 +118,99 @@ export default function QuoteList({ caseId, userRole }: QuoteListProps) {
     loadQuotes();
   }, [loadQuotes]);
 
-  async function handleApprove(quoteId: string) {
+  async function handleApprove() {
+    if (!approveDialogQuote) return;
+    setActionLoading(approveDialogQuote._id);
+    setError("");
+    try {
+      const res = await fetch(`/api/quotes/${approveDialogQuote._id}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acceptanceNotes: acceptanceNotes.trim() || undefined }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setApproveDialogQuote(null);
+        setAcceptanceNotes("");
+        await loadQuotes();
+      } else {
+        setError(data.error);
+      }
+    } catch {
+      setError("Error de conexion");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  // RF-08/RF-09: enviar con canal obligatorio y validación server-side
+  async function handleSend() {
+    if (!sendDialogQuote) return;
+    setActionLoading(sendDialogQuote._id);
+    setError("");
+    try {
+      const res = await fetch(`/api/quotes/${sendDialogQuote._id}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          channel: sendChannel,
+          nextFollowUpDate: sendFollowUpDate || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSendDialogQuote(null);
+        setSendFollowUpDate("");
+        await loadQuotes();
+      } else {
+        setError(data.error);
+      }
+    } catch {
+      setError("Error de conexion");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  // RF-09: ajuste = nueva versión enlazada, nunca editar la enviada
+  async function handleRevise(quoteId: string) {
     setActionLoading(quoteId);
     setError("");
     try {
-      const res = await fetch(`/api/quotes/${quoteId}/approve`, { method: "POST" });
+      const res = await fetch(`/api/quotes/${quoteId}/revise`, { method: "POST" });
       const data = await res.json();
       if (data.success) {
+        await loadQuotes();
+      } else {
+        setError(data.error);
+      }
+    } catch {
+      setError("Error de conexion");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  // RF-10: seguimiento (novedad + próxima fecha)
+  async function handleFollowUp() {
+    if (!followUpDialogQuote) return;
+    if (!followUpDate && !followUpNote.trim()) return;
+    setActionLoading(followUpDialogQuote._id);
+    setError("");
+    try {
+      const res = await fetch(`/api/quotes/${followUpDialogQuote._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nextFollowUpDate: followUpDate || null,
+          followUpNote: followUpNote.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFollowUpDialogQuote(null);
+        setFollowUpDate("");
+        setFollowUpNote("");
         await loadQuotes();
       } else {
         setError(data.error);
@@ -354,7 +456,19 @@ export default function QuoteList({ caseId, userRole }: QuoteListProps) {
                       <span>Valida hasta: {formatDate(quote.validUntil)}</span>
                     )}
                     {quote.sentAt && (
-                      <span>Enviada: {formatDateTime(quote.sentAt)}</span>
+                      <span>
+                        Enviada: {formatDateTime(quote.sentAt)}
+                        {quote.channel ? ` por ${QUOTE_CHANNEL_LABELS[quote.channel as QuoteChannel]}` : ""}
+                      </span>
+                    )}
+                    {quote.nextFollowUpDate && (
+                      <span className="flex items-center gap-1 text-amber-600">
+                        <CalendarClock className="h-3 w-3" />
+                        Próximo seguimiento: {formatDate(quote.nextFollowUpDate)}
+                      </span>
+                    )}
+                    {quote.parentQuoteId && (
+                      <span>Ajuste de una versión anterior</span>
                     )}
                     {quote.approvedAt && (
                       <span>Aprobada: {formatDateTime(quote.approvedAt)}</span>
@@ -383,19 +497,72 @@ export default function QuoteList({ caseId, userRole }: QuoteListProps) {
                     </div>
                   )}
 
+                  {/* Acceptance notes */}
+                  {quote.acceptanceNotes && (
+                    <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+                      <p className="text-xs font-medium text-green-700">Motivo de Aceptacion</p>
+                      <p className="text-sm text-green-600 mt-0.5">{quote.acceptanceNotes}</p>
+                    </div>
+                  )}
+
                   <Separator />
 
                   {/* Actions */}
-                  <div className="flex justify-end gap-2">
+                  <div className="flex justify-end gap-2 flex-wrap">
                     {quote.status === "borrador" && canManageQuotes && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingQuote(quote)}
+                          disabled={isLoading}
+                        >
+                          <Pencil className="mr-2 h-3.5 w-3.5" />
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setSendDialogQuote(quote);
+                            setSendChannel("email");
+                            setSendFollowUpDate("");
+                          }}
+                          disabled={isLoading}
+                        >
+                          <Send className="mr-2 h-3.5 w-3.5" />
+                          Enviar
+                        </Button>
+                      </>
+                    )}
+                    {quote.status === "enviada" && canManageQuotes && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setEditingQuote(quote)}
+                        onClick={() => {
+                          setFollowUpDialogQuote(quote);
+                          setFollowUpDate(quote.nextFollowUpDate?.slice(0, 10) ?? "");
+                          setFollowUpNote("");
+                        }}
                         disabled={isLoading}
                       >
-                        <Pencil className="mr-2 h-3.5 w-3.5" />
-                        Editar
+                        <CalendarClock className="mr-2 h-3.5 w-3.5" />
+                        Seguimiento
+                      </Button>
+                    )}
+                    {["enviada", "rechazada", "expirada"].includes(quote.status) && canManageQuotes && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRevise(quote._id)}
+                        disabled={isLoading}
+                        title="Crea una nueva versión en borrador a partir de esta"
+                      >
+                        {isLoading ? (
+                          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <CopyPlus className="mr-2 h-3.5 w-3.5" />
+                        )}
+                        Nueva versión
                       </Button>
                     )}
                     {quote.status === "enviada" && canApproveQuotes && (
@@ -415,7 +582,10 @@ export default function QuoteList({ caseId, userRole }: QuoteListProps) {
                         </Button>
                         <Button
                           size="sm"
-                          onClick={() => handleApprove(quote._id)}
+                          onClick={() => {
+                            setApproveDialogQuote(quote);
+                            setAcceptanceNotes("");
+                          }}
                           disabled={isLoading}
                           className="bg-green-600 hover:bg-green-700"
                         >
@@ -436,6 +606,140 @@ export default function QuoteList({ caseId, userRole }: QuoteListProps) {
           })}
         </div>
       )}
+
+      {/* Send Dialog (RF-08/RF-09: canal obligatorio) */}
+      <Dialog open={!!sendDialogQuote} onOpenChange={(open) => !open && setSendDialogQuote(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar Cotizacion</DialogTitle>
+            <DialogDescription>
+              Version {sendDialogQuote?.version}. El sistema valida los campos obligatorios antes de enviar.
+              {sendChannel === "email" && " Con canal Email, el cliente recibe un correo con acceso al portal."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Canal de envio *</Label>
+              <Select value={sendChannel} onValueChange={setSendChannel}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {QUOTE_CHANNELS.map((c) => (
+                    <SelectItem key={c} value={c}>{QUOTE_CHANNEL_LABELS[c]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Proximo seguimiento (opcional)</Label>
+              <Input
+                type="date"
+                value={sendFollowUpDate}
+                onChange={(e) => setSendFollowUpDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendDialogQuote(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSend} disabled={!!actionLoading}>
+              {actionLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              Enviar Cotizacion
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Approve Dialog (motivo de aceptación opcional, RF-10) */}
+      <Dialog open={!!approveDialogQuote} onOpenChange={(open) => !open && setApproveDialogQuote(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Aprobar Cotizacion</DialogTitle>
+            <DialogDescription>
+              Version {approveDialogQuote?.version}. Puede registrar el motivo de aceptacion (opcional).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Motivo de aceptacion (opcional)</Label>
+            <Textarea
+              value={acceptanceNotes}
+              onChange={(e) => setAcceptanceNotes(e.target.value)}
+              placeholder="Ej. acordado en llamada, aceptó tras descuento..."
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApproveDialogQuote(null)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleApprove}
+              disabled={!!actionLoading}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {actionLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle className="mr-2 h-4 w-4" />
+              )}
+              Confirmar Aprobacion
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Follow-up Dialog (RF-10) */}
+      <Dialog open={!!followUpDialogQuote} onOpenChange={(open) => !open && setFollowUpDialogQuote(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Seguimiento de Propuesta</DialogTitle>
+            <DialogDescription>
+              Registre una novedad y/o programe el proximo seguimiento de la version {followUpDialogQuote?.version}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Novedad</Label>
+              <Textarea
+                value={followUpNote}
+                onChange={(e) => setFollowUpNote(e.target.value)}
+                placeholder="Ej. cliente pidió una semana para decidir..."
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Proximo seguimiento</Label>
+              <Input
+                type="date"
+                value={followUpDate}
+                onChange={(e) => setFollowUpDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFollowUpDialogQuote(null)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleFollowUp}
+              disabled={!!actionLoading || (!followUpDate && !followUpNote.trim())}
+            >
+              {actionLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CalendarClock className="mr-2 h-4 w-4" />
+              )}
+              Guardar Seguimiento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reject Dialog */}
       <Dialog open={!!rejectDialogQuote} onOpenChange={(open) => !open && setRejectDialogQuote(null)}>

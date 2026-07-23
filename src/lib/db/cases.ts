@@ -11,6 +11,8 @@ const SCALARS = `
   c.id AS "_id", c.created_at AS "_createdAt", c.updated_at AS "_updatedAt",
   c.brand, c.case_code AS "caseCode", c.title, c.description, c.discipline, c.status,
   c.status_changed_by_role AS "statusChangedByRole", c.complexity, c.priority,
+  c.channel, c.commercial_status AS "commercialStatus", c.loss_reason AS "lossReason",
+  c.execution_start_date AS "executionStartDate", c.execution_deadline AS "executionDeadline",
   c.estimated_amount AS "estimatedAmount", c.has_hearing AS "hasHearing",
   c.hearing_date AS "hearingDate", c.hearing_link AS "hearingLink", c.deadline_date AS "deadlineDate",
   c.city, c.court_name AS "courtName", c.case_number AS "caseNumber", c.risk_score AS "riskScore"
@@ -66,6 +68,8 @@ export async function listCases(p: ListCasesParams = {}): Promise<CaseExpanded[]
        c.id AS "_id", c.created_at AS "_createdAt", c.updated_at AS "_updatedAt",
        c.brand, c.case_code AS "caseCode", c.title, c.discipline, c.status,
        c.status_changed_by_role AS "statusChangedByRole", c.complexity, c.priority,
+       c.channel, c.commercial_status AS "commercialStatus",
+       c.execution_start_date AS "executionStartDate", c.execution_deadline AS "executionDeadline",
        c.estimated_amount AS "estimatedAmount", c.has_hearing AS "hasHearing",
        c.hearing_date AS "hearingDate", c.hearing_link AS "hearingLink", c.deadline_date AS "deadlineDate",
        c.city, c.court_name AS "courtName", c.case_number AS "caseNumber",
@@ -242,6 +246,72 @@ export async function casesWithUrgentDeadline(today: string, threshold: string):
   );
 }
 
+export interface CaseDeadlineAlertRow extends CaseAlertRow {
+  priority: string;
+  deadlineDate?: string;
+}
+
+/**
+ * Casos activos con deadline futuro; el umbral por urgencia lo aplica el cron
+ * (RF-06: la ventana de recordatorio depende de `priority`).
+ */
+export async function casesWithUpcomingDeadline(today: string, maxThreshold: string): Promise<CaseDeadlineAlertRow[]> {
+  return query<CaseDeadlineAlertRow>(
+    `SELECT id AS "_id", case_code AS "caseCode", title, deadline_date AS "deadlineDate", priority,
+       commercial_id AS "commercialId", technical_analyst_id AS "technicalAnalystId",
+       assigned_expert_id AS "assignedExpertId"
+     FROM cases
+     WHERE deadline_date IS NOT NULL AND deadline_date <= $2::timestamptz
+       AND deadline_date >= $1::timestamptz AND status NOT IN ('cancelado', 'archivado')`,
+    [today, maxThreshold],
+  );
+}
+
+export interface ExecutionDeadlineRow extends CaseAlertRow {
+  executionDeadline: string;
+  assignedFinancieroId: string | null;
+}
+
+/** Casos en ejecución (item 20) cuyo plazo de 15 días hábiles vence dentro de la ventana. */
+export async function casesWithExecutionDeadlineSoon(threshold: string): Promise<ExecutionDeadlineRow[]> {
+  return query<ExecutionDeadlineRow>(
+    `SELECT id AS "_id", case_code AS "caseCode", title,
+       execution_deadline AS "executionDeadline",
+       commercial_id AS "commercialId", technical_analyst_id AS "technicalAnalystId",
+       assigned_expert_id AS "assignedExpertId", assigned_financiero_id AS "assignedFinancieroId"
+     FROM cases
+     WHERE execution_deadline IS NOT NULL AND execution_deadline >= now()
+       AND execution_deadline <= $1::timestamptz
+       AND status NOT IN ('cancelado', 'archivado')`,
+    [threshold],
+  );
+}
+
+export interface RequiredDocsPendingRow {
+  _id: string;
+  caseCode: string;
+  title: string;
+  priority: string;
+  commercialId: string | null;
+  technicalAnalystId: string | null;
+  pendingCount: number;
+  pendingNames: string[];
+}
+
+/** Casos con documentos REQUERIDOS sin recibir (RF-05 + recordatorio documental, item 21). */
+export async function casesWithRequiredDocsPending(): Promise<RequiredDocsPendingRow[]> {
+  return query<RequiredDocsPendingRow>(
+    `SELECT c.id AS "_id", c.case_code AS "caseCode", c.title, c.priority,
+       c.commercial_id AS "commercialId", c.technical_analyst_id AS "technicalAnalystId",
+       count(d.id)::int AS "pendingCount",
+       array_agg(COALESCE(NULLIF(d.description, ''), d.category::text)) AS "pendingNames"
+     FROM cases c
+     JOIN case_document d ON d.case_id = c.id AND d.is_required = TRUE AND d.status <> 'recibido'
+     WHERE c.status NOT IN ('cancelado', 'archivado')
+     GROUP BY c.id`,
+  );
+}
+
 // --- CRUD -------------------------------------------------------------------
 export interface CaseInput {
   brand?: 'CNP' | 'Peritus';
@@ -254,10 +324,15 @@ export interface CaseInput {
   assignedExpertId?: string | null;
   assignedFinancieroId?: string | null;
   discipline?: Case['discipline'] | null;
-  status?: Case['status'] | 'archivado';
+  status?: Case['status'];
   statusChangedByRole?: string | null;
   complexity?: Case['complexity'];
   priority?: Case['priority'];
+  channel?: Case['channel'] | null;
+  commercialStatus?: Case['commercialStatus'];
+  lossReason?: string | null;
+  executionStartDate?: string | null;
+  executionDeadline?: string | null;
   estimatedAmount?: number | null;
   hasHearing?: boolean;
   hearingDate?: string | null;
@@ -286,6 +361,11 @@ function toColumns(input: Partial<CaseInput>): Record<string, unknown> {
     status_changed_by_role: input.statusChangedByRole,
     complexity: input.complexity,
     priority: input.priority,
+    channel: input.channel,
+    commercial_status: input.commercialStatus,
+    loss_reason: input.lossReason,
+    execution_start_date: input.executionStartDate,
+    execution_deadline: input.executionDeadline,
     estimated_amount: input.estimatedAmount,
     has_hearing: input.hasHearing,
     hearing_date: input.hearingDate,

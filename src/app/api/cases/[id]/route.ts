@@ -2,17 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cases } from '@/lib/db';
 import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
 import {
-  CASE_STATUSES, CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES,
+  CASE_STATUSES, CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES, CASE_CHANNELS,
   type CaseStatus,
 } from '@/lib/types';
+import { VALID_TRANSITIONS } from '@/lib/cases/stateMachine';
 import { triggerEvent } from '@/lib/realtime/server';
-
-// Valid state transitions map
-const VALID_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
-  creado: ['gestionado', 'cancelado'],
-  gestionado: ['creado', 'cancelado'],
-  cancelado: ['creado'],
-};
+import { auditEntityChange } from '@/lib/audit';
 
 export async function GET(
   request: NextRequest,
@@ -125,6 +120,12 @@ export async function PUT(
       }
       patch.priority = body.priority;
     }
+    if (body.channel !== undefined) {
+      if (!CASE_CHANNELS.includes(body.channel)) {
+        return NextResponse.json({ success: false, error: 'Canal de origen no valido' }, { status: 400 });
+      }
+      patch.channel = body.channel;
+    }
 
     if (body.status !== undefined) {
       if (!CASE_STATUSES.includes(body.status)) {
@@ -148,6 +149,40 @@ export async function PUT(
     if (body.assignedFinancieroId !== undefined) patch.assignedFinancieroId = body.assignedFinancieroId || null;
 
     const updated = await cases.updateCase(id, patch);
+
+    // Item 19: auditoría campo a campo de la edición.
+    if (updated) {
+      const snapshot = (c: typeof existing) => ({
+        title: c.title,
+        description: c.description ?? null,
+        discipline: c.discipline ?? null,
+        status: c.status,
+        complexity: c.complexity,
+        priority: c.priority,
+        channel: c.channel ?? null,
+        estimatedAmount: c.estimatedAmount ?? null,
+        hasHearing: c.hasHearing ?? false,
+        hearingDate: c.hearingDate ?? null,
+        deadlineDate: c.deadlineDate ?? null,
+        city: c.city ?? null,
+        courtName: c.courtName ?? null,
+        caseNumber: c.caseNumber ?? null,
+        clientId: c.client?._id ?? null,
+        commercialId: c.commercial?._id ?? null,
+        technicalAnalystId: c.technicalAnalyst?._id ?? null,
+        assignedExpertId: c.assignedExpert?._id ?? null,
+        assignedFinancieroId: c.assignedFinanciero?._id ?? null,
+      });
+      auditEntityChange({
+        request,
+        action: 'update',
+        entityType: 'case',
+        entityId: id,
+        before: snapshot(existing),
+        after: snapshot(updated),
+      });
+    }
+
     triggerEvent('case:updated', { id });
     return NextResponse.json({ success: true, data: updated });
   } catch {
@@ -178,6 +213,14 @@ export async function DELETE(
 
     // Soft delete: move to archivado
     await cases.updateCase(id, { status: 'archivado' });
+    auditEntityChange({
+      request,
+      action: 'delete',
+      entityType: 'case',
+      entityId: id,
+      before: { status: existing.status, caseCode: existing.caseCode, title: existing.title },
+      after: { status: 'archivado' },
+    });
     return NextResponse.json({ success: true, data: { message: 'Caso archivado' } });
   } catch {
     return NextResponse.json(

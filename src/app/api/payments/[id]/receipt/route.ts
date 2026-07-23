@@ -4,6 +4,9 @@ import { uploadFile } from '@/lib/sanity/assets';
 import { guardRole } from '@/lib/auth/guard';
 import { canAccessFinances } from '@/lib/auth/permissions';
 import { triggerEvent } from '@/lib/realtime/server';
+import { logCaseEvent } from '@/lib/sanity/logEvent';
+import { maybeStartExecutionClock } from '@/lib/cases/execution';
+import { auditEntityChange } from '@/lib/audit';
 
 export async function POST(
   request: NextRequest,
@@ -61,6 +64,29 @@ export async function POST(
         description: docName,
       });
     }
+
+    const userId = request.headers.get('x-user-id');
+    const userName = request.headers.get('x-user-name');
+
+    if (existing.caseRef?._id) {
+      logCaseEvent({
+        caseId: existing.caseRef._id,
+        eventType: 'payment_recorded',
+        description: `Pago ${existing.paymentNumber} validado con justificante`,
+        userId, userName,
+      });
+      // Item 20: primer pago validado → arranca el reloj de 15 días hábiles.
+      await maybeStartExecutionClock(existing.caseRef._id, { userId, userName });
+    }
+
+    auditEntityChange({
+      request,
+      action: 'update',
+      entityType: 'payment',
+      entityId: id,
+      before: { status: existing.status },
+      after: { status: 'validado' },
+    });
 
     triggerEvent('payment:receipt', { id });
 

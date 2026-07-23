@@ -1,26 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cases, notification } from '@/lib/db';
+import { cases } from '@/lib/db';
 import { CASE_STATUSES, CASE_STATUS_LABELS, type CaseStatus } from '@/lib/types';
+import { VALID_TRANSITIONS, canChangeStatus } from '@/lib/cases/stateMachine';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
-
-// Chain: juridico → financiero → admin
-const VALID_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
-  creado: ['gestionado', 'cancelado'],
-  gestionado: ['creado', 'cancelado'],
-  cancelado: ['creado'],
-};
-
-function canChangeStatus(userRole: string, statusChangedByRole?: string): boolean {
-  if (userRole === 'admin') return true;
-  if (userRole === 'juridico') {
-    return !statusChangedByRole || statusChangedByRole === 'financiero';
-  }
-  if (userRole === 'financiero') {
-    return statusChangedByRole === 'juridico';
-  }
-  return false;
-}
+import { notifyUsersAndAdmins } from '@/lib/notify';
+import { auditEntityChange } from '@/lib/audit';
 
 export async function PUT(
   request: NextRequest,
@@ -95,23 +80,37 @@ export async function PUT(
       userId, userName,
     });
 
-    // When financiero returns case to creado, notify the juridico team
-    if (status === 'creado' && userRole === 'financiero') {
-      const recipients = new Set<string>();
-      if (existing.commercial?._id) recipients.add(existing.commercial._id);
-      if (existing.createdBy?._id) recipients.add(existing.createdBy._id);
+    auditEntityChange({
+      request,
+      action: 'update',
+      entityType: 'case',
+      entityId: id,
+      before: { status: existing.status, assignedFinanciero: existing.assignedFinanciero?._id ?? null },
+      after: { status, assignedFinanciero: patch.assignedFinancieroId ?? existing.assignedFinanciero?._id ?? null },
+    });
 
-      for (const recipientId of recipients) {
-        notification.createNotification({
-          userId: recipientId,
-          type: 'warning',
-          priority: 'alta',
-          title: `Caso Devuelto: ${existing.caseCode}`,
-          message: `El caso "${existing.title}" fue devuelto por el area financiera y requiere su atencion.`,
-          linkUrl: `/crm/cases/${id}`,
-        }).catch((err) => console.error('[status] Error creating return notification:', err));
-      }
-    }
+    // RF-03/RF-13: toda transición notifica a los implicados del caso (+admins).
+    const returned = status === 'creado' && userRole === 'financiero';
+    notifyUsersAndAdmins({
+      userIds: [
+        existing.commercial?._id,
+        existing.technicalAnalyst?._id,
+        existing.assignedExpert?._id,
+        existing.assignedFinanciero?._id,
+        patch.assignedFinancieroId ?? undefined,
+        existing.createdBy?._id,
+      ].filter((uid) => uid !== userId),
+      type: returned ? 'warning' : 'info',
+      priority: returned ? 'alta' : 'normal',
+      title: returned
+        ? `Caso Devuelto: ${existing.caseCode}`
+        : `Cambio de estado: ${existing.caseCode}`,
+      message: returned
+        ? `El caso "${existing.title}" fue devuelto por el area financiera y requiere su atencion.`
+        : `El caso "${existing.title}" pasó de "${fromLabel}" a "${toLabel}" (${userName || userRole}).`,
+      linkUrl: `/crm/cases/${id}`,
+      mailbox: 'admin',
+    }).catch((err) => console.error('[status] Error notificando cambio de estado:', err));
 
     triggerEvent('case:status-changed', { id, status });
 

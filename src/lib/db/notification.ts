@@ -37,6 +37,19 @@ export async function listRecentAlertTitles(prefix: string, since: string): Prom
   return rows.map((r) => r.title);
 }
 
+/**
+ * Última fecha de emisión por título de alerta con `prefix` desde `since`.
+ * Permite ventanas de deduplicación DISTINTAS por urgencia del caso (RF-06).
+ */
+export async function mapRecentAlertLastSent(prefix: string, since: string): Promise<Map<string, string>> {
+  const rows = await query<{ title: string; last: string }>(
+    `SELECT title, max(created_at) AS last FROM notification
+     WHERE title LIKE $1 || '%' AND created_at >= $2 GROUP BY title`,
+    [prefix, since],
+  );
+  return new Map(rows.map((r) => [r.title, r.last]));
+}
+
 export interface NotificationInput {
   userId: string;
   type?: NotificationType;

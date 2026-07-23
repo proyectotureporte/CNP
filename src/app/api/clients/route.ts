@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     if (stop) return stop;
 
     const body = await request.json();
-    const { name, email, phone, company, position, notes, status, brand } = body as {
+    const { name, email, phone, company, position, notes, status, brand, clientType } = body as {
       name: string;
       email?: string;
       phone?: string;
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
       notes?: string;
       status?: string;
       brand?: string;
+      clientType?: string;
     };
 
     if (!name) {
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
       position: position || '',
       notes: notes || '',
       status: (status as 'activo' | 'inactivo' | 'prospecto') || 'prospecto',
+      clientType: (clientType as 'abogado' | 'empresa' | 'juez' | 'particular') || 'particular',
       createdBy: payload?.displayName || 'Sistema',
     });
 

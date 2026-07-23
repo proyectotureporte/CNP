@@ -10,6 +10,8 @@ const SELECT = `
   q.total_price AS "totalPrice", q.discount_percentage AS "discountPercentage",
   q.final_value AS "finalValue", q.status, q.valid_until AS "validUntil",
   q.sent_at AS "sentAt", q.approved_at AS "approvedAt", q.rejection_reason AS "rejectionReason",
+  q.acceptance_notes AS "acceptanceNotes", q.channel,
+  q.parent_quote_id AS "parentQuoteId", q.next_follow_up_date AS "nextFollowUpDate",
   q.notes, q.first_payment_date AS "firstPaymentDate", q.last_payment_date AS "lastPaymentDate",
   q.first_payment_percentage AS "firstPaymentPercentage", q.custom_split AS "customSplit",
   q.file_url AS "quoteDocumentUrl",
@@ -85,6 +87,10 @@ export interface QuoteInput {
   approvedAt?: string | null;
   approvedById?: string | null;
   rejectionReason?: string | null;
+  acceptanceNotes?: string | null;
+  channel?: Quote['channel'] | null;
+  parentQuoteId?: string | null;
+  nextFollowUpDate?: string | null;
   notes?: string | null;
   createdById?: string | null;
   fileUrl?: string | null;
@@ -111,6 +117,10 @@ function toColumns(input: Partial<QuoteInput>): Record<string, unknown> {
     approved_at: input.approvedAt,
     approved_by_id: input.approvedById,
     rejection_reason: input.rejectionReason,
+    acceptance_notes: input.acceptanceNotes,
+    channel: input.channel,
+    parent_quote_id: input.parentQuoteId,
+    next_follow_up_date: input.nextFollowUpDate,
     notes: input.notes,
     created_by_id: input.createdById,
     file_url: input.fileUrl,
@@ -140,4 +150,58 @@ export async function updateQuote(id: string, patch: Partial<QuoteInput>): Promi
 
 export async function deleteQuote(id: string): Promise<void> {
   await query('DELETE FROM quote WHERE id = $1', [id]);
+}
+
+// --- Automatizaciones (cron, item 21) ---------------------------------------
+
+export interface QuoteAlertRow {
+  _id: string;
+  caseId: string;
+  caseCode: string;
+  caseTitle: string;
+  version: number;
+  createdById: string | null;
+  commercialId: string | null;
+  nextFollowUpDate?: string;
+  sentAt?: string;
+  validUntil?: string;
+}
+
+const ALERT_SELECT = `
+  q.id AS "_id", q.case_id AS "caseId", c.case_code AS "caseCode", c.title AS "caseTitle",
+  q.version, q.created_by_id AS "createdById", c.commercial_id AS "commercialId",
+  q.next_follow_up_date AS "nextFollowUpDate", q.sent_at AS "sentAt", q.valid_until AS "validUntil"
+`;
+
+/** Expira cotizaciones enviadas cuyo valid_until ya pasó. Devuelve las expiradas. */
+export async function expireOverdueQuotes(): Promise<QuoteAlertRow[]> {
+  return query<QuoteAlertRow>(
+    `UPDATE quote q SET status = 'expirada'
+     FROM cases c
+     WHERE c.id = q.case_id AND q.status = 'enviada'
+       AND q.valid_until IS NOT NULL AND q.valid_until < now()
+     RETURNING ${ALERT_SELECT}`,
+  );
+}
+
+/** Cotizaciones enviadas con seguimiento programado ya vencido (RF-10). */
+export async function listQuotesFollowUpDue(today: string): Promise<QuoteAlertRow[]> {
+  return query<QuoteAlertRow>(
+    `SELECT ${ALERT_SELECT}
+     FROM quote q JOIN cases c ON c.id = q.case_id
+     WHERE q.status = 'enviada' AND q.next_follow_up_date IS NOT NULL
+       AND q.next_follow_up_date <= $1::timestamptz`,
+    [today],
+  );
+}
+
+/** Cotizaciones enviadas sin respuesta ni seguimiento programado desde antes del corte. */
+export async function listSentQuotesWithoutResponse(cutoff: string): Promise<QuoteAlertRow[]> {
+  return query<QuoteAlertRow>(
+    `SELECT ${ALERT_SELECT}
+     FROM quote q JOIN cases c ON c.id = q.case_id
+     WHERE q.status = 'enviada' AND q.next_follow_up_date IS NULL
+       AND q.sent_at IS NOT NULL AND q.sent_at <= $1::timestamptz`,
+    [cutoff],
+  );
 }
