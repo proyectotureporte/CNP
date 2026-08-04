@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { company } from '@/lib/db';
 import type { Company } from '@/lib/types';
+import { actorFromRequest } from '@/lib/auth/caseAccess';
+
+function externalRoleBlocked(request: NextRequest) {
+  const actor = actorFromRequest(request);
+  return !actor || actor.role === 'cliente' || actor.role === 'perito';
+}
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (externalRoleBlocked(request)) {
+      return NextResponse.json({ success: false, error: 'Empresa no encontrada' }, { status: 404 });
+    }
     const { id } = await params;
     const found = await company.getCompanyById(id);
 
@@ -31,6 +40,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (externalRoleBlocked(request)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
     const { id } = await params;
     const body = await request.json();
     const { name, nit, type, address, city, country, phone, website, billingEmail, logoUrl, isActive } = body as Partial<Company>;
@@ -56,10 +68,13 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (externalRoleBlocked(request)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
     const { id } = await params;
     const existing = await company.getCompanyById(id);
     if (!existing) {

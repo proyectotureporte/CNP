@@ -76,12 +76,17 @@ export default function AppSidebar({ userRole, userName, variant = 'crm' }: AppS
               {filteredItems.map((item) => {
                 const isActive = pathname === item.href ||
                   (item.href !== '/crm' && item.href !== '/admin' && pathname.startsWith(item.href));
+                const label = userRole === 'perito' && item.href === '/crm/cases'
+                  ? 'Mis casos'
+                  : userRole === 'perito' && item.href === '/crm/commissions'
+                    ? 'Mis pagos'
+                    : item.label;
                 return (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
+                    <SidebarMenuButton asChild isActive={isActive} tooltip={label}>
                       <Link href={item.href}>
                         <item.icon className="h-4 w-4" />
-                        <span>{item.label}</span>
+                        <span>{label}</span>
                         {isActive && <ChevronRight className="ml-auto h-3 w-3 opacity-60" />}
                       </Link>
                     </SidebarMenuButton>

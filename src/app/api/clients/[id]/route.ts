@@ -3,13 +3,26 @@ import { crmClient, registroPeritus, queryOne } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
 import { guardRole } from '@/lib/auth/guard';
 import { canManageClients } from '@/lib/auth/permissions';
+import { actorFromRequest } from '@/lib/auth/caseAccess';
+import { CLIENT_TYPES, type ClientType } from '@/lib/types';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const actor = actorFromRequest(request);
+    if (!actor || !['admin', 'juridico', 'mercadeo', 'financiero'].includes(actor.role)) {
+      return NextResponse.json({ success: false, error: 'Cliente no encontrado' }, { status: 404 });
+    }
+    if (actor.role === 'financiero') {
+      const assigned = await queryOne<{ allowed: boolean }>(
+        'SELECT EXISTS(SELECT 1 FROM cases WHERE client_id = $1 AND assigned_financiero_id = $2) AS allowed',
+        [id, actor.userId],
+      );
+      if (!assigned?.allowed) return NextResponse.json({ success: false, error: 'Cliente no encontrado' }, { status: 404 });
+    }
     const clientData = await crmClient.getClientById(id);
 
     if (!clientData) {
@@ -47,8 +60,12 @@ export async function PUT(
       position?: string;
       notes?: string;
       status?: 'activo' | 'inactivo' | 'prospecto';
-      clientType?: 'abogado' | 'empresa' | 'juez' | 'particular';
+      clientType?: ClientType;
     };
+
+    if (clientType && !CLIENT_TYPES.includes(clientType)) {
+      return NextResponse.json({ success: false, error: 'Tipo de cliente no válido' }, { status: 400 });
+    }
 
     const updated = await crmClient.updateClient(id, {
       name, email, phone, company, position, notes, status, clientType,

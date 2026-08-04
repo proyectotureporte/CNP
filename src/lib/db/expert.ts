@@ -76,6 +76,8 @@ export async function getExpertById(id: string): Promise<Expert | null> {
     `SELECT ${LIST_SELECT},
        e.bank_name AS "bankName", e.bank_account_type AS "bankAccountType",
        e.bank_account_number AS "bankAccountNumber",
+       e.bank_account_holder AS "bankAccountHolder",
+       e.bank_holder_document AS "bankHolderDocument",
        e.cv_file_url AS "cvFileUrl",
        ARRAY(SELECT file_url FROM expert_certification_file WHERE expert_id = e.id ORDER BY sort_order) AS "certificationUrls"
      FROM expert e ${JOINS} WHERE e.id = $1`,
@@ -85,7 +87,25 @@ export async function getExpertById(id: string): Promise<Expert | null> {
 
 export async function getExpertByUserId(userId: string): Promise<Expert | null> {
   return queryOne<Expert>(
-    `SELECT ${LIST_SELECT} FROM expert e ${JOINS} WHERE e.user_id = $1`,
+    `SELECT ${LIST_SELECT},
+       e.bank_name AS "bankName", e.bank_account_type AS "bankAccountType",
+       e.bank_account_number AS "bankAccountNumber",
+       e.bank_account_holder AS "bankAccountHolder",
+       e.bank_holder_document AS "bankHolderDocument",
+       e.cv_file_url AS "cvFileUrl", e.cv_file_name AS "cvFileName"
+     FROM expert e ${JOINS} WHERE e.user_id = $1`,
+    [userId],
+  );
+}
+
+export async function getExpertCvAssetByUserId(userId: string): Promise<{
+  fileUrl: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+} | null> {
+  return queryOne(
+    `SELECT cv_file_url AS "fileUrl", cv_file_name AS "fileName",
+       cv_mime_type AS "mimeType" FROM expert WHERE user_id = $1`,
     [userId],
   );
 }
@@ -98,7 +118,13 @@ export async function listAvailableExpertsForDiscipline(discipline: string): Pro
        e.total_cases AS "totalCases", e.completed_cases AS "completedCases",
        ${userObj} AS "user"
      FROM expert e LEFT JOIN crm_user u ON u.id = e.user_id
-     WHERE e.validation_status = 'activado' AND e.availability = 'disponible' AND $1 = ANY(e.disciplines)
+     WHERE e.validation_status = 'activado' AND e.availability = 'disponible'
+       AND nullif(trim(e.bank_name), '') IS NOT NULL
+       AND e.bank_account_type IS NOT NULL
+       AND nullif(trim(e.bank_account_number), '') IS NOT NULL
+       AND nullif(trim(e.bank_account_holder), '') IS NOT NULL
+       AND nullif(trim(e.bank_holder_document), '') IS NOT NULL
+       AND $1 = ANY(e.disciplines)
      ORDER BY e.rating DESC`,
     [discipline],
   );
@@ -160,6 +186,8 @@ export interface ExpertInput {
   bankName?: string | null;
   bankAccountType?: 'ahorros' | 'corriente' | null;
   bankAccountNumber?: string | null;
+  bankAccountHolder?: string | null;
+  bankHolderDocument?: string | null;
   taxId?: string | null;
 }
 
@@ -196,6 +224,8 @@ function toColumns(input: Partial<ExpertInput>): Record<string, unknown> {
     bank_name: input.bankName,
     bank_account_type: input.bankAccountType,
     bank_account_number: input.bankAccountNumber,
+    bank_account_holder: input.bankAccountHolder,
+    bank_holder_document: input.bankHolderDocument,
     tax_id: input.taxId,
   });
 }

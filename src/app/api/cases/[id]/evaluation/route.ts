@@ -3,13 +3,17 @@ import { evaluation } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
 import { guardRole } from '@/lib/auth/guard';
 import { canManageEvaluations } from '@/lib/auth/permissions';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
+    if (!canManageEvaluations(access.actor.role)) return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     const eval_ = await evaluation.getCaseEvaluation(id);
     return NextResponse.json({ success: true, data: eval_ });
   } catch {
@@ -26,6 +30,8 @@ export async function POST(
 
     const stop = guardRole(request, canManageEvaluations);
     if (stop) return stop;
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
 
     const userId = request.headers.get('x-user-id');
     const body = await request.json();

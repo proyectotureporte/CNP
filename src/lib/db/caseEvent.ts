@@ -6,7 +6,7 @@ const createdByObj = nestedObj('u', { _id: 'u.id', displayName: 'u.display_name'
 export async function listCaseEvents(caseId: string): Promise<CaseEvent[]> {
   return query<CaseEvent>(
     `SELECT e.id AS "_id", e.created_at AS "_createdAt", e.event_type AS "eventType",
-       e.description, e.created_by_name AS "createdByName",
+       e.description, e.created_by_name AS "createdByName", u.role AS "createdByRole",
        ${createdByObj} AS "createdBy"
      FROM case_event e
      LEFT JOIN crm_user u ON u.id = e.created_by_id

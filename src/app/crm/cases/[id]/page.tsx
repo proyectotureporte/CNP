@@ -3,7 +3,7 @@
 import { use, useEffect, useState, useCallback } from "react";
 import { usePusher } from "@/hooks/usePusher";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Calendar, MapPin, Gavel, FileText, Users, Clock, DollarSign,
   Pencil, ArrowLeft, AlertTriangle, UserCheck,
@@ -18,6 +18,9 @@ import DocumentList from "@/components/cases/DocumentList";
 import QuoteList from "@/components/quotes/QuoteList";
 import WorkPlanTab from "@/components/cases/WorkPlanTab";
 import DeliverablesTab from "@/components/cases/DeliverablesTab";
+import CaseMessages from "@/components/cases/CaseMessages";
+import CasePaymentsTab from "@/components/cases/CasePaymentsTab";
+import ExecutionClockCard from "@/components/cases/ExecutionClockCard";
 import CommitteeTab from "@/components/cases/CommitteeTab";
 import ContractTab from "@/components/cases/ContractTab";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,6 +55,8 @@ import {
 import { VALID_TRANSITIONS, COMMERCIAL_TRANSITIONS } from "@/lib/cases/stateMachine";
 import { canChangeCommercialStatus } from "@/lib/auth/permissions";
 import { useAuth } from "@/hooks/useAuth";
+
+const EMPTY_CASE_TABS: string[] = [];
 
 // Returns available transitions based on role and chain
 function getAvailableTransitions(
@@ -109,6 +114,7 @@ export default function CrmCaseDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [caseData, setCaseData] = useState<CaseExpanded | null>(null);
   const [loading, setLoading] = useState(true);
@@ -126,16 +132,21 @@ export default function CrmCaseDetailPage({
   const [noteText, setNoteText] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
 
-  const userRole = user?.role || 'admin';
-  const visibleTabs = ROLE_CASE_TABS[userRole] || ROLE_CASE_TABS.admin;
+  const userRole = user?.role || '';
+  const visibleTabs = ROLE_CASE_TABS[userRole] || EMPTY_CASE_TABS;
 
-  async function loadEvents() {
+  useEffect(() => {
+    const requested = searchParams.get("tab");
+    if (requested && visibleTabs.includes(requested)) setActiveTab(requested);
+  }, [searchParams, visibleTabs]);
+
+  const loadEvents = useCallback(async () => {
     try {
       const eventsRes = await fetch(`/api/cases/${id}/events`);
       const eventsJson = await eventsRes.json();
       if (eventsJson.success) setEvents(eventsJson.data);
     } catch { /* ignore */ }
-  }
+  }, [id]);
 
   useEffect(() => {
     async function loadCase() {
@@ -173,7 +184,7 @@ export default function CrmCaseDetailPage({
   // Recargar eventos al cambiar a la pestana Timeline
   useEffect(() => {
     if (activeTab === "timeline") loadEvents();
-  }, [activeTab]);
+  }, [activeTab, loadEvents]);
 
   async function handleStatusChange(newStatus: string) {
     // If juridico selects gestionado, show the financiero picker dialog
@@ -375,10 +386,12 @@ export default function CrmCaseDetailPage({
               <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${statusColor?.dot}`} />
               {CASE_STATUS_LABELS[caseData.status]}
             </Badge>
-            <Badge className={`${commercialColor?.bg} ${commercialColor?.text} border-0`}>
-              <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${commercialColor?.dot}`} />
-              {COMMERCIAL_STATUS_LABELS[commercialStatus]}
-            </Badge>
+            {userRole !== 'perito' && (
+              <Badge className={`${commercialColor?.bg} ${commercialColor?.text} border-0`}>
+                <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${commercialColor?.dot}`} />
+                {COMMERCIAL_STATUS_LABELS[commercialStatus]}
+              </Badge>
+            )}
           </div>
           <p className="mt-1 font-mono text-sm text-muted-foreground">
             {caseData.caseCode}
@@ -394,7 +407,7 @@ export default function CrmCaseDetailPage({
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
           </Button>
-          {!isReadOnlyForJuridico && (
+          {!isReadOnlyForJuridico && ['admin', 'juridico'].includes(userRole) && (
             <Button variant="outline" size="sm" asChild>
               <Link href={`/crm/cases/${id}/edit`}>
                 <Pencil className="mr-2 h-4 w-4" />
@@ -446,6 +459,8 @@ export default function CrmCaseDetailPage({
           {visibleTabs.includes('contract') && <TabsTrigger value="contract">Contratación</TabsTrigger>}
           {visibleTabs.includes('work-plan') && <TabsTrigger value="work-plan">Plan de Trabajo</TabsTrigger>}
           {visibleTabs.includes('deliverables') && <TabsTrigger value="deliverables">Entregas</TabsTrigger>}
+          {visibleTabs.includes('payments') && <TabsTrigger value="payments">Pagos</TabsTrigger>}
+          {visibleTabs.includes('messages') && <TabsTrigger value="messages">Mensajes</TabsTrigger>}
           {visibleTabs.includes('timeline') && <TabsTrigger value="timeline">Timeline</TabsTrigger>}
         </TabsList>
 
@@ -492,7 +507,7 @@ export default function CrmCaseDetailPage({
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            {userRole !== 'perito' && <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
                   <div className="rounded-lg bg-green-50 p-2">
@@ -504,8 +519,10 @@ export default function CrmCaseDetailPage({
                   </div>
                 </div>
               </CardContent>
-            </Card>
+            </Card>}
           </div>
+
+          <ExecutionClockCard caseId={id} userRole={userRole} />
 
           {/* Details */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -605,28 +622,29 @@ export default function CrmCaseDetailPage({
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Cliente</p>
-                    <p className="text-sm font-medium">
-                      {caseData.client ? `${caseData.client.name} (${caseData.client.company || "Sin empresa"})` : "-"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Asesor Comercial</p>
-                    <p className="text-sm font-medium">{caseData.commercial?.displayName || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Analista Tecnico</p>
-                    <p className="text-sm font-medium">{caseData.technicalAnalyst?.displayName || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Perito Asignado</p>
-                    <p className="text-sm font-medium">{caseData.assignedExpert?.displayName || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Financiero Asignado</p>
-                    <p className="text-sm font-medium">{caseData.assignedFinanciero?.displayName || "-"}</p>
-                  </div>
+                  {userRole === 'perito' ? (
+                    <>
+                      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                        <p className="text-xs text-blue-700">Cliente final</p>
+                        <p className="text-sm font-medium text-blue-950">Datos protegidos · contacto únicamente a través del jurídico</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Abogado jurídico asignado</p>
+                        <p className="text-sm font-medium">{caseData.assignedJuridico?.displayName || "Pendiente de asignar"}</p>
+                        {caseData.assignedJuridico?.email && <p className="text-xs text-muted-foreground">{caseData.assignedJuridico.email}</p>}
+                        {caseData.assignedJuridico?.phone && <p className="text-xs text-muted-foreground">{caseData.assignedJuridico.phone}</p>}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div><p className="text-xs text-muted-foreground">Cliente</p><p className="text-sm font-medium">{caseData.client ? `${caseData.client.name} (${caseData.client.company || "Sin empresa"})` : "-"}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Asesor Comercial</p><p className="text-sm font-medium">{caseData.commercial?.displayName || "-"}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Analista Técnico</p><p className="text-sm font-medium">{caseData.technicalAnalyst?.displayName || "-"}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Perito Asignado</p><p className="text-sm font-medium">{caseData.assignedExpert?.displayName || "-"}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Financiero Asignado</p><p className="text-sm font-medium">{caseData.assignedFinanciero?.displayName || "-"}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Jurídico Asignado</p><p className="text-sm font-medium">{caseData.assignedJuridico?.displayName || "-"}</p></div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -691,9 +709,17 @@ export default function CrmCaseDetailPage({
               <CardTitle className="text-base">Entregas</CardTitle>
             </CardHeader>
             <CardContent>
-              <DeliverablesTab caseId={id} />
+              <DeliverablesTab caseId={id} userRole={userRole} />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="payments" className="mt-6">
+          <CasePaymentsTab caseId={id} userRole={userRole} />
+        </TabsContent>
+
+        <TabsContent value="messages" className="mt-6">
+          <CaseMessages caseId={id} userRole={userRole} />
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-6">
@@ -703,21 +729,25 @@ export default function CrmCaseDetailPage({
             </CardHeader>
             <CardContent>
               {/* RF-04: nota manual a la bitácora */}
-              <div className="mb-6 space-y-2">
-                <Label>Agregar nota</Label>
-                <Textarea
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  placeholder="Escriba una nota o novedad del caso..."
-                  rows={2}
-                />
-                <div className="flex justify-end">
-                  <Button size="sm" onClick={handleAddNote} disabled={noteSaving || !noteText.trim()}>
-                    {noteSaving ? "Guardando..." : "Agregar al timeline"}
-                  </Button>
-                </div>
-              </div>
-              <Separator className="mb-6" />
+              {['admin', 'juridico', 'administrativo'].includes(userRole) && (
+                <>
+                  <div className="mb-6 space-y-2">
+                    <Label>Agregar nota</Label>
+                    <Textarea
+                      value={noteText}
+                      onChange={(e) => setNoteText(e.target.value)}
+                      placeholder="Escriba una nota o novedad del caso..."
+                      rows={2}
+                    />
+                    <div className="flex justify-end">
+                      <Button size="sm" onClick={handleAddNote} disabled={noteSaving || !noteText.trim()}>
+                        {noteSaving ? "Guardando..." : "Agregar al timeline"}
+                      </Button>
+                    </div>
+                  </div>
+                  <Separator className="mb-6" />
+                </>
+              )}
               {events.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
                   No hay eventos registrados

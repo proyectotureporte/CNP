@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cases } from '@/lib/db';
+import { cases, crmUser } from '@/lib/db';
 import { CASE_STATUSES, CASE_STATUS_LABELS, type CaseStatus } from '@/lib/types';
 import { VALID_TRANSITIONS, canChangeStatus } from '@/lib/cases/stateMachine';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
 import { notifyUsersAndAdmins } from '@/lib/notify';
 import { auditEntityChange } from '@/lib/audit';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
 export async function PUT(
   request: NextRequest,
@@ -13,9 +14,11 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const userId = request.headers.get('x-user-id');
-    const userName = request.headers.get('x-user-name');
-    const userRole = request.headers.get('x-user-role') || '';
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
+    const userId = access.actor.userId;
+    const userName = access.actor.displayName;
+    const userRole = access.actor.role;
     const body = await request.json();
     const { status, assignedFinancieroId } = body as { status: string; assignedFinancieroId?: string };
 
@@ -52,6 +55,15 @@ export async function PUT(
         { success: false, error: 'Debe asignar un usuario financiero al gestionar el caso' },
         { status: 400 }
       );
+    }
+    if (status === 'gestionado' && assignedFinancieroId) {
+      const financialUser = await crmUser.getUserById(assignedFinancieroId);
+      if (!financialUser || financialUser.role !== 'financiero') {
+        return NextResponse.json(
+          { success: false, error: 'El responsable seleccionado debe tener rol financiero' },
+          { status: 400 },
+        );
+      }
     }
 
     const patch: Parameters<typeof cases.updateCase>[1] = {

@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { whatsappLead } from '@/lib/db';
 import type { LeadStatus } from '@/lib/types';
 import { triggerEvent } from '@/lib/realtime/server';
+import { guardRole } from '@/lib/auth/guard';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const stop = guardRole(request, (role) => ['admin', 'juridico', 'mercadeo'].includes(role));
+    if (stop) return stop;
     const { id } = await params;
     const lead = await whatsappLead.getWhatsappLeadById(id);
 
@@ -27,6 +30,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const stop = guardRole(request, (role) => ['admin', 'juridico', 'mercadeo'].includes(role));
+    if (stop) return stop;
     const { id } = await params;
     const body = await request.json();
     const { status, notes, unreadCount } = body;

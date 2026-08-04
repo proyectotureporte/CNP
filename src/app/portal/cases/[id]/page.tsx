@@ -1,415 +1,190 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { use } from 'react';
+import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { useSearchParams } from 'next/navigation';
+import { ArrowLeft, Calendar, Download, FileText, MapPin, Scale, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Calendar, MapPin, Scale, Clock, Download, FileText } from 'lucide-react';
 import PortalDocumentUpload from '@/components/portal/PortalDocumentUpload';
+import DeliverablesTab from '@/components/cases/DeliverablesTab';
+import CasePaymentsTab from '@/components/cases/CasePaymentsTab';
+import CaseMessages from '@/components/cases/CaseMessages';
 import {
-  CASE_STATUS_LABELS,
+  CASE_EVENT_LABELS,
   CASE_STATUS_COLORS,
-  DISCIPLINE_LABELS,
+  CASE_STATUS_LABELS,
   COMPLEXITY_LABELS,
-  PRIORITY_LABELS,
-  QUOTE_STATUS_LABELS,
-  QUOTE_STATUS_COLORS,
+  DISCIPLINE_LABELS,
   DOCUMENT_CATEGORY_LABELS,
-  type CaseExpanded,
-  type CaseStatus,
-  type CaseDiscipline,
+  PRIORITY_LABELS,
+  QUOTE_STATUS_COLORS,
+  QUOTE_STATUS_LABELS,
   type CaseComplexity,
+  type CaseDiscipline,
+  type CaseDocument,
+  type CaseEvent,
+  type CaseEventType,
+  type CaseExpanded,
   type CasePriority,
+  type CaseStatus,
+  type DocumentCategory,
   type Quote,
   type QuoteStatus,
-  type CaseEvent,
-  type CaseDocument,
-  type DocumentCategory,
-  CASE_EVENT_LABELS,
-  type CaseEventType,
 } from '@/lib/types';
 
-function formatDate(d?: string) {
-  if (!d) return '-';
-  return new Date(d).toLocaleDateString('es-CO', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+const PORTAL_TABS = ['info', 'quotes', 'documents', 'deliverables', 'payments', 'messages', 'timeline'];
+
+function formatDate(value?: string) {
+  return value ? new Date(value).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
 }
 
-function formatCurrency(v?: number | null) {
-  if (v == null) return '$0';
-  return `${v.toLocaleString('es-CO')}`;
+function formatDateTime(value?: string) {
+  return value ? new Date(value).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
+}
+
+function formatCurrency(value?: number | null) {
+  return `$${Number(value || 0).toLocaleString('es-CO')}`;
 }
 
 function formatFileSize(bytes?: number) {
   if (!bytes) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export default function PortalCaseDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function PortalCaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(requestedTab && PORTAL_TABS.includes(requestedTab) ? requestedTab : 'info');
   const [caseData, setCaseData] = useState<CaseExpanded | null>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [events, setEvents] = useState<CaseEvent[]>([]);
   const [documents, setDocuments] = useState<CaseDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [quoteAction, setQuoteAction] = useState<string | null>(null);
 
   const loadDocuments = useCallback(async () => {
+    const response = await fetch(`/api/cases/${id}/documents`);
+    const payload = await response.json();
+    if (payload.success) setDocuments(payload.data || []);
+  }, [id]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
     try {
-      const res = await fetch(`/api/cases/${id}/documents`);
-      const data = await res.json();
-      if (data.success) setDocuments(data.data || []);
-    } catch {
-      /* ignore */
+      const [caseResponse, quotesResponse, eventsResponse, documentsResponse] = await Promise.all([
+        fetch(`/api/cases/${id}`),
+        fetch(`/api/cases/${id}/quotes`),
+        fetch(`/api/cases/${id}/events`),
+        fetch(`/api/cases/${id}/documents`),
+      ]);
+      const [casePayload, quotesPayload, eventsPayload, documentsPayload] = await Promise.all([
+        caseResponse.json(), quotesResponse.json(), eventsResponse.json(), documentsResponse.json(),
+      ]);
+      if (!casePayload.success) throw new Error(casePayload.error || 'Caso no encontrado');
+      setCaseData(casePayload.data);
+      if (quotesPayload.success) setQuotes(quotesPayload.data || []);
+      if (eventsPayload.success) setEvents(eventsPayload.data || []);
+      if (documentsPayload.success) setDocuments(documentsPayload.data || []);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'No fue posible cargar el caso');
+    } finally {
+      setLoading(false);
     }
   }, [id]);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [caseRes, quotesRes, eventsRes, docsRes] = await Promise.all([
-          fetch(`/api/cases/${id}`),
-          fetch(`/api/cases/${id}/quotes`),
-          fetch(`/api/cases/${id}/events`),
-          fetch(`/api/cases/${id}/documents`),
-        ]);
-        const caseJson = await caseRes.json();
-        const quotesJson = await quotesRes.json();
-        const eventsJson = await eventsRes.json();
-        const docsJson = await docsRes.json();
+  useEffect(() => { load(); }, [load]);
 
-        if (caseJson.success) setCaseData(caseJson.data);
-        if (quotesJson.success) setQuotes(quotesJson.data || []);
-        if (eventsJson.success) setEvents(eventsJson.data || []);
-        if (docsJson.success) setDocuments(docsJson.data || []);
-      } catch {
-        /* ignore */
-      } finally {
-        setLoading(false);
-      }
+  async function updateQuote(quoteId: string, action: 'approve' | 'reject') {
+    let rejectionReason = '';
+    if (action === 'reject') {
+      rejectionReason = window.prompt('Indica la razón del rechazo:')?.trim() || '';
+      if (!rejectionReason) return;
     }
-    load();
-  }, [id]);
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64" />
-      </div>
-    );
+    setQuoteAction(quoteId);
+    setError('');
+    try {
+      const response = await fetch(`/api/quotes/${quoteId}/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(action === 'reject' ? { rejectionReason } : {}),
+      });
+      const payload = await response.json();
+      if (!payload.success) throw new Error(payload.error || 'No fue posible actualizar la cotización');
+      await load();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : 'No fue posible actualizar la cotización');
+    } finally {
+      setQuoteAction(null);
+    }
   }
 
-  if (!caseData) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Caso no encontrado</p>
-        <Button asChild className="mt-4" variant="outline">
-          <Link href="/portal/cases">Volver</Link>
-        </Button>
-      </div>
-    );
-  }
+  if (loading) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-72" /></div>;
+  if (!caseData) return <div className="py-12 text-center"><p className="text-muted-foreground">{error || 'Caso no encontrado'}</p><Button asChild className="mt-4" variant="outline"><Link href="/portal/cases">Volver</Link></Button></div>;
 
-  const sc = CASE_STATUS_COLORS[caseData.status as CaseStatus];
-
+  const statusColors = CASE_STATUS_COLORS[caseData.status as CaseStatus];
   return (
     <>
-      <Button asChild variant="ghost" size="sm" className="mb-4">
-        <Link href="/portal/cases">
-          <ArrowLeft className="mr-1 h-4 w-4" />
-          Mis Casos
-        </Link>
-      </Button>
-
+      <Button asChild variant="ghost" size="sm" className="mb-4"><Link href="/portal/cases"><ArrowLeft className="mr-1 h-4 w-4" />Mis casos</Link></Button>
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-1">
-          <span className="font-mono text-sm text-muted-foreground">{caseData.caseCode}</span>
-          <Badge className={`${sc?.bg} ${sc?.text} border-0`}>
-            <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${sc?.dot}`} />
-            {CASE_STATUS_LABELS[caseData.status as CaseStatus]}
-          </Badge>
-        </div>
+        <div className="mb-1 flex flex-wrap items-center gap-3"><span className="font-mono text-sm text-muted-foreground">{caseData.caseCode}</span><Badge className={`${statusColors?.bg} ${statusColors?.text} border-0`}>{CASE_STATUS_LABELS[caseData.status as CaseStatus]}</Badge><Badge variant="outline">{caseData.brand}</Badge></div>
         <h1 className="text-2xl font-bold tracking-tight">{caseData.title}</h1>
       </div>
+      {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-      <Tabs defaultValue="info" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="info">Informacion</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="h-auto flex-wrap justify-start">
+          <TabsTrigger value="info">Información</TabsTrigger>
           <TabsTrigger value="quotes">Cotizaciones ({quotes.length})</TabsTrigger>
           <TabsTrigger value="documents">Documentos ({documents.length})</TabsTrigger>
+          <TabsTrigger value="deliverables">Dictamen</TabsTrigger>
+          <TabsTrigger value="payments">Pagos</TabsTrigger>
+          <TabsTrigger value="messages">Mensajes</TabsTrigger>
           <TabsTrigger value="timeline">Historial ({events.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="info">
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              {caseData.description && (
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Descripcion</p>
-                  <p className="text-sm mt-1">{caseData.description}</p>
-                </div>
-              )}
-
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card className="lg:col-span-2"><CardContent className="space-y-5 p-6">
+              {caseData.description && <div><p className="text-sm font-medium text-muted-foreground">Descripción</p><p className="mt-1 whitespace-pre-wrap text-sm">{caseData.description}</p></div>}
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="flex items-center gap-2">
-                  <Scale className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Disciplina</p>
-                    <p className="text-sm font-medium">
-                      {DISCIPLINE_LABELS[caseData.discipline as CaseDiscipline]}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Prioridad</p>
-                    <p className="text-sm font-medium">
-                      {PRIORITY_LABELS[caseData.priority as CasePriority]}
-                    </p>
-                  </div>
-                </div>
-
-                {caseData.city && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Ciudad</p>
-                      <p className="text-sm font-medium">{caseData.city}</p>
-                    </div>
-                  </div>
-                )}
-
-                {caseData.hearingDate && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Audiencia</p>
-                      <p className="text-sm font-medium">{formatDate(caseData.hearingDate)}</p>
-                    </div>
-                  </div>
-                )}
-
-                {caseData.deadlineDate && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Fecha limite</p>
-                      <p className="text-sm font-medium">{formatDate(caseData.deadlineDate)}</p>
-                    </div>
-                  </div>
-                )}
-
-                {caseData.courtName && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Juzgado</p>
-                    <p className="text-sm font-medium">{caseData.courtName}</p>
-                  </div>
-                )}
-
-                {caseData.caseNumber && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Expediente</p>
-                    <p className="text-sm font-medium">{caseData.caseNumber}</p>
-                  </div>
-                )}
+                <Info icon={<Scale className="h-4 w-4" />} label="Disciplina" value={DISCIPLINE_LABELS[caseData.discipline as CaseDiscipline]} />
+                <Info icon={<Clock className="h-4 w-4" />} label="Prioridad" value={PRIORITY_LABELS[caseData.priority as CasePriority]} />
+                <Info icon={<MapPin className="h-4 w-4" />} label="Ciudad" value={caseData.city || '-'} />
+                <Info icon={<Calendar className="h-4 w-4" />} label="Fecha límite" value={formatDate(caseData.deadlineDate)} />
+                <Info icon={<FileText className="h-4 w-4" />} label="Complejidad" value={COMPLEXITY_LABELS[caseData.complexity as CaseComplexity]} />
+                <Info icon={<FileText className="h-4 w-4" />} label="Expediente" value={caseData.caseNumber || '-'} />
               </div>
-
-              <div>
-                <p className="text-xs text-muted-foreground">Complejidad</p>
-                <p className="text-sm font-medium">
-                  {COMPLEXITY_LABELS[caseData.complexity as CaseComplexity]}
-                </p>
-              </div>
-
-              {caseData.commercial && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Asesor Comercial</p>
-                  <p className="text-sm font-medium">{caseData.commercial.displayName}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="quotes">
-          {quotes.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-sm text-muted-foreground">No hay cotizaciones aun</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {quotes.map((q) => {
-                const qc = QUOTE_STATUS_COLORS[q.status as QuoteStatus];
-                return (
-                  <Card key={q._id}>
-                    <CardContent className="pt-4">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold">
-                              {formatCurrency(q.finalValue)}
-                            </span>
-                            <Badge className={`${qc?.bg} ${qc?.text} border-0 text-xs`}>
-                              <span
-                                className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${qc?.dot}`}
-                              />
-                              {QUOTE_STATUS_LABELS[q.status as QuoteStatus]}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">v{q.version}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Precio: {formatCurrency(q.totalPrice)} | Dcto: {q.discountPercentage}% |{' '}
-                            {formatDate(q._createdAt)}
-                          </p>
-                          {q.notes && (
-                            <p className="text-xs text-muted-foreground">{q.notes}</p>
-                          )}
-                        </div>
-                        {q.status === 'enviada' && (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-red-600"
-                              onClick={async () => {
-                                const reason = prompt('Razon del rechazo:');
-                                if (!reason) return;
-                                await fetch(`/api/quotes/${q._id}/reject`, {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ rejectionReason: reason }),
-                                });
-                                window.location.reload();
-                              }}
-                            >
-                              Rechazar
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={async () => {
-                                await fetch(`/api/quotes/${q._id}/approve`, {
-                                  method: 'POST',
-                                });
-                                window.location.reload();
-                              }}
-                            >
-                              Aprobar
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="documents">
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="pt-6">
-                <h3 className="text-sm font-medium mb-3">Subir Documento</h3>
-                <PortalDocumentUpload caseId={id} onUploadComplete={loadDocuments} />
-              </CardContent>
-            </Card>
-
-            {documents.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <FileText className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">No hay documentos disponibles</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-2">
-                {documents.map((doc) => (
-                  <Card key={doc._id}>
-                    <CardContent className="flex items-center justify-between pt-4">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{doc.fileName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {DOCUMENT_CATEGORY_LABELS[doc.category as DocumentCategory] || doc.category}
-                            {doc.fileSize ? ` | ${formatFileSize(doc.fileSize)}` : ''}
-                            {' | '}{formatDate(doc._createdAt)}
-                          </p>
-                          {doc.description && (
-                            <p className="text-xs text-muted-foreground mt-0.5">{doc.description}</p>
-                          )}
-                        </div>
-                      </div>
-                      {doc.fileUrl && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="shrink-0"
-                          asChild
-                        >
-                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" download>
-                            <Download className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+            </CardContent></Card>
+            <Card><CardContent className="space-y-3 p-6"><h3 className="font-semibold">Contacto jurídico</h3>{caseData.assignedJuridico ? <><p className="text-sm font-medium">{caseData.assignedJuridico.displayName}</p>{caseData.assignedJuridico.email && <p className="break-all text-sm text-muted-foreground">{caseData.assignedJuridico.email}</p>}{caseData.assignedJuridico.phone && <p className="text-sm text-muted-foreground">{caseData.assignedJuridico.phone}</p>}<p className="rounded-md bg-blue-50 p-2 text-xs text-blue-800">Este es tu único contacto dentro del proceso.</p></> : <p className="text-sm text-muted-foreground">Pendiente de asignar.</p>}</CardContent></Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="timeline">
-          {events.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-sm text-muted-foreground">Sin actividad</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {events.map((ev) => (
-                <Card key={ev._id}>
-                  <CardContent className="flex items-start gap-3 pt-4">
-                    <div className="mt-0.5 h-2 w-2 rounded-full bg-blue-500 shrink-0" />
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-medium">
-                        {CASE_EVENT_LABELS[ev.eventType as CaseEventType]}
-                      </p>
-                      {ev.description && (
-                        <p className="text-xs text-muted-foreground">{ev.description}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(ev._createdAt)} |{' '}
-                        {ev.createdBy?.displayName || ev.createdByName || 'Sistema'}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+        <TabsContent value="quotes">
+          {quotes.length === 0 ? <Empty text="No hay cotizaciones disponibles." /> : <div className="space-y-3">{quotes.map((quote) => { const colors = QUOTE_STATUS_COLORS[quote.status as QuoteStatus]; return <Card key={quote._id}><CardContent className="flex flex-wrap items-center justify-between gap-4 p-4"><div className="space-y-1"><div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{formatCurrency(quote.finalValue)}</span><Badge className={`${colors?.bg} ${colors?.text} border-0`}>{QUOTE_STATUS_LABELS[quote.status as QuoteStatus]}</Badge><span className="text-xs text-muted-foreground">v{quote.version}</span></div><p className="text-xs text-muted-foreground">Plazo: {quote.quotedBusinessDays || 15} días hábiles · creada {formatDate(quote._createdAt)}</p>{quote.notes && <p className="text-sm text-muted-foreground">{quote.notes}</p>}{quote.downloadUrl && <Button variant="link" className="h-auto p-0" asChild><a href={quote.downloadUrl} target="_blank" rel="noopener noreferrer"><Download className="mr-1 h-3.5 w-3.5" />Ver cotización</a></Button>}</div>{quote.status === 'enviada' && <div className="flex gap-2"><Button size="sm" variant="outline" className="text-red-700" disabled={quoteAction === quote._id} onClick={() => updateQuote(quote._id, 'reject')}>Rechazar</Button><Button size="sm" disabled={quoteAction === quote._id} onClick={() => updateQuote(quote._id, 'approve')}>Aprobar</Button></div>}</CardContent></Card>; })}</div>}
         </TabsContent>
+
+        <TabsContent value="documents"><div className="space-y-4"><Card><CardContent className="p-6"><h3 className="mb-3 text-sm font-medium">Subir documento</h3><PortalDocumentUpload caseId={id} onUploadComplete={loadDocuments} /></CardContent></Card>{documents.length === 0 ? <Empty text="No hay documentos disponibles." /> : <div className="space-y-2">{documents.map((document) => <Card key={document._id}><CardContent className="flex items-center justify-between gap-3 p-4"><div className="flex min-w-0 items-center gap-3"><FileText className="h-5 w-5 shrink-0 text-muted-foreground" /><div className="min-w-0"><p className="truncate text-sm font-medium">{document.fileName || document.description}</p><p className="text-xs text-muted-foreground">{DOCUMENT_CATEGORY_LABELS[document.category as DocumentCategory] || document.category}{document.fileSize ? ` · ${formatFileSize(document.fileSize)}` : ''} · {formatDate(document._createdAt)}</p></div></div>{document.downloadUrl && <Button variant="ghost" size="icon" asChild><a href={document.downloadUrl} target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4" /></a></Button>}</CardContent></Card>)}</div>}</div></TabsContent>
+
+        <TabsContent value="deliverables"><DeliverablesTab caseId={id} userRole="cliente" /></TabsContent>
+        <TabsContent value="payments"><CasePaymentsTab caseId={id} userRole="cliente" /></TabsContent>
+        <TabsContent value="messages"><CaseMessages caseId={id} userRole="cliente" /></TabsContent>
+        <TabsContent value="timeline">{events.length === 0 ? <Empty text="Sin actividad registrada." /> : <div className="space-y-2">{events.map((event) => <Card key={event._id}><CardContent className="flex items-start gap-3 p-4"><div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" /><div><p className="text-sm font-medium">{CASE_EVENT_LABELS[event.eventType as CaseEventType] || event.eventType}</p>{event.description && <p className="text-sm text-muted-foreground">{event.description}</p>}<p className="mt-1 text-xs text-muted-foreground">{formatDateTime(event._createdAt)} · {event.createdBy?.displayName || event.createdByName || 'Sistema'}</p></div></CardContent></Card>)}</div>}</TabsContent>
       </Tabs>
     </>
   );
+}
+
+function Info({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return <div className="flex items-center gap-2 text-muted-foreground">{icon}<div><p className="text-xs">{label}</p><p className="text-sm font-medium text-foreground">{value}</p></div></div>;
+}
+
+function Empty({ text }: { text: string }) {
+  return <Card><CardContent className="flex flex-col items-center py-12 text-muted-foreground"><FileText className="mb-3 h-8 w-8" /><p className="text-sm">{text}</p></CardContent></Card>;
 }

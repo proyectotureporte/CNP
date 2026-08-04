@@ -33,6 +33,21 @@ export async function POST(
     const clientPhone = overridePhone || lead.phone || '';
     const clientEmail = email?.trim().toLowerCase() || '';
     const clientBrand = lead.brand || 'Peritus';
+    const existingPortalUser = clientEmail
+      ? await crmUser.getUserByEmail(clientEmail)
+      : null;
+    if (existingPortalUser && existingPortalUser.role !== 'cliente') {
+      return NextResponse.json(
+        { success: false, error: 'El correo ya pertenece a un usuario interno y no puede usarse como cliente final' },
+        { status: 409 },
+      );
+    }
+    if (existingPortalUser?.clientId) {
+      return NextResponse.json(
+        { success: false, error: 'El correo ya está vinculado a otro perfil de cliente final' },
+        { status: 409 },
+      );
+    }
 
     const newClient = await crmClient.createClient({
       brand: clientBrand,
@@ -53,12 +68,12 @@ export async function POST(
     // Auto-create portal user if email provided
     let portalPassword: string | undefined;
     if (clientEmail) {
-      const existingUser = await crmUser.getUserByEmail(clientEmail);
       portalPassword = `CNP${newClient._id.slice(-4)}`;
       const passwordHash = await hashPassword(portalPassword);
 
-      if (existingUser) {
-        await crmUser.setUserPassword(existingUser._id, passwordHash, true);
+      if (existingPortalUser) {
+        await crmUser.updateUser(existingPortalUser._id, { clientId: newClient._id });
+        await crmUser.setUserPassword(existingPortalUser._id, passwordHash, true);
       } else {
         await crmUser.createUser({
           username: clientEmail,
@@ -69,6 +84,7 @@ export async function POST(
           role: 'cliente',
           active: true,
           mustChangePassword: true,
+          clientId: newClient._id,
         });
       }
 

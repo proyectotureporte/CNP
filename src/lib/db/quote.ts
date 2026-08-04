@@ -14,6 +14,7 @@ const SELECT = `
   q.parent_quote_id AS "parentQuoteId", q.next_follow_up_date AS "nextFollowUpDate",
   q.notes, q.first_payment_date AS "firstPaymentDate", q.last_payment_date AS "lastPaymentDate",
   q.first_payment_percentage AS "firstPaymentPercentage", q.custom_split AS "customSplit",
+  q.quoted_business_days AS "quotedBusinessDays",
   q.file_url AS "quoteDocumentUrl",
   ${approvedByObj} AS "approvedBy",
   ${createdByObj} AS "createdBy"
@@ -36,6 +37,20 @@ export async function getQuoteById(id: string): Promise<Quote | null> {
     `SELECT ${SELECT}, ${caseObj} AS "case"
      FROM quote q ${JOINS} LEFT JOIN cases c ON c.id = q.case_id
      WHERE q.id = $1`,
+    [id],
+  );
+}
+
+export async function getQuoteAssetRow(id: string): Promise<{
+  caseId: string;
+  status: QuoteStatus;
+  fileUrl: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+} | null> {
+  return queryOne(
+    `SELECT case_id AS "caseId", status, file_url AS "fileUrl", file_name AS "fileName",
+       mime_type AS "mimeType" FROM quote WHERE id = $1`,
     [id],
   );
 }
@@ -102,6 +117,7 @@ export interface QuoteInput {
   lastPaymentDate?: string | null;
   firstPaymentPercentage?: number;
   customSplit?: boolean;
+  quotedBusinessDays?: number | null;
 }
 
 function toColumns(input: Partial<QuoteInput>): Record<string, unknown> {
@@ -132,6 +148,7 @@ function toColumns(input: Partial<QuoteInput>): Record<string, unknown> {
     last_payment_date: input.lastPaymentDate,
     first_payment_percentage: input.firstPaymentPercentage,
     custom_split: input.customSplit,
+    quoted_business_days: input.quotedBusinessDays,
   });
 }
 

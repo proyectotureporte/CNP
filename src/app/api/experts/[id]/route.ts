@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { expert } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
 import { guardRole } from '@/lib/auth/guard';
-import { canManageExperts } from '@/lib/auth/permissions';
+import { canManageExperts, hasPermission } from '@/lib/auth/permissions';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const stop = guardRole(request, (role) => hasPermission(role, 'experts'));
+    if (stop) return stop;
     const { id } = await params;
     const found = await expert.getExpertById(id);
     if (!found) {
@@ -41,13 +43,14 @@ export async function PUT(
       disciplines, specialization, subespecialidad, experienceYears, professionalCard,
       seniority, category, pregrado, numEspecializaciones, numMaestrias, doctorado,
       city, region, baseFee, feeCurrency, taxId,
-      bankName, bankAccountType, bankAccountNumber,
+      bankName, bankAccountType, bankAccountNumber, bankAccountHolder, bankHolderDocument,
     } = body;
 
     const updated = await expert.updateExpert(id, {
       disciplines, specialization, subespecialidad, experienceYears, professionalCard,
       seniority, category, pregrado, numEspecializaciones, numMaestrias, doctorado,
       city, region, baseFee, feeCurrency, taxId, bankName, bankAccountNumber,
+      bankAccountHolder, bankHolderDocument,
       bankAccountType: bankAccountType === undefined ? undefined : (bankAccountType || null),
     });
 

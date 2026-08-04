@@ -217,8 +217,8 @@ export default function CarteraView() {
                               </Badge>
                             </td>
                             <td className="py-2.5">
-                              {p.receiptUrl ? (
-                                <a href={p.receiptUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                              {p.receiptDownloadUrl ? (
+                                <a href={p.receiptDownloadUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
                                   <ExternalLink className="h-3 w-3" /> Ver
                                 </a>
                               ) : "-"}

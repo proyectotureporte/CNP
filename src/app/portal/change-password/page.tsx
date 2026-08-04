@@ -6,6 +6,7 @@ import Image from 'next/image';
 
 export default function PortalChangePasswordPage() {
   const router = useRouter();
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -31,7 +32,7 @@ export default function PortalChangePasswordPage() {
       const res = await fetch('/api/portal/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newPassword }),
+        body: JSON.stringify({ currentPassword, newPassword }),
       });
 
       const data = await res.json();
@@ -68,6 +69,21 @@ export default function PortalChangePasswordPage() {
 
         <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="currentPassword" className="mb-1.5 block text-sm font-medium text-gray-700">
+                Contrasena actual
+              </label>
+              <input
+                id="currentPassword"
+                type="password"
+                required
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-[#2969b0] focus:outline-none focus:ring-2 focus:ring-[#2969b0]/20"
+                placeholder="Contrasena temporal"
+                autoComplete="current-password"
+              />
+            </div>
             <div>
               <label htmlFor="newPassword" className="mb-1.5 block text-sm font-medium text-gray-700">
                 Nueva contrasena

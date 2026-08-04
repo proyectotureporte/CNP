@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cases, expert } from '@/lib/db';
 import type { Expert } from '@/lib/types';
 import { triggerEvent } from '@/lib/realtime/server';
+import { guardRole } from '@/lib/auth/guard';
+import { canAssignExpert } from '@/lib/auth/permissions';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
 interface ScoredExpert extends Expert {
   score: number;
@@ -15,11 +18,15 @@ interface ScoredExpert extends Expert {
 }
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const stop = guardRole(request, canAssignExpert);
+    if (stop) return stop;
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
 
     const caseData = await cases.getCaseById(id);
     if (!caseData) {

@@ -8,6 +8,7 @@ const SAFE = `
   u.id AS "_id", 'crmUser' AS "_type", u.created_at AS "_createdAt", u.updated_at AS "_updatedAt",
   u.username, u.email, u.display_name AS "displayName", u.phone, u.role, u.active,
   u.avatar_url AS "avatarUrl", u.must_change_password AS "mustChangePassword",
+  u.client_id AS "clientId",
   ${companyObj} AS "company"
 `;
 
@@ -89,6 +90,7 @@ export interface CrmUserInput {
   mustChangePassword?: boolean;
   avatarUrl?: string | null;
   companyId?: string | null;
+  clientId?: string | null;
 }
 
 export async function createUser(input: CrmUserInput): Promise<CrmUser | null> {
@@ -105,6 +107,7 @@ export async function createUser(input: CrmUserInput): Promise<CrmUser | null> {
     must_change_password: input.mustChangePassword ?? false,
     avatar_url: input.avatarUrl ?? null,
     company_id: input.companyId ?? null,
+    client_id: input.clientId ?? null,
   });
   await query(text, values);
   return getUserById(id);
@@ -122,6 +125,7 @@ export async function updateUser(id: string, patch: Partial<CrmUserInput>): Prom
     must_change_password: patch.mustChangePassword,
     avatar_url: patch.avatarUrl,
     company_id: patch.companyId,
+    client_id: patch.clientId,
   });
   const upd = buildUpdate('crm_user', id, data);
   if (upd) await query(upd.text, upd.values);

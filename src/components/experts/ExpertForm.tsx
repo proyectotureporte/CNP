@@ -82,6 +82,8 @@ export default function ExpertForm({ initialData, expertId }: ExpertFormProps) {
   const [bankName, setBankName] = useState(initialData?.bankName || "");
   const [bankAccountType, setBankAccountType] = useState(initialData?.bankAccountType || "");
   const [bankAccountNumber, setBankAccountNumber] = useState(initialData?.bankAccountNumber || "");
+  const [bankAccountHolder, setBankAccountHolder] = useState(initialData?.bankAccountHolder || "");
+  const [bankHolderDocument, setBankHolderDocument] = useState(initialData?.bankHolderDocument || "");
 
   // Users for select
   const [users, setUsers] = useState<UserOption[]>([]);
@@ -123,6 +125,10 @@ export default function ExpertForm({ initialData, expertId }: ExpertFormProps) {
       }
       return true;
     }
+    if (s === 3 && (!bankName.trim() || !bankAccountType || !bankAccountNumber.trim() || !bankAccountHolder.trim() || !bankHolderDocument.trim())) {
+      setError("Complete todos los datos bancarios; son obligatorios para asignar casos.");
+      return false;
+    }
     return true;
   }
 
@@ -140,7 +146,7 @@ export default function ExpertForm({ initialData, expertId }: ExpertFormProps) {
 
   async function handleSubmit() {
     setError("");
-    if (!validateStep(1) || !validateStep(2)) return;
+    if (!validateStep(1) || !validateStep(2) || !validateStep(3)) return;
 
     setSaving(true);
     try {
@@ -164,6 +170,8 @@ export default function ExpertForm({ initialData, expertId }: ExpertFormProps) {
         bankName,
         bankAccountType,
         bankAccountNumber,
+        bankAccountHolder,
+        bankHolderDocument,
       };
 
       const url = isEditing ? `/api/experts/${expertId}` : "/api/experts";
@@ -470,8 +478,29 @@ export default function ExpertForm({ initialData, expertId }: ExpertFormProps) {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="bankAccountHolder">Titular de la Cuenta</Label>
+                <Input
+                  id="bankAccountHolder"
+                  value={bankAccountHolder}
+                  onChange={(e) => setBankAccountHolder(e.target.value)}
+                  placeholder="Nombre completo del titular"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bankHolderDocument">Documento del Titular</Label>
+                <Input
+                  id="bankHolderDocument"
+                  value={bankHolderDocument}
+                  onChange={(e) => setBankHolderDocument(e.target.value)}
+                  placeholder="Cédula o NIT"
+                />
+              </div>
+            </div>
+
             <p className="text-xs text-muted-foreground">
-              Los datos bancarios son necesarios para el pago de comisiones.
+              Los cinco datos son obligatorios. Sin ellos el perito no puede recibir casos.
             </p>
           </CardContent>
         </Card>

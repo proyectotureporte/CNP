@@ -1,15 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hearing } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
     const hearings = await hearing.listCaseHearings(id);
-    return NextResponse.json({ success: true, data: hearings });
+    const data = hearings.map((item) => ({
+      ...item,
+      ...(access.actor.role === 'cliente' ? { expertAttended: undefined } : {}),
+      ...(access.actor.role === 'perito' ? { clientAttended: undefined } : {}),
+    }));
+    return NextResponse.json({ success: true, data });
   } catch {
     return NextResponse.json({ success: false, error: 'Error obteniendo audiencias' }, { status: 500 });
   }
@@ -21,6 +29,11 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
+    if (!['admin', 'juridico'].includes(access.actor.role)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
     const body = await request.json();
 
     if (!body.scheduledDate) {

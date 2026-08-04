@@ -126,7 +126,7 @@ export async function createClient(input: CrmClientInput): Promise<CrmClient | n
     position: input.position ?? null,
     notes: input.notes ?? null,
     status: input.status ?? null,
-    client_type: input.clientType ?? 'particular',
+    client_type: input.clientType ?? 'persona_natural',
     created_by: input.createdBy ?? null,
   });
   await query(text, values);

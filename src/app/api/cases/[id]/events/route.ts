@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cases, caseEvent } from '@/lib/db';
-import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 import { CASE_EVENT_TYPES, type CaseEventType } from '@/lib/types';
 import { triggerEvent } from '@/lib/realtime/server';
 
@@ -10,18 +10,28 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const userRole = request.headers.get('x-user-role') || '';
-    const userId = request.headers.get('x-user-id') || '';
-
-    if (userRole === 'cliente') {
-      const { owns } = await verifyClientOwnsCase(userId, id);
-      if (!owns) {
-        return NextResponse.json({ success: false, error: 'No tiene acceso a este caso' }, { status: 403 });
-      }
-    }
-
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
     const events = await caseEvent.listCaseEvents(id);
-    return NextResponse.json({ success: true, data: events });
+    const data = events.map((event) => {
+      const safe = { ...event };
+      if (access.actor.role === 'perito') {
+        delete safe.createdBy;
+        if (safe.createdByRole === 'cliente') safe.createdByName = 'Cliente final';
+      }
+      if (access.actor.role === 'cliente') {
+        delete safe.createdBy;
+        if (safe.createdByRole === 'perito') safe.createdByName = 'Equipo técnico';
+        if (safe.eventType === 'assignment') {
+          // La descripción histórica incluye el nombre del asignado. Se vuelve
+          // genérica para que ninguna variante de rol revele al perito.
+          safe.description = 'Equipo responsable del caso actualizado';
+        }
+      }
+      delete safe.createdByRole;
+      return safe;
+    });
+    return NextResponse.json({ success: true, data });
   } catch {
     return NextResponse.json({ success: false, error: 'Error obteniendo eventos' }, { status: 500 });
   }
@@ -33,8 +43,13 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const userId = request.headers.get('x-user-id');
-    const userName = request.headers.get('x-user-name');
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
+    if (!['admin', 'juridico', 'administrativo'].includes(access.actor.role)) {
+      return NextResponse.json({ success: false, error: 'La línea de tiempo es de solo lectura para tu rol' }, { status: 403 });
+    }
+    const userId = access.actor.userId;
+    const userName = access.actor.displayName;
     const body = await request.json();
     const { eventType, description, metadata } = body;
 

@@ -7,6 +7,7 @@ import type { Quote } from '@/lib/types';
 import { triggerEvent } from '@/lib/realtime/server';
 import { notifyUsersAndAdmins } from '@/lib/notify';
 import { auditEntityChange } from '@/lib/audit';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
 type QuoteWithCase = Quote & { case?: { _id: string; caseCode: string; title: string } };
 
@@ -29,6 +30,10 @@ export async function POST(
     if (!existing) {
       return NextResponse.json({ success: false, error: 'Cotizacion no encontrada' }, { status: 404 });
     }
+    const caseId = existing.case?._id;
+    if (!caseId) return NextResponse.json({ success: false, error: 'Cotización sin caso asociado' }, { status: 409 });
+    const access = await requireCaseAccess(request, caseId);
+    if (access.response) return access.response;
     if (existing.status !== 'enviada') {
       return NextResponse.json({ success: false, error: 'Solo se pueden rechazar cotizaciones enviadas' }, { status: 400 });
     }
@@ -38,7 +43,6 @@ export async function POST(
 
     const updated = await quote.updateQuote(id, { status: 'rechazada', rejectionReason });
 
-    const caseId = existing.case?._id;
     if (caseId) {
       await logCaseEvent({
         caseId,
@@ -78,7 +82,7 @@ export async function POST(
 
     triggerEvent('quote:rejected', { id });
 
-    return NextResponse.json({ success: true, data: updated });
+    return NextResponse.json({ success: true, data: updated && { ...updated, quoteDocumentUrl: undefined, downloadUrl: updated.quoteDocumentUrl ? `/api/quotes/${id}/download` : undefined, createdBy: access.actor.role === 'cliente' ? undefined : updated.createdBy, approvedBy: access.actor.role === 'cliente' ? undefined : updated.approvedBy } });
   } catch {
     return NextResponse.json({ success: false, error: 'Error rechazando cotizacion' }, { status: 500 });
   }

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { FileText, Download, Eye, EyeOff, Trash2, Filter, ListChecks, Plus, Upload } from "lucide-react";
+import { FileQuestion, FileText, Download, Eye, EyeOff, Trash2, Filter, ListChecks, Plus, Send, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -22,6 +23,7 @@ import {
   type CaseDocument,
   type CaseDocumentStatus,
   type DocumentCategory,
+  type DocumentRequest,
 } from "@/lib/types";
 import DocumentUpload from "./DocumentUpload";
 
@@ -47,7 +49,11 @@ function getFileIcon(mimeType?: string) {
 }
 
 export default function DocumentList({ caseId, userRole = "admin" }: DocumentListProps) {
-  const [documents, setDocuments] = useState<(CaseDocument & { fileUrl?: string })[]>([]);
+  const [documents, setDocuments] = useState<CaseDocument[]>([]);
+  const [requests, setRequests] = useState<DocumentRequest[]>([]);
+  const [requestDescription, setRequestDescription] = useState("");
+  const [requesting, setRequesting] = useState(false);
+  const [requestError, setRequestError] = useState("");
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [newRequiredName, setNewRequiredName] = useState("");
@@ -69,12 +75,17 @@ export default function DocumentList({ caseId, userRole = "admin" }: DocumentLis
       if (data.success) {
         setDocuments(data.data);
       }
+      if (userRole === "perito") {
+        const requestResponse = await fetch(`/api/cases/${caseId}/document-requests`);
+        const requestPayload = await requestResponse.json();
+        if (requestPayload.success) setRequests(requestPayload.data || []);
+      }
     } catch {
       // Ignore
     } finally {
       setLoading(false);
     }
-  }, [caseId, categoryFilter]);
+  }, [caseId, categoryFilter, userRole]);
 
   useEffect(() => {
     fetchDocuments();
@@ -157,10 +168,60 @@ export default function DocumentList({ caseId, userRole = "admin" }: DocumentLis
     }
   }
 
+  async function handleDocumentRequest(event: React.FormEvent) {
+    event.preventDefault();
+    if (requestDescription.trim().length < 5) return;
+    setRequesting(true);
+    setRequestError("");
+    try {
+      const response = await fetch(`/api/cases/${caseId}/document-requests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: requestDescription.trim() }),
+      });
+      const payload = await response.json();
+      if (!payload.success) throw new Error(payload.error || "No fue posible enviar la solicitud");
+      setRequestDescription("");
+      await fetchDocuments();
+    } catch (requestSubmitError) {
+      setRequestError(requestSubmitError instanceof Error ? requestSubmitError.message : "No fue posible enviar la solicitud");
+    } finally {
+      setRequesting(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Upload */}
-      <DocumentUpload caseId={caseId} onSuccess={fetchDocuments} />
+      {userRole !== "perito" && <DocumentUpload caseId={caseId} onSuccess={fetchDocuments} />}
+
+      {userRole === "perito" && (
+        <div className="space-y-4 rounded-lg border border-blue-200 bg-blue-50/50 p-4">
+          <div className="flex items-start gap-3">
+            <FileQuestion className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" />
+            <div>
+              <h3 className="text-sm font-semibold text-blue-950">Solicitar documentación al abogado</h3>
+              <p className="text-xs text-blue-800">La solicitud se envía únicamente al jurídico asignado; nunca se contacta al cliente final.</p>
+            </div>
+          </div>
+          <form onSubmit={handleDocumentRequest} className="space-y-3">
+            <Textarea value={requestDescription} onChange={(event) => setRequestDescription(event.target.value)} placeholder="Describe los documentos que necesitas para realizar el dictamen..." rows={3} maxLength={2000} />
+            {requestError && <p className="text-sm text-red-700">{requestError}</p>}
+            <div className="flex justify-end"><Button type="submit" disabled={requesting || requestDescription.trim().length < 5}><Send className="mr-2 h-4 w-4" />{requesting ? "Enviando..." : "Enviar al abogado"}</Button></div>
+          </form>
+          {requests.length > 0 && (
+            <div className="space-y-2 border-t border-blue-200 pt-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-blue-900">Solicitudes realizadas</p>
+              {requests.map((request) => (
+                <div key={request._id} className="rounded-md bg-white p-3 text-sm">
+                  <p>{request.description}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{new Date(request._createdAt).toLocaleString("es-CO")} · {request.status}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* RF-05: checklist — definir documentos requeridos */}
       {canManageChecklist && (
@@ -269,7 +330,7 @@ export default function DocumentList({ caseId, userRole = "admin" }: DocumentLis
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  {canManageChecklist && (
+                  {canManageChecklist && !doc._id.startsWith("payment-receipt-") && (
                     <Select value={status} onValueChange={(v) => handleStatusChange(doc._id, v)}>
                       <SelectTrigger className="h-8 w-[130px] text-xs">
                         <SelectValue />
@@ -281,7 +342,7 @@ export default function DocumentList({ caseId, userRole = "admin" }: DocumentLis
                       </SelectContent>
                     </Select>
                   )}
-                  {!doc.fileUrl && canManageChecklist && (
+                  {!doc.downloadUrl && canManageChecklist && !doc._id.startsWith("payment-receipt-") && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -291,33 +352,37 @@ export default function DocumentList({ caseId, userRole = "admin" }: DocumentLis
                       <Upload className="h-4 w-4" />
                     </Button>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleToggleVisibility(doc._id, doc.isVisibleToClient)}
-                    title={doc.isVisibleToClient ? "Ocultar al cliente" : "Mostrar al cliente"}
-                  >
-                    {doc.isVisibleToClient ? (
-                      <Eye className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
-                  {doc.fileUrl && (
+                  {canManageChecklist && !doc._id.startsWith("payment-receipt-") && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleToggleVisibility(doc._id, doc.isVisibleToClient)}
+                      title={doc.isVisibleToClient ? "Ocultar al cliente" : "Mostrar al cliente"}
+                    >
+                      {doc.isVisibleToClient ? (
+                        <Eye className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  )}
+                  {doc.downloadUrl && (
                     <Button variant="ghost" size="sm" asChild>
-                      <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" title="Descargar">
+                      <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" title="Descargar">
                         <Download className="h-4 w-4" />
                       </a>
                     </Button>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(doc._id)}
-                    title="Eliminar"
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  {canManageChecklist && !doc._id.startsWith("payment-receipt-") && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(doc._id)}
+                      title="Eliminar"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
                 </div>
               </div>
             );

@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { whatsappMessage, whatsappLead, queryOne } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
+import { guardRole } from '@/lib/auth/guard';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const stop = guardRole(request, (role) => ['admin', 'juridico', 'mercadeo'].includes(role));
+    if (stop) return stop;
     const { id } = await params;
     const messages = await whatsappMessage.listWhatsappMessages(id);
     return NextResponse.json({ success: true, data: messages });
@@ -21,6 +24,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const stop = guardRole(request, (role) => ['admin', 'juridico', 'mercadeo'].includes(role));
+    if (stop) return stop;
     const { id } = await params;
     const body = await request.json();
     const { content } = body;

@@ -84,6 +84,16 @@ export function canManageWorkPlanActions(role: UserRole): boolean {
   return ['admin', 'administrativo'].includes(role);
 }
 
+/** El perito asignado puede redactar su plan y actualizar sus actividades. */
+export function canEditWorkPlan(role: UserRole): boolean {
+  return ['admin', 'administrativo', 'perito'].includes(role);
+}
+
+/** La aprobación/devolución del plan sigue separada de quien lo redacta. */
+export function canReviewWorkPlan(role: UserRole): boolean {
+  return ['admin', 'administrativo'].includes(role);
+}
+
 // Expert directory management (create/edit/validate peritos) stays with admin.
 export function canManageExperts(role: UserRole): boolean {
   return role === 'admin';

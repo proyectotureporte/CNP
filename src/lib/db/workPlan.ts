@@ -42,6 +42,39 @@ export async function getWorkPlanById(id: string): Promise<WorkPlan | null> {
   );
 }
 
+export async function getWorkPlanCaseId(id: string): Promise<string | null> {
+  const row = await queryOne<{ caseId: string }>(
+    'SELECT case_id AS "caseId" FROM work_plan WHERE id = $1',
+    [id],
+  );
+  return row?.caseId ?? null;
+}
+
+export async function listExpertWorkPlans(expertId: string, status = '', limit = 20, offset = 0): Promise<WorkPlan[]> {
+  return query<WorkPlan>(
+    `SELECT ${SELECT}, ${caseObj} AS "case",
+       json_build_object(
+         'total', (SELECT count(*)::int FROM work_plan_activity a WHERE a.work_plan_id = wp.id),
+         'completadas', (SELECT count(*)::int FROM work_plan_activity a WHERE a.work_plan_id = wp.id AND a.status = 'completada')
+       ) AS "activityCounts"
+     FROM work_plan wp ${JOINS} JOIN cases c ON c.id = wp.case_id
+     WHERE (c.assigned_expert_id = $1 OR c.assigned_financiero_id = $1)
+       AND ($2 = '' OR wp.status = $2::work_plan_status)
+     ORDER BY wp.created_at DESC LIMIT $3 OFFSET $4`,
+    [expertId, status, limit, offset],
+  );
+}
+
+export async function countExpertWorkPlans(expertId: string, status = ''): Promise<number> {
+  const row = await queryOne<{ count: number }>(
+    `SELECT count(*)::int AS count FROM work_plan wp JOIN cases c ON c.id = wp.case_id
+     WHERE (c.assigned_expert_id = $1 OR c.assigned_financiero_id = $1)
+       AND ($2 = '' OR wp.status = $2::work_plan_status)`,
+    [expertId, status],
+  );
+  return row?.count ?? 0;
+}
+
 export async function listAllWorkPlans(status = '', limit = 20, offset = 0): Promise<WorkPlan[]> {
   return query<WorkPlan>(
     `SELECT ${SELECT}, ${caseObj} AS "case",

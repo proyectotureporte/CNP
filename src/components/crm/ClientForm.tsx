@@ -166,7 +166,7 @@ export default function ClientForm({
     company: initialData?.company ?? "",
     position: initialData?.position ?? "",
     status: initialData?.status ?? "prospecto",
-    clientType: initialData?.clientType ?? "particular",
+    clientType: initialData?.clientType ?? "persona_natural",
     notes: initialData?.notes ?? "",
   });
 
@@ -313,7 +313,7 @@ export default function ClientForm({
           />
         </div>
 
-        {/* Tipo de cliente (RF-14: abogado/empresa/juez/particular) */}
+        {/* Tipo de cliente: persona natural o abogado externo; en el proceso se muestra como cliente final. */}
         <div>
           <label
             htmlFor="clientType"
@@ -328,10 +328,10 @@ export default function ClientForm({
             onChange={handleChange}
             className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition-all duration-200 focus:border-[#2969b0] focus:outline-none focus:ring-2 focus:ring-[#2969b0]/20"
           >
-            <option value="abogado">Abogado</option>
+            <option value="persona_natural">Persona natural</option>
+            <option value="abogado_externo">Abogado externo</option>
             <option value="empresa">Empresa</option>
             <option value="juez">Juez</option>
-            <option value="particular">Particular</option>
           </select>
         </div>
 

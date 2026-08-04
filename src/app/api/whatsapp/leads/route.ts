@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { whatsappLead } from '@/lib/db';
+import { guardRole } from '@/lib/auth/guard';
 
 export async function GET(request: NextRequest) {
   try {
+    const stop = guardRole(request, (role) => ['admin', 'juridico', 'mercadeo'].includes(role));
+    if (stop) return stop;
     const search = request.nextUrl.searchParams.get('search') || '';
     const brand = request.nextUrl.searchParams.get('brand') || '';
     const status = request.nextUrl.searchParams.get('status') || '';

@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { company } from '@/lib/db';
 import type { Company } from '@/lib/types';
+import { actorFromRequest } from '@/lib/auth/caseAccess';
+
+function externalRoleBlocked(request: NextRequest) {
+  const actor = actorFromRequest(request);
+  return !actor || actor.role === 'cliente' || actor.role === 'perito';
+}
 
 export async function GET(request: NextRequest) {
   try {
+    if (externalRoleBlocked(request)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
 
@@ -22,6 +31,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    if (externalRoleBlocked(request)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
     const body = await request.json();
     const { name, nit, type, address, city, country, phone, website, billingEmail, logoUrl } = body as Partial<Company>;
 

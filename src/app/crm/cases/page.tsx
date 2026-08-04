@@ -79,6 +79,7 @@ function CasesTableSkeleton() {
 export default function CrmCasesPage() {
   const { user } = useAuth();
   const canCreate = !!user && canCreateCase(user.role as UserRole);
+  const isExpert = user?.role === "perito";
   const [cases, setCases] = useState<CaseExpanded[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -153,9 +154,9 @@ export default function CrmCasesPage() {
             <Briefcase className="h-5 w-5" style={{ color: '#2969b0' }} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: '#1b5697' }}>Casos</h1>
+            <h1 className="text-2xl font-bold" style={{ color: '#1b5697' }}>{isExpert ? "Mis casos" : "Casos"}</h1>
             <p className="text-sm text-muted-foreground">
-              Gestiona los dictamenes periciales ({total} casos)
+              {isExpert ? `Casos asignados a tu perfil (${total})` : `Gestiona los dictámenes periciales (${total} casos)`}
             </p>
           </div>
         </div>
@@ -325,11 +326,11 @@ export default function CrmCasesPage() {
                   <TableHead className="w-[7%] text-center">Marca</TableHead>
                   <TableHead className="w-[10%]">Codigo</TableHead>
                   <TableHead className="w-[17%]">Titulo</TableHead>
-                  <TableHead className="w-[11%]">Cliente</TableHead>
+                  {!isExpert && <TableHead className="w-[11%]">Cliente</TableHead>}
                   <TableHead className="w-[10%]">Disciplina</TableHead>
                   <TableHead className="w-[11%]">Estado</TableHead>
                   <TableHead className="w-[7%]">Prior.</TableHead>
-                  <TableHead className="w-[8%] text-right">Monto</TableHead>
+                  {!isExpert && <TableHead className="w-[8%] text-right">Monto</TableHead>}
                   <TableHead className="w-[5%] text-center">Juz.</TableHead>
                   <TableHead className="w-[5%] text-center">Aud.</TableHead>
                   <TableHead className="w-[9%] text-center">F. Entrega</TableHead>
@@ -364,9 +365,7 @@ export default function CrmCasesPage() {
                           {c.title}
                         </Link>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground truncate">
-                        {c.client?.name || "-"}
-                      </TableCell>
+                      {!isExpert && <TableCell className="text-sm text-muted-foreground truncate">{c.client?.name || "-"}</TableCell>}
                       <TableCell className="text-sm truncate">
                         {DISCIPLINE_LABELS[c.discipline as CaseDiscipline] || c.discipline}
                       </TableCell>
@@ -381,11 +380,7 @@ export default function CrmCasesPage() {
                           {PRIORITY_LABELS[c.priority] || c.priority}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {c.estimatedAmount
-                          ? `$${c.estimatedAmount.toLocaleString("es-CO")}`
-                          : "-"}
-                      </TableCell>
+                      {!isExpert && <TableCell className="text-right font-mono text-sm">{c.estimatedAmount ? `$${c.estimatedAmount.toLocaleString("es-CO")}` : "-"}</TableCell>}
                       <TableCell className="text-center text-sm">
                         {c.courtName ? "Si" : "No"}
                       </TableCell>

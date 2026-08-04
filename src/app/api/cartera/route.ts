@@ -28,7 +28,16 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: { monthPayments, upcoming, overdue, historical },
+      data: {
+        monthPayments: monthPayments.map((item) => ({
+          ...item,
+          receiptUrl: undefined,
+          receiptDownloadUrl: item.receiptUrl ? `/api/payments/${item._id}/receipt-download` : undefined,
+        })),
+        upcoming,
+        overdue,
+        historical,
+      },
     });
   } catch (err) {
     console.error('Error fetching cartera:', err);

@@ -6,11 +6,17 @@ import { verifyToken } from '@/lib/auth/jwt';
 import { hashPassword } from '@/lib/auth/passwords';
 import { sendCredentialsEmail } from '@/lib/email';
 import { triggerEvent } from '@/lib/realtime/server';
+import { actorFromRequest } from '@/lib/auth/caseAccess';
+import { CLIENT_TYPES, type ClientType } from '@/lib/types';
 
 export async function GET(request: NextRequest) {
   try {
-    const userRole = request.headers.get('x-user-role') || '';
-    const userId = request.headers.get('x-user-id') || '';
+    const actor = actorFromRequest(request);
+    if (!actor || !['admin', 'juridico', 'mercadeo', 'financiero'].includes(actor.role)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
+    const userRole = actor.role;
+    const userId = actor.userId;
     const search = request.nextUrl.searchParams.get('search') || '';
     const brand = request.nextUrl.searchParams.get('brand') || '';
 
@@ -55,8 +61,26 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    if (clientType && !CLIENT_TYPES.includes(clientType as ClientType)) {
+      return NextResponse.json({ success: false, error: 'Tipo de cliente no válido' }, { status: 400 });
+    }
 
     const normalizedEmail = email?.trim().toLowerCase() || '';
+    const existingPortalUser = normalizedEmail
+      ? await crmUser.getUserByEmail(normalizedEmail)
+      : null;
+    if (existingPortalUser && existingPortalUser.role !== 'cliente') {
+      return NextResponse.json(
+        { success: false, error: 'El correo ya pertenece a un usuario interno y no puede usarse como cliente final' },
+        { status: 409 },
+      );
+    }
+    if (existingPortalUser?.clientId) {
+      return NextResponse.json(
+        { success: false, error: 'El correo ya está vinculado a otro perfil de cliente final' },
+        { status: 409 },
+      );
+    }
 
     // Get user info from token
     const crmToken = request.cookies.get('crm-token')?.value;
@@ -73,7 +97,7 @@ export async function POST(request: NextRequest) {
       position: position || '',
       notes: notes || '',
       status: (status as 'activo' | 'inactivo' | 'prospecto') || 'prospecto',
-      clientType: (clientType as 'abogado' | 'empresa' | 'juez' | 'particular') || 'particular',
+      clientType: (clientType as ClientType) || 'persona_natural',
       createdBy: payload?.displayName || 'Sistema',
     });
 
@@ -97,13 +121,12 @@ export async function POST(request: NextRequest) {
     // Auto-create portal user for the client if email is provided
     let portalPassword: string | undefined;
     if (normalizedEmail) {
-      const existingUser = await crmUser.getUserByEmail(normalizedEmail);
-
       portalPassword = `CNP${newClient._id.slice(-4)}`;
       const passwordHash = await hashPassword(portalPassword);
 
-      if (existingUser) {
-        await crmUser.setUserPassword(existingUser._id, passwordHash, true);
+      if (existingPortalUser) {
+        await crmUser.updateUser(existingPortalUser._id, { clientId: newClient._id });
+        await crmUser.setUserPassword(existingPortalUser._id, passwordHash, true);
       } else {
         await crmUser.createUser({
           username: normalizedEmail,
@@ -114,6 +137,7 @@ export async function POST(request: NextRequest) {
           role: 'cliente',
           active: true,
           mustChangePassword: true,
+          clientId: newClient._id,
         });
       }
 

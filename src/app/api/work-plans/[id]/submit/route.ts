@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { workPlan } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
-import { guardRole } from '@/lib/auth/guard';
-import { canManageWorkPlanActions } from '@/lib/auth/permissions';
+import { canEditWorkPlan } from '@/lib/auth/permissions';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { notifyUsersAndAdmins } from '@/lib/notify';
 import type { WorkPlan } from '@/lib/types';
@@ -16,21 +16,28 @@ export async function POST(
   try {
     const { id } = await params;
 
-    const stop = guardRole(request, canManageWorkPlanActions);
-    if (stop) return stop;
-
+    const caseId = await workPlan.getWorkPlanCaseId(id);
+    if (!caseId) return NextResponse.json({ success: false, error: 'Plan no encontrado' }, { status: 404 });
+    const access = await requireCaseAccess(request, caseId);
+    if (access.response) return access.response;
+    if (!canEditWorkPlan(access.actor.role)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
     const existing = await workPlan.getWorkPlanById(id);
     if (!existing) return NextResponse.json({ success: false, error: 'Plan no encontrado' }, { status: 404 });
     if (existing.status !== 'borrador' && existing.status !== 'rechazado') {
       return NextResponse.json({ success: false, error: 'Solo se pueden enviar planes en borrador' }, { status: 400 });
+    }
+    if (!existing.methodology?.trim() || !existing.objectives?.trim() || !existing.deliverablesDescription?.trim()) {
+      return NextResponse.json({ success: false, error: 'Completa metodología, objetivos y entregables antes de enviar' }, { status: 400 });
     }
 
     const updated = await workPlan.updateWorkPlan(id, { status: 'enviado', submittedAt: new Date().toISOString() });
 
     const wp = existing as WorkPlanWithCase;
     if (wp.case?._id) {
-      const userId = request.headers.get('x-user-id');
-      const userName = request.headers.get('x-user-name');
+      const userId = access.actor.userId;
+      const userName = access.actor.displayName;
       logCaseEvent({
         caseId: wp.case._id,
         eventType: 'other',

@@ -7,6 +7,7 @@ import type { Quote } from '@/lib/types';
 import { triggerEvent } from '@/lib/realtime/server';
 import { notifyUsersAndAdmins } from '@/lib/notify';
 import { auditEntityChange } from '@/lib/audit';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
 type QuoteWithCase = Quote & { case?: { _id: string; caseCode: string; title: string } };
 
@@ -28,6 +29,10 @@ export async function POST(
     if (!existing) {
       return NextResponse.json({ success: false, error: 'Cotizacion no encontrada' }, { status: 404 });
     }
+    const caseId = existing.case?._id;
+    if (!caseId) return NextResponse.json({ success: false, error: 'Cotización sin caso asociado' }, { status: 409 });
+    const access = await requireCaseAccess(request, caseId);
+    if (access.response) return access.response;
     if (existing.status !== 'enviada') {
       return NextResponse.json({ success: false, error: 'Solo se pueden aprobar cotizaciones enviadas' }, { status: 400 });
     }
@@ -39,7 +44,6 @@ export async function POST(
       acceptanceNotes: body.acceptanceNotes?.trim() || null,
     });
 
-    const caseId = existing.case?._id;
     if (caseId) {
       const versionLabel = existing.version ? ` v${existing.version}` : '';
       await logCaseEvent({
@@ -51,10 +55,16 @@ export async function POST(
         userId, userName,
       });
 
-      // RF-18: propuesta aceptada = caso ganado en el pipeline comercial.
+      // RF-18 + G-11: propuesta aceptada = caso ganado y su plazo cotizado
+      // queda visible aun antes de que el primer pago inicie la ejecución.
       const caseRow = await cases.getCaseById(caseId);
-      if (caseRow && caseRow.commercialStatus !== 'ganado') {
-        await cases.updateCase(caseId, { commercialStatus: 'ganado' });
+      if (caseRow) {
+        await cases.updateCase(caseId, {
+          ...(caseRow.commercialStatus !== 'ganado' ? { commercialStatus: 'ganado' as const } : {}),
+          ...(!caseRow.executionStartDate
+            ? { executionBusinessDays: existing.quotedBusinessDays || 15 }
+            : {}),
+        });
       }
 
       notifyUsersAndAdmins({
@@ -81,7 +91,7 @@ export async function POST(
 
     triggerEvent('quote:approved', { id });
 
-    return NextResponse.json({ success: true, data: updated });
+    return NextResponse.json({ success: true, data: updated && { ...updated, quoteDocumentUrl: undefined, downloadUrl: updated.quoteDocumentUrl ? `/api/quotes/${id}/download` : undefined, createdBy: access.actor.role === 'cliente' ? undefined : updated.createdBy, approvedBy: access.actor.role === 'cliente' ? undefined : updated.approvedBy } });
   } catch {
     return NextResponse.json({ success: false, error: 'Error aprobando cotizacion' }, { status: 500 });
   }

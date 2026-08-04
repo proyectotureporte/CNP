@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Settings, Mail } from "lucide-react";
+import { Settings, Mail, CreditCard } from "lucide-react";
 import PasswordChangeForm from "@/components/crm/PasswordChangeForm";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,11 +14,25 @@ const MAILBOX_KEYS = [
   { key: "email_comunicaciones", label: "Correo de comunicaciones", hint: "Recibe avisos de leads y formularios web" },
 ] as const;
 
+const PAYMENT_ACCOUNT_KEYS = [
+  { key: "payment_account_cnp", brand: "CNP" },
+  { key: "payment_account_peritus", brand: "PERITUS" },
+] as const;
+
+type PaymentAccountFields = { banco: string; tipoCuenta: string; numeroCuenta: string; titular: string; nit: string };
+const EMPTY_ACCOUNT: PaymentAccountFields = { banco: "", tipoCuenta: "", numeroCuenta: "", titular: "", nit: "" };
+
 export default function AdminSettingsPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [mailboxes, setMailboxes] = useState<Record<string, string>>({});
   const [mailboxSaving, setMailboxSaving] = useState(false);
   const [mailboxMessage, setMailboxMessage] = useState("");
+  const [paymentAccounts, setPaymentAccounts] = useState<Record<string, PaymentAccountFields>>({
+    payment_account_cnp: { ...EMPTY_ACCOUNT },
+    payment_account_peritus: { ...EMPTY_ACCOUNT },
+  });
+  const [accountSaving, setAccountSaving] = useState(false);
+  const [accountMessage, setAccountMessage] = useState("");
 
   useEffect(() => {
     async function loadSettings() {
@@ -31,6 +45,18 @@ export default function AdminSettingsPage() {
             map[s.key] = s.value ?? "";
           }
           setMailboxes(map);
+          setPaymentAccounts((current) => {
+            const next = { ...current };
+            for (const { key } of PAYMENT_ACCOUNT_KEYS) {
+              try {
+                const parsed = JSON.parse(map[key] || "{}") as Partial<PaymentAccountFields>;
+                next[key] = { ...EMPTY_ACCOUNT, ...parsed };
+              } catch {
+                next[key] = { ...EMPTY_ACCOUNT };
+              }
+            }
+            return next;
+          });
         }
       } catch {
         /* ignore */
@@ -56,6 +82,27 @@ export default function AdminSettingsPage() {
       setMailboxMessage("Error guardando los correos.");
     } finally {
       setMailboxSaving(false);
+    }
+  }
+
+  async function handleSavePaymentAccounts() {
+    setAccountSaving(true);
+    setAccountMessage("");
+    try {
+      for (const { key, brand } of PAYMENT_ACCOUNT_KEYS) {
+        const response = await fetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key, value: JSON.stringify(paymentAccounts[key]), description: `Cuenta de ${brand} visible para el cliente final` }),
+        });
+        const payload = await response.json();
+        if (!payload.success) throw new Error(payload.error || "Error guardando la cuenta");
+      }
+      setAccountMessage("Cuentas de pago guardadas correctamente.");
+    } catch (saveError) {
+      setAccountMessage(saveError instanceof Error ? saveError.message : "Error guardando las cuentas.");
+    } finally {
+      setAccountSaving(false);
     }
   }
 
@@ -118,6 +165,25 @@ export default function AdminSettingsPage() {
               </Button>
             </div>
           </div>
+        </div>
+
+        <div className="mx-auto mb-8 max-w-4xl rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2969b0]/10"><CreditCard className="h-5 w-5 text-[#2969b0]" /></div>
+            <div><h2 className="text-lg font-semibold text-gray-900">Cuentas para pagos del cliente final</h2><p className="text-xs text-gray-500">El portal muestra automáticamente la cuenta que corresponde a la marca de cada caso.</p></div>
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {PAYMENT_ACCOUNT_KEYS.map(({ key, brand }) => (
+              <div key={key} className="space-y-3 rounded-lg border p-4">
+                <h3 className="font-semibold">{brand}</h3>
+                {([['banco', 'Banco'], ['tipoCuenta', 'Tipo de cuenta'], ['numeroCuenta', 'Número de cuenta'], ['titular', 'Titular'], ['nit', 'NIT / documento']] as const).map(([field, label]) => (
+                  <div key={field} className="space-y-1.5"><Label htmlFor={`${key}-${field}`}>{label}</Label><Input id={`${key}-${field}`} value={paymentAccounts[key]?.[field] || ""} onChange={(event) => setPaymentAccounts((current) => ({ ...current, [key]: { ...current[key], [field]: event.target.value } }))} /></div>
+                ))}
+              </div>
+            ))}
+          </div>
+          {accountMessage && <p className={`mt-4 text-sm ${accountMessage.startsWith("Error") ? "text-red-600" : "text-green-700"}`}>{accountMessage}</p>}
+          <div className="mt-4 flex justify-end"><Button onClick={handleSavePaymentAccounts} disabled={accountSaving}>{accountSaving ? "Guardando..." : "Guardar cuentas"}</Button></div>
         </div>
 
         <div className="mx-auto max-w-lg rounded-xl border border-gray-100 bg-white p-6 shadow-sm">

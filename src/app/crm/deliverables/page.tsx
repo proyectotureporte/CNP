@@ -263,12 +263,12 @@ export default function DeliverablesPage() {
 
                     {/* Actions */}
                     <div className="flex shrink-0 items-center gap-1.5">
-                      {d.fileUrl && (
+                      {d.downloadUrl && (
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => window.open(d.fileUrl, '_blank')}
+                          onClick={() => window.open(d.downloadUrl, '_blank')}
                           title="Descargar archivo"
                         >
                           <Download className="h-4 w-4" />

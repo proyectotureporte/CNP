@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, signToken } from '@/lib/auth/jwt';
 import { crmUser } from '@/lib/db';
-import { hashPassword } from '@/lib/auth/passwords';
+import { comparePassword, hashPassword } from '@/lib/auth/passwords';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,15 +11,26 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = await verifyToken(token);
-    if (!payload) {
+    if (!payload || payload.role !== 'cliente') {
       return NextResponse.json({ success: false, error: 'Token invalido' }, { status: 401 });
     }
 
     const body = await request.json();
-    const { newPassword } = body as { newPassword?: string };
+    const { currentPassword, newPassword } = body as {
+      currentPassword?: string;
+      newPassword?: string;
+    };
 
-    if (!newPassword || newPassword.length < 6) {
+    if (!currentPassword || !newPassword || newPassword.length < 6) {
       return NextResponse.json({ success: false, error: 'La contrasena debe tener al menos 6 caracteres' }, { status: 400 });
+    }
+
+    const user = await crmUser.getUserByIdWithHash(payload.sub);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Usuario no encontrado' }, { status: 404 });
+    }
+    if (!(await comparePassword(currentPassword, user.passwordHash))) {
+      return NextResponse.json({ success: false, error: 'Contraseña actual incorrecta' }, { status: 401 });
     }
 
     const passwordHash = await hashPassword(newPassword);

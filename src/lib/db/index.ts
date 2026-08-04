@@ -29,3 +29,5 @@ export * as webLead from './webLead';
 export * as stats from './stats';
 export * as blogPost from './blogPost';
 export * as siteContent from './siteContent';
+export * as caseMessage from './caseMessage';
+export * as documentRequest from './documentRequest';

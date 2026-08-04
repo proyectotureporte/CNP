@@ -3,7 +3,7 @@ import { cases, quote, caseDocument, payment } from '@/lib/db';
 import { guardRole } from '@/lib/auth/guard';
 import { canCreateQuote } from '@/lib/auth/permissions';
 import { uploadFile } from '@/lib/sanity/assets';
-import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
 
@@ -13,18 +13,23 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const userRole = request.headers.get('x-user-role') || '';
-    const userId = request.headers.get('x-user-id') || '';
-
-    if (userRole === 'cliente') {
-      const { owns } = await verifyClientOwnsCase(userId, id);
-      if (!owns) {
-        return NextResponse.json({ success: false, error: 'No tiene acceso a este caso' }, { status: 403 });
-      }
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
+    if (access.actor.role === 'perito') {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 
     const quotes = await quote.listCaseQuotes(id);
-    return NextResponse.json({ success: true, data: quotes });
+    const visibleQuotes = access.actor.role === 'cliente'
+      ? quotes.filter((item) => item.status !== 'borrador')
+      : quotes;
+    const data = visibleQuotes.map((item) => ({
+      ...item,
+      quoteDocumentUrl: undefined,
+      downloadUrl: item.quoteDocumentUrl ? `/api/quotes/${item._id}/download` : undefined,
+      ...(access.actor.role === 'cliente' ? { createdBy: undefined, approvedBy: undefined } : {}),
+    }));
+    return NextResponse.json({ success: true, data });
   } catch {
     return NextResponse.json({ success: false, error: 'Error obteniendo cotizaciones' }, { status: 500 });
   }
@@ -39,6 +44,8 @@ export async function POST(
 
     const stop = guardRole(request, canCreateQuote);
     if (stop) return stop;
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
 
     const userId = request.headers.get('x-user-id');
     const userName = request.headers.get('x-user-name');
@@ -55,6 +62,7 @@ export async function POST(
     const firstPaymentPercentage = customSplit
       ? parseFloat(formData.get('firstPaymentPercentage') as string) || 50
       : 50;
+    const quotedBusinessDays = parseInt(String(formData.get('quotedBusinessDays') || '15'), 10);
 
     const existing = await cases.getCaseById(id);
     if (!existing) {
@@ -66,6 +74,9 @@ export async function POST(
         { success: false, error: 'Precio total es requerido y debe ser mayor a 0' },
         { status: 400 }
       );
+    }
+    if (!Number.isInteger(quotedBusinessDays) || quotedBusinessDays < 1 || quotedBusinessDays > 365) {
+      return NextResponse.json({ success: false, error: 'El plazo debe estar entre 1 y 365 días hábiles' }, { status: 400 });
     }
 
     const finalValue = totalPrice - (totalPrice * discountPercentage / 100);
@@ -92,6 +103,7 @@ export async function POST(
       lastPaymentDate,
       customSplit,
       firstPaymentPercentage,
+      quotedBusinessDays,
       createdById: userId && userId !== 'admin' ? userId : null,
       fileUrl: asset?.url,
       fileAssetId: asset?.assetId,
@@ -149,7 +161,19 @@ export async function POST(
 
     triggerEvent('quote:created', { caseId: id });
 
-    return NextResponse.json({ success: true, data: created }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          ...created,
+          quoteDocumentUrl: undefined,
+          downloadUrl: created.quoteDocumentUrl
+            ? `/api/quotes/${created._id}/download`
+            : undefined,
+        },
+      },
+      { status: 201 }
+    );
   } catch (err) {
     console.error('Error creating quote:', err);
     return NextResponse.json({ success: false, error: 'Error creando cotizacion' }, { status: 500 });

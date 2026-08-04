@@ -11,7 +11,7 @@ import type { CasePriority } from '@/lib/types';
 //   4. Cotizaciones enviadas: expiración automática por valid_until
 //   5. Seguimientos comerciales vencidos (next_follow_up_date) — RF-10
 //   6. Propuestas enviadas sin respuesta ni seguimiento programado
-//   7. Reloj de ejecución de 15 días hábiles por vencer (item 20)
+//   7. Reloj de ejecución según días hábiles cotizados por vencer
 
 function daysFromNow(dateStr: string): number {
   const target = new Date(dateStr);
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     // Ruta pública (bypass de middleware): protegida por secreto compartido.
     const secret = process.env.CRON_SECRET;
     const provided = request.headers.get('x-cron-secret');
-    if (secret && provided !== secret) {
+    if (!secret || provided !== secret) {
       return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
     }
 
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       quote.expireOverdueQuotes(),
       quote.listQuotesFollowUpDue(new Date().toISOString()),
       quote.listSentQuotesWithoutResponse(daysAgoIso(7)),
-      cases.casesWithExecutionDeadlineSoon(inDaysIso(7)),
+      cases.casesWithExecutionDeadlineSoon(inDaysIso(14)),
       notification.mapRecentAlertLastSent('Alerta de Audiencia:', daysAgoIso(14)),
       notification.mapRecentAlertLastSent('Caso Proximo a Vencer:', daysAgoIso(6)),
       notification.mapRecentAlertLastSent('Documentos Pendientes:', daysAgoIso(8)),
@@ -186,14 +186,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // --- 7. Ejecución de 15 días hábiles por vencer (item 20) ----------------
+    // --- 7. Ejecución según plazo hábil cotizado por vencer ------------------
     for (const c of executionSoon) {
       const title = `Ejecucion por Vencer: ${c.caseCode}`;
       if (recentExecution.has(title)) continue;
       const remaining = businessDaysBetween(new Date(), new Date(c.executionDeadline));
       if (remaining > 3) continue;
       push(
-        [c.commercialId, c.technicalAnalystId, c.assignedExpertId, c.assignedFinancieroId],
+        [c.commercialId, c.technicalAnalystId, c.assignedExpertId, c.assignedFinancieroId, c.assignedJuridicoId],
         title,
         `Quedan ${remaining} día(s) hábil(es) del plazo de ejecución del caso ${c.caseCode} (vence el ${new Date(c.executionDeadline).toLocaleDateString('es-CO')}).`,
         `/crm/cases/${c._id}`,

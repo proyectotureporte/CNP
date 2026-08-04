@@ -19,7 +19,8 @@ export type RealtimeEvent =
   | 'document:created' | 'document:deleted'
   | 'hearing:created' | 'hearing:updated'
   | 'evaluation:created'
-  | 'commission:calculated'
+  | 'commission:calculated' | 'commission:updated'
+  | 'message:created'
   | 'whatsapp:message' | 'whatsapp:lead'
   | 'user:created' | 'user:updated';
 

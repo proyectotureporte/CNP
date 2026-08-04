@@ -48,6 +48,9 @@ export default function QuoteForm({ caseId, initialData, onSuccess }: QuoteFormP
   const [firstPaymentPercentage, setFirstPaymentPercentage] = useState(
     initialData?.firstPaymentPercentage ? String(initialData.firstPaymentPercentage) : "50"
   );
+  const [quotedBusinessDays, setQuotedBusinessDays] = useState(
+    initialData?.quotedBusinessDays ? String(initialData.quotedBusinessDays) : "15"
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -72,11 +75,16 @@ export default function QuoteForm({ caseId, initialData, onSuccess }: QuoteFormP
       setError("Precio total es requerido y debe ser mayor a 0");
       return;
     }
+    if (!quotedBusinessDays || parseInt(quotedBusinessDays, 10) < 1 || parseInt(quotedBusinessDays, 10) > 365) {
+      setError("Ingrese un plazo entre 1 y 365 días hábiles");
+      return;
+    }
 
     setSaving(true);
     try {
       const fd = new FormData();
       fd.append("totalPrice", totalPrice);
+      fd.append("quotedBusinessDays", quotedBusinessDays || "15");
       fd.append("discountPercentage", discountPercentage || "0");
       fd.append("notes", notes);
       if (validUntil) fd.append("validUntil", new Date(validUntil).toISOString());
@@ -167,6 +175,19 @@ export default function QuoteForm({ caseId, initialData, onSuccess }: QuoteFormP
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="quotedBusinessDays">Plazo Cotizado (días hábiles) *</Label>
+              <Input
+                id="quotedBusinessDays"
+                type="number"
+                min="1"
+                max="365"
+                value={quotedBusinessDays}
+                onChange={(e) => setQuotedBusinessDays(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">El contador inicia al validar el primer pago.</p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="notes">Notas</Label>
               <Textarea
                 id="notes"
@@ -191,10 +212,10 @@ export default function QuoteForm({ caseId, initialData, onSuccess }: QuoteFormP
                   <Upload className="h-4 w-4 text-green-600 shrink-0" />
                 )}
               </div>
-              {initialData?.quoteDocumentUrl && !quoteFile && (
+              {initialData?.downloadUrl && !quoteFile && (
                 <p className="text-xs text-muted-foreground">
                   Documento actual:{" "}
-                  <a href={initialData.quoteDocumentUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                  <a href={initialData.downloadUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">
                     Ver documento
                   </a>
                 </p>

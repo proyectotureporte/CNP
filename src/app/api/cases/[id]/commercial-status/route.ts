@@ -8,6 +8,7 @@ import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
 import { notifyUsersAndAdmins } from '@/lib/notify';
 import { auditEntityChange } from '@/lib/audit';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
 /**
  * Pipeline COMERCIAL del caso (RF-18): independiente del estado técnico.
@@ -22,6 +23,8 @@ export async function PUT(
     if (stop) return stop;
 
     const { id } = await params;
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
     const userId = request.headers.get('x-user-id');
     const userName = request.headers.get('x-user-name');
     const body = await request.json();

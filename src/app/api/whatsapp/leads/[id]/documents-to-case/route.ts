@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { caseDocument, query } from '@/lib/db';
+import { guardRole } from '@/lib/auth/guard';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
 // Transfer lead documents to a case as caseDocuments (same Sanity asset, referenced by URL)
 export async function POST(
@@ -7,6 +9,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const stop = guardRole(request, (role) => ['admin', 'juridico', 'mercadeo'].includes(role));
+    if (stop) return stop;
     const { id } = await params;
     const body = await request.json();
     const { caseId } = body;
@@ -14,6 +18,8 @@ export async function POST(
     if (!caseId) {
       return NextResponse.json({ success: false, error: 'caseId requerido' }, { status: 400 });
     }
+    const access = await requireCaseAccess(request, caseId);
+    if (access.response) return access.response;
 
     const userName = request.headers.get('x-user-name') || 'Sistema';
     const userId = request.headers.get('x-user-id') || '';

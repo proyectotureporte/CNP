@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { workPlan } from '@/lib/db';
-import { guardRole } from '@/lib/auth/guard';
-import { canManageWorkPlanActions } from '@/lib/auth/permissions';
+import { canEditWorkPlan } from '@/lib/auth/permissions';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
+import type { WorkPlan } from '@/lib/types';
+
+type WorkPlanWithCase = WorkPlan & { case?: { _id: string } };
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
     const plan = await workPlan.getWorkPlanById(id);
     if (!plan) return NextResponse.json({ success: false, error: 'Plan no encontrado' }, { status: 404 });
+    const caseId = (plan as WorkPlanWithCase).case?._id;
+    if (!caseId) return NextResponse.json({ success: false, error: 'Plan sin caso asociado' }, { status: 409 });
+    const access = await requireCaseAccess(request, caseId);
+    if (access.response) return access.response;
+    if (access.actor.role === 'cliente') return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     return NextResponse.json({ success: true, data: plan });
   } catch {
     return NextResponse.json({ success: false, error: 'Error obteniendo plan' }, { status: 500 });
@@ -24,12 +32,16 @@ export async function PUT(
   try {
     const { id } = await params;
 
-    const stop = guardRole(request, canManageWorkPlanActions);
-    if (stop) return stop;
-
     const body = await request.json();
     const existing = await workPlan.getWorkPlanById(id);
     if (!existing) return NextResponse.json({ success: false, error: 'Plan no encontrado' }, { status: 404 });
+    const caseId = (existing as WorkPlanWithCase).case?._id;
+    if (!caseId) return NextResponse.json({ success: false, error: 'Plan sin caso asociado' }, { status: 409 });
+    const access = await requireCaseAccess(request, caseId);
+    if (access.response) return access.response;
+    if (!canEditWorkPlan(access.actor.role)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
     if (existing.status !== 'borrador' && existing.status !== 'rechazado') {
       return NextResponse.json({ success: false, error: 'Solo se pueden editar planes en borrador o rechazados' }, { status: 400 });
     }

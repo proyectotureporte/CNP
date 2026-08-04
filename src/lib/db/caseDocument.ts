@@ -45,6 +45,23 @@ export async function getCaseDocumentCaseId(id: string): Promise<string | null> 
   return row?.caseId ?? null;
 }
 
+export async function getCaseDocumentAssetRow(id: string): Promise<{
+  caseId: string;
+  category: DocumentCategory;
+  isVisibleToClient: boolean;
+  fileUrl: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+} | null> {
+  return queryOne(
+    `SELECT case_id AS "caseId", category,
+       is_visible_to_client AS "isVisibleToClient", file_url AS "fileUrl",
+       file_name AS "fileName", mime_type AS "mimeType"
+     FROM case_document WHERE id = $1`,
+    [id],
+  );
+}
+
 export async function countCaseDocuments(caseId: string): Promise<number> {
   const row = await queryOne<{ count: number }>(
     'SELECT count(*)::int AS count FROM case_document WHERE case_id = $1',

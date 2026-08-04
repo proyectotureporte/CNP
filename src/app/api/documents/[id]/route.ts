@@ -6,34 +6,56 @@ import {
   type CaseDocumentStatus,
   type DocumentCategory,
 } from '@/lib/types';
-import { guardRole } from '@/lib/auth/guard';
 import { canManageDocumentChecklist } from '@/lib/auth/permissions';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
 import { auditEntityChange } from '@/lib/audit';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const caseId = await caseDocument.getCaseDocumentCaseId(id);
+    if (!caseId) return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
+    const access = await requireCaseAccess(request, caseId);
+    if (access.response) return access.response;
     const doc = await caseDocument.getCaseDocumentById(id);
     if (!doc) {
       return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
     }
-    return NextResponse.json({ success: true, data: doc });
+    if (access.actor.role === 'perito' && doc.category === 'pago') {
+      return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
+    }
+    if (access.actor.role === 'cliente' && (!doc.isVisibleToClient || doc.category === 'dictamen_final')) {
+      return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
+    }
+    const safe = { ...doc, fileUrl: undefined, downloadUrl: doc.fileName ? `/api/documents/${id}/download` : undefined };
+    if (access.actor.role === 'perito' || access.actor.role === 'cliente') {
+      delete safe.uploadedBy;
+      delete safe.uploadedByName;
+    }
+    return NextResponse.json({ success: true, data: safe });
   } catch {
     return NextResponse.json({ success: false, error: 'Error obteniendo documento' }, { status: 500 });
   }
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const caseId = await caseDocument.getCaseDocumentCaseId(id);
+    if (!caseId) return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
+    const access = await requireCaseAccess(request, caseId);
+    if (access.response) return access.response;
+    if (!canManageDocumentChecklist(access.actor.role)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
     const doc = await caseDocument.getCaseDocumentById(id);
     if (!doc) {
       return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
@@ -52,6 +74,13 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+    const caseId = await caseDocument.getCaseDocumentCaseId(id);
+    if (!caseId) return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
+    const access = await requireCaseAccess(request, caseId);
+    if (access.response) return access.response;
+    if (!canManageDocumentChecklist(access.actor.role)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
     const body = await request.json();
 
     const doc = await caseDocument.getCaseDocumentById(id);
@@ -59,14 +88,8 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
     }
 
-    // Checklist documental (RF-05): cambiar estado/requerido exige rol de gestión.
-    const touchesChecklist = body.status !== undefined || body.isRequired !== undefined;
-    if (touchesChecklist) {
-      const stop = guardRole(request, canManageDocumentChecklist);
-      if (stop) return stop;
-      if (body.status !== undefined && !CASE_DOCUMENT_STATUSES.includes(body.status as CaseDocumentStatus)) {
-        return NextResponse.json({ success: false, error: 'Estado de documento no valido' }, { status: 400 });
-      }
+    if (body.status !== undefined && !CASE_DOCUMENT_STATUSES.includes(body.status as CaseDocumentStatus)) {
+      return NextResponse.json({ success: false, error: 'Estado de documento no valido' }, { status: 400 });
     }
 
     const updated = await caseDocument.updateCaseDocument(id, {
@@ -82,7 +105,7 @@ export async function PUT(
       const userName = request.headers.get('x-user-name');
       const name = doc.description || doc.fileName || doc.category;
       logCaseEvent({
-        caseId: (await caseDocument.getCaseDocumentCaseId(id)) ?? '',
+        caseId,
         eventType: 'document_uploaded',
         description: `Checklist documental: "${name}" marcado como ${CASE_DOCUMENT_STATUS_LABELS[body.status as CaseDocumentStatus]}`,
         userId, userName,

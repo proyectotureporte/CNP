@@ -1,7 +1,7 @@
 "use client";
 
 // Tab de Contratación (RF-02): propuesta aprobada + pagos del caso + reloj de
-// ejecución de 15 días hábiles (item 20).
+// ejecución según el plazo hábil cotizado.
 
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -80,12 +80,12 @@ export default function ContractTab({ caseId, executionStartDate, executionDeadl
 
   return (
     <div className="space-y-6">
-      {/* Reloj de ejecución (15 días hábiles tras pago confirmado) */}
+      {/* Reloj de ejecución según la propuesta aprobada */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarClock className="h-4 w-4" />
-            Ejecución (15 días hábiles)
+            Ejecución ({approvedQuote?.quotedBusinessDays || 15} días hábiles)
           </CardTitle>
         </CardHeader>
         <CardContent>

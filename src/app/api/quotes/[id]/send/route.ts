@@ -8,6 +8,7 @@ import { triggerEvent } from '@/lib/realtime/server';
 import { notifyUsersAndAdmins } from '@/lib/notify';
 import { sendQuoteSentEmail } from '@/lib/email';
 import { auditEntityChange } from '@/lib/audit';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
 type QuoteWithCase = Quote & { case?: { _id: string; caseCode: string; title: string } };
 
@@ -32,6 +33,10 @@ export async function POST(
     if (!existing) {
       return NextResponse.json({ success: false, error: 'Cotizacion no encontrada' }, { status: 404 });
     }
+    const caseId = existing.case?._id;
+    if (!caseId) return NextResponse.json({ success: false, error: 'Cotización sin caso asociado' }, { status: 409 });
+    const access = await requireCaseAccess(request, caseId);
+    if (access.response) return access.response;
     if (existing.status !== 'borrador') {
       return NextResponse.json({ success: false, error: 'Solo se pueden enviar cotizaciones en borrador' }, { status: 400 });
     }
@@ -61,7 +66,6 @@ export async function POST(
     });
 
     const channelLabel = QUOTE_CHANNEL_LABELS[body.channel as QuoteChannel];
-    const caseId = existing.case?._id;
     let caseRow = null;
     if (caseId) {
       caseRow = await cases.getCaseById(caseId);
@@ -111,7 +115,7 @@ export async function POST(
 
     triggerEvent('quote:sent', { id });
 
-    return NextResponse.json({ success: true, data: updated });
+    return NextResponse.json({ success: true, data: updated && { ...updated, quoteDocumentUrl: undefined, downloadUrl: updated.quoteDocumentUrl ? `/api/quotes/${id}/download` : undefined } });
   } catch {
     return NextResponse.json({ success: false, error: 'Error enviando cotizacion' }, { status: 500 });
   }

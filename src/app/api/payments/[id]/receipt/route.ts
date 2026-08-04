@@ -7,6 +7,7 @@ import { triggerEvent } from '@/lib/realtime/server';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { maybeStartExecutionClock } from '@/lib/cases/execution';
 import { auditEntityChange } from '@/lib/audit';
+import { actorUserReference, requireCaseAccess } from '@/lib/auth/caseAccess';
 
 export async function POST(
   request: NextRequest,
@@ -22,6 +23,11 @@ export async function POST(
     if (!existing) {
       return NextResponse.json({ success: false, error: 'Pago no encontrado' }, { status: 404 });
     }
+    if (!existing.caseRef?._id) {
+      return NextResponse.json({ success: false, error: 'Pago sin caso asociado' }, { status: 409 });
+    }
+    const access = await requireCaseAccess(request, existing.caseRef._id);
+    if (access.response) return access.response;
     if (existing.status !== 'pendiente') {
       return NextResponse.json(
         { success: false, error: 'Solo se pueden subir justificantes a pagos pendientes' },
@@ -33,6 +39,13 @@ export async function POST(
     const file = formData.get('file') as File | null;
     if (!file || file.size === 0) {
       return NextResponse.json({ success: false, error: 'Archivo de justificante es requerido' }, { status: 400 });
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      return NextResponse.json({ success: false, error: 'El comprobante supera 15 MB' }, { status: 400 });
+    }
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)
+      && !/\.(pdf|jpe?g|png)$/i.test(file.name)) {
+      return NextResponse.json({ success: false, error: 'El comprobante debe ser PDF, JPG o PNG' }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -46,6 +59,7 @@ export async function POST(
       fileSize: file.size,
       status: 'validado',
       paymentDate: new Date().toISOString(),
+      receiptUploadedById: actorUserReference(access.actor),
     });
 
     // Also create a caseDocument for this receipt
@@ -75,7 +89,7 @@ export async function POST(
         description: `Pago ${existing.paymentNumber} validado con justificante`,
         userId, userName,
       });
-      // Item 20: primer pago validado → arranca el reloj de 15 días hábiles.
+      // Primer pago validado → arranca el reloj con el plazo hábil cotizado.
       await maybeStartExecutionClock(existing.caseRef._id, { userId, userName });
     }
 
@@ -90,7 +104,7 @@ export async function POST(
 
     triggerEvent('payment:receipt', { id });
 
-    return NextResponse.json({ success: true, data: updated });
+    return NextResponse.json({ success: true, data: updated && { ...updated, receiptUrl: undefined, receiptDownloadUrl: `/api/payments/${id}/receipt-download` } });
   } catch (err) {
     console.error('Error uploading receipt:', err);
     return NextResponse.json({ success: false, error: 'Error subiendo justificante' }, { status: 500 });

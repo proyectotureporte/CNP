@@ -10,6 +10,7 @@ export const USER_ROLES = [
   'mercadeo',
   'postventa',
   'cliente',
+  'perito',
 ] as const;
 
 export type UserRole = (typeof USER_ROLES)[number];
@@ -22,6 +23,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   mercadeo: 'Mercadeo',
   postventa: 'Post Venta',
   cliente: 'Cliente',
+  perito: 'Perito',
 };
 
 export const ROLE_COLORS: Record<UserRole, { bg: string; text: string; dot: string }> = {
@@ -32,6 +34,7 @@ export const ROLE_COLORS: Record<UserRole, { bg: string; text: string; dot: stri
   mercadeo: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
   postventa: { bg: 'bg-rose-50', text: 'text-rose-700', dot: 'bg-rose-500' },
   cliente: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+  perito: { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
 };
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
@@ -41,7 +44,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   administrativo: ['dashboard', 'cases', 'work-plans', 'experts', 'notifications', 'profile'],
   mercadeo: ['dashboard', 'cases', 'clients', 'formularios', 'notifications', 'profile', 'mensajes'],
   postventa: ['dashboard', 'cases', 'evaluations', 'notifications', 'profile'],
-  cliente: ['notifications', 'profile'],
+  cliente: ['cases', 'payments', 'notifications', 'profile', 'mensajes'],
+  perito: ['cases', 'work-plans', 'deliverables', 'commissions', 'notifications', 'profile'],
 };
 
 // ============================================
@@ -184,6 +188,7 @@ export interface CrmUser extends SanityDocument {
   active: boolean;
   avatarUrl?: string;
   mustChangePassword?: boolean;
+  clientId?: string;
   companyRef?: { _ref: string; _type: 'reference' };
 }
 
@@ -222,11 +227,12 @@ export interface PeritusRegistro {
   fechaRegistro?: string;
 }
 
-export const CLIENT_TYPES = ['abogado', 'empresa', 'juez', 'particular'] as const;
+export const CLIENT_TYPES = ['persona_natural', 'abogado_externo', 'empresa', 'juez'] as const;
 export type ClientType = (typeof CLIENT_TYPES)[number];
 
 export const CLIENT_TYPE_LABELS: Record<ClientType, string> = {
-  abogado: 'Abogado', empresa: 'Empresa', juez: 'Juez', particular: 'Particular',
+  persona_natural: 'Persona natural', abogado_externo: 'Abogado externo',
+  empresa: 'Empresa', juez: 'Juez',
 };
 
 export interface CrmClient extends SanityDocument {
@@ -270,6 +276,7 @@ export interface Case extends SanityDocument {
   technicalAnalyst?: { _ref: string; _type: 'reference' };
   assignedExpert?: { _ref: string; _type: 'reference' };
   assignedFinanciero?: { _ref: string; _type: 'reference' };
+  assignedJuridico?: { _ref: string; _type: 'reference' };
   discipline: CaseDiscipline;
   status: CaseStatus;
   statusChangedByRole?: string;
@@ -280,6 +287,10 @@ export interface Case extends SanityDocument {
   lossReason?: string;
   executionStartDate?: string;
   executionDeadline?: string;
+  executionBusinessDays?: number;
+  executionSuspendedAt?: string;
+  executionRemainingBusinessDays?: number;
+  executionState?: 'no_iniciada' | 'activa' | 'suspendida' | 'finalizada';
   estimatedAmount?: number;
   hasHearing?: boolean;
   hearingDate?: string;
@@ -310,6 +321,10 @@ export interface CaseExpanded {
   lossReason?: string;
   executionStartDate?: string;
   executionDeadline?: string;
+  executionBusinessDays?: number;
+  executionSuspendedAt?: string;
+  executionRemainingBusinessDays?: number;
+  executionState?: 'no_iniciada' | 'activa' | 'suspendida' | 'finalizada';
   estimatedAmount?: number;
   hasHearing?: boolean;
   hearingDate?: string;
@@ -324,6 +339,7 @@ export interface CaseExpanded {
   technicalAnalyst?: { _id: string; displayName: string; email: string };
   assignedExpert?: { _id: string; displayName: string; email: string };
   assignedFinanciero?: { _id: string; displayName: string; email: string };
+  assignedJuridico?: { _id: string; displayName: string; email: string; phone?: string };
   createdBy?: { _id: string; displayName: string };
 }
 
@@ -332,7 +348,9 @@ export const CASE_EVENT_TYPES = [
   'quote_created', 'quote_approved', 'quote_rejected',
   'deliverable_submitted', 'deliverable_approved',
   'payment_recorded', 'comment', 'follow_up', 'committee_decision',
-  'execution_started', 'other',
+  'execution_started', 'deliverable_rejected', 'document_requested',
+  'execution_suspended', 'execution_resumed', 'message_sent',
+  'payment_receipt_uploaded', 'expert_profile_updated', 'other',
 ] as const;
 
 export type CaseEventType = (typeof CASE_EVENT_TYPES)[number];
@@ -345,6 +363,10 @@ export const CASE_EVENT_LABELS: Record<CaseEventType, string> = {
   deliverable_approved: 'Entrega Aprobada', payment_recorded: 'Pago Registrado',
   comment: 'Comentario', follow_up: 'Seguimiento',
   committee_decision: 'Decisión de Comité', execution_started: 'Ejecución Iniciada',
+  deliverable_rejected: 'Entrega Devuelta', document_requested: 'Documentación Solicitada',
+  execution_suspended: 'Ejecución Suspendida', execution_resumed: 'Ejecución Reanudada',
+  message_sent: 'Mensaje Enviado', payment_receipt_uploaded: 'Comprobante Cargado',
+  expert_profile_updated: 'Perfil de Perito Actualizado',
   other: 'Otro',
 };
 
@@ -354,6 +376,7 @@ export interface CaseEvent {
   eventType: CaseEventType;
   description?: string;
   createdByName?: string;
+  createdByRole?: UserRole;
   createdBy?: { _id: string; displayName: string };
 }
 
@@ -404,10 +427,12 @@ export interface Quote {
   notes?: string;
   createdBy?: { _id: string; displayName: string };
   quoteDocumentUrl?: string;
+  downloadUrl?: string;
   firstPaymentDate?: string;
   lastPaymentDate?: string;
   firstPaymentPercentage: number;
   customSplit: boolean;
+  quotedBusinessDays?: number;
 }
 
 // ============================================
@@ -459,6 +484,7 @@ export interface CaseDocument {
   uploadedBy?: { _id: string; displayName: string };
   file?: { asset: { _ref: string; url?: string } };
   fileUrl?: string;
+  downloadUrl?: string;
 }
 
 export interface AdminConfig extends SanityDocument {
@@ -596,8 +622,13 @@ export interface Expert {
   bankName?: string;
   bankAccountType?: string;
   bankAccountNumber?: string;
+  bankAccountHolder?: string;
+  bankHolderDocument?: string;
   taxId?: string;
   cvFile?: { asset: { _ref: string; url?: string } };
+  cvFileUrl?: string;
+  cvFileName?: string;
+  cvDownloadUrl?: string;
   certificationFiles?: { asset: { _ref: string; url?: string } }[];
 }
 
@@ -693,6 +724,7 @@ export interface WorkPlanActivity {
   startedAt?: string;
   completedAt?: string;
   fileUrl?: string;
+  downloadUrl?: string;
   fileName?: string;
   assignedTo?: { _id: string; displayName: string; role: string };
   createdBy?: { _id: string; displayName: string };
@@ -735,9 +767,19 @@ export interface Deliverable {
   rejectionReason?: string;
   version: number;
   fileUrl?: string;
+  downloadUrl?: string;
+  attachments?: DeliverableAttachment[];
   submittedBy?: { _id: string; displayName: string };
   reviewedBy?: { _id: string; displayName: string };
   approvedBy?: { _id: string; displayName: string };
+}
+
+export interface DeliverableAttachment {
+  _id: string;
+  fileName: string;
+  mimeType?: string;
+  fileSize?: number;
+  downloadUrl?: string;
 }
 
 // ============================================
@@ -818,6 +860,7 @@ export interface Payment {
   status: PaymentStatus;
   transactionReference?: string;
   receiptUrl?: string;
+  receiptDownloadUrl?: string;
   notes?: string;
   caseRef?: { _id: string; caseCode: string; title: string };
   quoteRef?: { _id: string; version: number };
@@ -842,6 +885,8 @@ export interface Commission {
   status: CommissionStatus;
   paymentDate?: string;
   paymentReference?: string;
+  receiptDownloadUrl?: string;
+  receiptFileName?: string;
   expert?: { _id: string; displayName: string };
   caseRef?: { _id: string; caseCode: string; title: string };
 }
@@ -866,6 +911,35 @@ export interface AppNotification {
   linkUrl?: string;
   isRead: boolean;
   readAt?: string;
+}
+
+// ============================================
+// MENSAJERÍA Y SOLICITUDES DOCUMENTALES POR CASO
+// ============================================
+
+export type CaseMessageAudience = 'juridico_perito' | 'juridico_cliente';
+
+export interface CaseMessage {
+  _id: string;
+  _createdAt: string;
+  audience: CaseMessageAudience;
+  senderId?: string;
+  senderName: string;
+  senderRole: UserRole;
+  body: string;
+  attachmentName?: string;
+  attachmentMimeType?: string;
+  attachmentSize?: number;
+  attachmentDownloadUrl?: string;
+}
+
+export interface DocumentRequest {
+  _id: string;
+  _createdAt: string;
+  description: string;
+  status: 'solicitada' | 'atendida' | 'cancelada';
+  requestedBy?: { _id: string; displayName: string };
+  assignedJuridico?: { _id: string; displayName: string };
 }
 
 // ============================================
@@ -1020,10 +1094,11 @@ export interface WhatsappMessage {
 }
 
 export const ROLE_CASE_TABS: Record<string, string[]> = {
-  admin: ['summary', 'documents', 'committee', 'quotes', 'contract', 'work-plan', 'deliverables', 'timeline'],
-  juridico: ['summary', 'documents', 'committee', 'quotes', 'work-plan', 'deliverables', 'timeline'],
+  admin: ['summary', 'documents', 'committee', 'quotes', 'contract', 'work-plan', 'deliverables', 'payments', 'messages', 'timeline'],
+  juridico: ['summary', 'documents', 'committee', 'quotes', 'work-plan', 'deliverables', 'payments', 'messages', 'timeline'],
   financiero: ['summary', 'documents', 'quotes', 'contract', 'work-plan', 'deliverables', 'timeline'],
   administrativo: ['summary', 'documents', 'work-plan', 'deliverables', 'timeline'],
   mercadeo: ['summary', 'timeline'],
   postventa: ['summary', 'deliverables', 'timeline'],
+  perito: ['summary', 'documents', 'work-plan', 'deliverables', 'payments', 'messages', 'timeline'],
 };

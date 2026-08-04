@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cases } from '@/lib/db';
-import { verifyClientOwnsCase } from '@/lib/auth/clientAccess';
+import { cases, crmUser, expert } from '@/lib/db';
+import { requireCaseAccess, sanitizeCaseForRole } from '@/lib/auth/caseAccess';
 import {
   CASE_STATUSES, CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES, CASE_CHANNELS,
   type CaseStatus,
@@ -15,8 +15,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const userRole = request.headers.get('x-user-role') || '';
-    const userId = request.headers.get('x-user-id') || '';
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
     const caseData = await cases.getCaseById(id);
 
     if (!caseData) {
@@ -26,26 +26,10 @@ export async function GET(
       );
     }
 
-    // Financiero users can only access cases assigned to them
-    if (userRole === 'financiero' && caseData.assignedFinanciero?._id !== userId) {
-      return NextResponse.json(
-        { success: false, error: 'No tiene acceso a este caso' },
-        { status: 403 }
-      );
-    }
-
-    // Portal clients can only access their own cases
-    if (userRole === 'cliente') {
-      const { owns } = await verifyClientOwnsCase(userId, id);
-      if (!owns) {
-        return NextResponse.json(
-          { success: false, error: 'No tiene acceso a este caso' },
-          { status: 403 }
-        );
-      }
-    }
-
-    return NextResponse.json({ success: true, data: caseData });
+    return NextResponse.json({
+      success: true,
+      data: sanitizeCaseForRole(caseData, access.actor.role),
+    });
   } catch {
     return NextResponse.json(
       { success: false, error: 'Error obteniendo caso' },
@@ -62,8 +46,9 @@ export async function PUT(
     const { id } = await params;
     const userRole = request.headers.get('x-user-role') || '';
 
-    // Clients cannot edit cases
-    if (userRole === 'cliente') {
+    // Las actualizaciones técnicas del perito tienen endpoints acotados; el
+    // CRUD general del caso queda únicamente en manos de admin/jurídico.
+    if (!['admin', 'juridico'].includes(userRole)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 
@@ -141,12 +126,70 @@ export async function PUT(
       patch.status = body.status;
     }
 
-    // Reference fields (vacío => limpiar)
+    // Reference fields (vacío => limpiar). Las asignaciones que involucren a
+    // un perito repiten aquí la validación del endpoint /assign para que ningún
+    // flujo alternativo pueda saltarse el bloqueo bancario de G-01.
+    if (body.assignedExpertId) {
+      const assignedUser = await crmUser.getUserById(body.assignedExpertId);
+      if (!assignedUser || assignedUser.role !== 'perito') {
+        return NextResponse.json({ success: false, error: 'El usuario asignado debe tener rol perito' }, { status: 400 });
+      }
+      const profile = await expert.getExpertByUserId(body.assignedExpertId);
+      if (profile?.validationStatus !== 'activado') {
+        return NextResponse.json(
+          { success: false, error: 'No se puede asignar el caso: el perfil del perito debe estar activado y categorizado.' },
+          { status: 409 },
+        );
+      }
+      if (!profile.bankName?.trim()
+        || !profile.bankAccountType?.trim()
+        || !profile.bankAccountNumber?.trim()
+        || !profile.bankAccountHolder?.trim()
+        || !profile.bankHolderDocument?.trim()) {
+        return NextResponse.json(
+          { success: false, error: 'No se puede asignar el caso: el perito debe completar sus datos bancarios.' },
+          { status: 409 },
+        );
+      }
+    }
+    if (body.assignedFinancieroId) {
+      const assignedUser = await crmUser.getUserById(body.assignedFinancieroId);
+      if (!assignedUser || !['financiero', 'perito'].includes(assignedUser.role)) {
+        return NextResponse.json({ success: false, error: 'El responsable financiero no tiene un rol válido' }, { status: 400 });
+      }
+      if (assignedUser.role === 'perito') {
+        const profile = await expert.getExpertByUserId(body.assignedFinancieroId);
+        if (profile?.validationStatus !== 'activado') {
+          return NextResponse.json(
+            { success: false, error: 'No se puede asignar el caso: el perfil del perito debe estar activado y categorizado.' },
+            { status: 409 },
+          );
+        }
+        if (!profile.bankName?.trim()
+          || !profile.bankAccountType?.trim()
+          || !profile.bankAccountNumber?.trim()
+          || !profile.bankAccountHolder?.trim()
+          || !profile.bankHolderDocument?.trim()) {
+          return NextResponse.json(
+            { success: false, error: 'No se puede asignar el caso: el perito debe completar sus datos bancarios.' },
+            { status: 409 },
+          );
+        }
+      }
+    }
+    if (body.assignedJuridicoId) {
+      const assignedUser = await crmUser.getUserById(body.assignedJuridicoId);
+      if (!assignedUser || assignedUser.role !== 'juridico') {
+        return NextResponse.json({ success: false, error: 'El interlocutor debe tener rol jurídico' }, { status: 400 });
+      }
+    }
+
     if (body.clientId !== undefined) patch.clientId = body.clientId || null;
     if (body.commercialId !== undefined) patch.commercialId = body.commercialId || null;
     if (body.technicalAnalystId !== undefined) patch.technicalAnalystId = body.technicalAnalystId || null;
     if (body.assignedExpertId !== undefined) patch.assignedExpertId = body.assignedExpertId || null;
     if (body.assignedFinancieroId !== undefined) patch.assignedFinancieroId = body.assignedFinancieroId || null;
+    if (body.assignedJuridicoId !== undefined) patch.assignedJuridicoId = body.assignedJuridicoId || null;
 
     const updated = await cases.updateCase(id, patch);
 
@@ -201,8 +244,7 @@ export async function DELETE(
     const { id } = await params;
     const userRole = request.headers.get('x-user-role') || '';
 
-    // Clients cannot delete cases
-    if (userRole === 'cliente') {
+    if (!['admin', 'juridico'].includes(userRole)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 

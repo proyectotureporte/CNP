@@ -1,5 +1,5 @@
 import { query, queryOne, buildInsert, buildUpdate, newId, pruneUndefined, nestedObj } from './pool';
-import type { WorkPlanActivity, ActivityStatus } from '@/lib/types';
+import type { ActivityStatus, WorkPlanActivity, WorkPlanStatus } from '@/lib/types';
 
 const assignedToObj = nestedObj('at', { _id: 'at.id', displayName: 'at.display_name', role: 'at.role' });
 const createdByObj = nestedObj('cb', { _id: 'cb.id', displayName: 'cb.display_name' });
@@ -37,6 +37,38 @@ export async function getActivityCaseId(id: string): Promise<string | null> {
     [id],
   );
   return row?.case_id ?? null;
+}
+
+export async function getActivityContext(id: string): Promise<{
+  caseId: string;
+  workPlanStatus: WorkPlanStatus | null;
+} | null> {
+  return queryOne(
+    `SELECT a.case_id AS "caseId",
+       COALESCE(wp.status, (
+         SELECT current_wp.status FROM work_plan current_wp
+         WHERE current_wp.case_id = a.case_id
+         ORDER BY current_wp.created_at DESC LIMIT 1
+       )) AS "workPlanStatus"
+     FROM work_plan_activity a
+     LEFT JOIN work_plan wp ON wp.id = a.work_plan_id
+     WHERE a.id = $1`,
+    [id],
+  );
+}
+
+export async function getActivityFileAccessRow(id: string): Promise<{
+  caseId: string;
+  fileUrl: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+} | null> {
+  return queryOne(
+    `SELECT case_id AS "caseId", file_url AS "fileUrl",
+       file_name AS "fileName", mime_type AS "mimeType"
+     FROM work_plan_activity WHERE id = $1`,
+    [id],
+  );
 }
 
 export async function getActivityById(id: string): Promise<WorkPlanActivity | null> {

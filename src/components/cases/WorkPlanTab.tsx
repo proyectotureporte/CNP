@@ -17,7 +17,7 @@ import {
 import {
   Loader2, Plus, CheckCircle, XCircle, Pencil, Calendar,
   Trash2, Upload, FileText, Clock, User, PlayCircle, AlertTriangle,
-  MessageSquare, MoreVertical, RefreshCw,
+  MessageSquare, MoreVertical, RefreshCw, ClipboardList, Save, Send,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -25,11 +25,13 @@ import {
 import {
   ACTIVITY_STATUS_LABELS, ACTIVITY_STATUS_COLORS, ROLE_LABELS,
   OBSERVATION_TYPES, OBSERVATION_TYPE_LABELS,
+  WORK_PLAN_STATUS_LABELS, WORK_PLAN_STATUS_COLORS,
   type WorkPlanActivity, type ActivityStatus, type UserRole, type ObservationType,
+  type WorkPlan,
 } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { usePusher } from "@/hooks/usePusher";
-import { canManageWorkPlanActions } from "@/lib/auth/permissions";
+import { canEditWorkPlan } from "@/lib/auth/permissions";
 
 interface WorkPlanTabProps { caseId: string; userRole?: string; }
 
@@ -82,6 +84,14 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
 
   const [activities, setActivities] = useState<WorkPlanActivity[]>([]);
   const [counts, setCounts] = useState<ActivityCounts>({ total: 0, completadas: 0, en_progreso: 0, pendientes: 0 });
+  const [plan, setPlan] = useState<WorkPlan | null>(null);
+  const [planMethodology, setPlanMethodology] = useState("");
+  const [planObjectives, setPlanObjectives] = useState("");
+  const [planDeliverables, setPlanDeliverables] = useState("");
+  const [planStartDate, setPlanStartDate] = useState("");
+  const [planEndDate, setPlanEndDate] = useState("");
+  const [planSaving, setPlanSaving] = useState(false);
+  const [planSubmitting, setPlanSubmitting] = useState(false);
 
   const [showDialog, setShowDialog] = useState(false);
   const [editingActivity, setEditingActivity] = useState<WorkPlanActivity | null>(null);
@@ -113,7 +123,16 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
   const [recalcSaving, setRecalcSaving] = useState(false);
 
   const role = (userRole || user?.role || '') as UserRole;
-  const canEdit = !!user && canManageWorkPlanActions(role);
+  const canEdit = !!user && canEditWorkPlan(role);
+  const canEditPlan = canEdit && (!plan || plan.status === "borrador" || plan.status === "rechazado");
+  const canEditActivityStructure = canEditPlan && Boolean(plan);
+  const canUpdateActivityStatus = canEdit && (role !== "perito" || plan?.status === "aprobado");
+  const canUploadActivity = canEdit && (
+    role !== "perito"
+    || plan?.status === "borrador"
+    || plan?.status === "rechazado"
+    || plan?.status === "aprobado"
+  );
   const isAdministrativo = role === "administrativo";
 
   const progressPercent = counts.total > 0
@@ -141,11 +160,23 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
 
   const loadActivities = useCallback(async () => {
     try {
-      const res = await fetch(`/api/cases/${caseId}/activities`);
-      const data = await res.json();
-      if (data.success) {
-        setActivities(data.data.activities || []);
-        setCounts(data.data.counts || { total: 0, completadas: 0, en_progreso: 0, pendientes: 0 });
+      const [activitiesResponse, planResponse] = await Promise.all([
+        fetch(`/api/cases/${caseId}/activities`),
+        fetch(`/api/cases/${caseId}/work-plan`),
+      ]);
+      const [activitiesData, planData] = await Promise.all([activitiesResponse.json(), planResponse.json()]);
+      if (activitiesData.success) {
+        setActivities(activitiesData.data.activities || []);
+        setCounts(activitiesData.data.counts || { total: 0, completadas: 0, en_progreso: 0, pendientes: 0 });
+      }
+      if (planData.success) {
+        const loadedPlan = planData.data as WorkPlan | null;
+        setPlan(loadedPlan);
+        setPlanMethodology(loadedPlan?.methodology || "");
+        setPlanObjectives(loadedPlan?.objectives || "");
+        setPlanDeliverables(loadedPlan?.deliverablesDescription || "");
+        setPlanStartDate(loadedPlan?.startDate?.slice(0, 10) || "");
+        setPlanEndDate(loadedPlan?.endDate?.slice(0, 10) || "");
       }
     } catch { /* ignore */ }
     finally { setLoading(false); }
@@ -154,7 +185,7 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
   useEffect(() => { loadActivities(); }, [loadActivities]);
 
   usePusher(
-    ['activity:created', 'activity:updated', 'activity:deleted'],
+    ['activity:created', 'activity:updated', 'activity:deleted', 'work-plan:submitted', 'work-plan:approved', 'work-plan:rejected'],
     () => { loadActivities(); }
   );
 
@@ -166,8 +197,59 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
         if (data.success) setSystemUsers(data.data || []);
       } catch { /* ignore */ }
     }
-    loadUsers();
-  }, []);
+    if (role === "admin" || role === "administrativo") loadUsers();
+  }, [role]);
+
+  async function savePlan() {
+    setPlanSaving(true);
+    setError("");
+    try {
+      const endpoint = plan ? `/api/work-plans/${plan._id}` : `/api/cases/${caseId}/work-plan`;
+      const response = await fetch(endpoint, {
+        method: plan ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          methodology: planMethodology,
+          objectives: planObjectives,
+          deliverablesDescription: planDeliverables,
+          startDate: planStartDate || null,
+          endDate: planEndDate || null,
+          estimatedDays: planStartDate && planEndDate
+            ? Math.max(1, Math.ceil((new Date(planEndDate).getTime() - new Date(planStartDate).getTime()) / 86400000))
+            : 0,
+        }),
+      });
+      const payload = await response.json();
+      if (!payload.success) throw new Error(payload.error || "No fue posible guardar el plan");
+      setPlan(payload.data);
+      await loadActivities();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "No fue posible guardar el plan");
+    } finally {
+      setPlanSaving(false);
+    }
+  }
+
+  async function submitPlan() {
+    if (!plan) return;
+    setPlanSubmitting(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/work-plans/${plan._id}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const payload = await response.json();
+      if (!payload.success) throw new Error(payload.error || "No fue posible enviar el plan");
+      setPlan(payload.data);
+      await loadActivities();
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "No fue posible enviar el plan");
+    } finally {
+      setPlanSubmitting(false);
+    }
+  }
 
   function openCreateDialog() {
     setEditingActivity(null);
@@ -351,6 +433,63 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
     <div className="space-y-5">
       {error && <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
 
+      <Card>
+        <CardContent className="space-y-4 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-[#2969b0]" />
+              <div>
+                <h3 className="font-semibold">Plan de trabajo del perito</h3>
+                <p className="text-xs text-muted-foreground">Metodología, objetivos, plazo y entregables comprometidos.</p>
+              </div>
+            </div>
+            {plan && (
+              <Badge className={`${WORK_PLAN_STATUS_COLORS[plan.status]?.bg} ${WORK_PLAN_STATUS_COLORS[plan.status]?.text} border-0`}>
+                {WORK_PLAN_STATUS_LABELS[plan.status]}
+              </Badge>
+            )}
+          </div>
+
+          {plan?.status === "rechazado" && plan.rejectionComments && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              Correcciones solicitadas: {plan.rejectionComments}
+            </div>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Metodología</Label>
+              <Textarea value={planMethodology} onChange={(e) => setPlanMethodology(e.target.value)} disabled={!canEditPlan} rows={3} placeholder="Describe cómo se ejecutará el peritaje..." />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Objetivos</Label>
+              <Textarea value={planObjectives} onChange={(e) => setPlanObjectives(e.target.value)} disabled={!canEditPlan} rows={3} placeholder="Objetivos técnicos del trabajo..." />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Entregables</Label>
+              <Textarea value={planDeliverables} onChange={(e) => setPlanDeliverables(e.target.value)} disabled={!canEditPlan} rows={2} placeholder="Dictamen y anexos previstos..." />
+            </div>
+            <div className="space-y-2"><Label>Inicio</Label><Input type="date" value={planStartDate} onChange={(e) => setPlanStartDate(e.target.value)} disabled={!canEditPlan} /></div>
+            <div className="space-y-2"><Label>Finalización estimada</Label><Input type="date" value={planEndDate} onChange={(e) => setPlanEndDate(e.target.value)} disabled={!canEditPlan} /></div>
+          </div>
+
+          {canEditPlan && (
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="outline" onClick={savePlan} disabled={planSaving || !planMethodology.trim() || !planObjectives.trim() || !planDeliverables.trim()}>
+                {planSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {plan ? "Guardar cambios" : "Crear plan"}
+              </Button>
+              {plan && (
+                <Button onClick={submitPlan} disabled={planSubmitting}>
+                  {planSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                  Enviar a revisión
+                </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Barra de progreso */}
       {counts.total > 0 && (
         <div className="space-y-2">
@@ -406,7 +545,7 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
               <RefreshCw className="mr-2 h-3.5 w-3.5" />Recalcular Fechas
             </Button>
           )}
-          {canEdit && (
+          {canEditActivityStructure && (
             <Button size="sm" onClick={openCreateDialog}>
               <Plus className="mr-2 h-3.5 w-3.5" />Agregar Actividad
             </Button>
@@ -419,7 +558,7 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
         <div className="flex flex-col items-center py-10 text-muted-foreground">
           <Clock className="h-8 w-8 mb-3" />
           <p className="text-sm">No hay actividades registradas</p>
-          {canEdit && <p className="text-xs mt-1">Usa el boton &quot;Agregar Actividad&quot; para comenzar</p>}
+          {canEditActivityStructure && <p className="text-xs mt-1">Usa el boton &quot;Agregar Actividad&quot; para comenzar</p>}
         </div>
       ) : filteredActivities.length === 0 ? (
         <div className="flex flex-col items-center py-8 text-muted-foreground">
@@ -480,8 +619,8 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
                             <span>Completada:</span> {formatDate(act.completedAt)}
                           </span>
                         )}
-                        {act.fileUrl && (
-                          <a href={act.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline">
+                        {act.downloadUrl && (
+                          <a href={act.downloadUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline">
                             <FileText className="h-3 w-3" />{act.fileName || "Archivo"}
                           </a>
                         )}
@@ -489,32 +628,38 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
                     </div>
 
                     {/* Acciones */}
-                    {canEdit && (
+                    {(canUpdateActivityStatus || canUploadActivity || canEditActivityStructure) && (
                       <div className="flex items-center gap-1 shrink-0">
-                        {act.status === "pendiente" && (
+                        {canUpdateActivityStatus && act.status === "pendiente" && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Iniciar" onClick={() => handleChangeStatus(act._id, "en_progreso")}>
                             <PlayCircle className="h-3.5 w-3.5 text-blue-600" />
                           </Button>
                         )}
-                        {act.status === "en_progreso" && (
+                        {canUpdateActivityStatus && act.status === "en_progreso" && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Marcar completada" onClick={() => handleChangeStatus(act._id, "completada")}>
                             <CheckCircle className="h-3.5 w-3.5 text-green-600" />
                           </Button>
                         )}
-                        {act.status === "completada" && (
+                        {canUpdateActivityStatus && act.status === "completada" && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Reabrir" onClick={() => handleChangeStatus(act._id, "pendiente")}>
                             <XCircle className="h-3.5 w-3.5 text-amber-600" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Subir documento" onClick={() => { setUploadActivityId(act._id); setUploadFile(null); setShowUploadDialog(true); }}>
-                          <Upload className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => openEditDialog(act)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Eliminar" onClick={() => handleDeleteActivity(act._id)}>
-                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                        </Button>
+                        {canUploadActivity && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Subir documento" onClick={() => { setUploadActivityId(act._id); setUploadFile(null); setShowUploadDialog(true); }}>
+                            <Upload className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {canEditActivityStructure && (
+                          <>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => openEditDialog(act)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Eliminar" onClick={() => handleDeleteActivity(act._id)}>
+                              <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     )}
 

@@ -3,7 +3,8 @@ import { cases, crmClient, caseDocument, query } from '@/lib/db';
 import { guardRole } from '@/lib/auth/guard';
 import { canCreateCase } from '@/lib/auth/permissions';
 import { getClientIdForUser } from '@/lib/auth/clientAccess';
-import { CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES, CASE_CHANNELS } from '@/lib/types';
+import { sanitizeCaseForRole } from '@/lib/auth/caseAccess';
+import { CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES, CASE_CHANNELS, type UserRole } from '@/lib/types';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
 import { auditEntityChange } from '@/lib/audit';
@@ -25,7 +26,7 @@ function generateCaseCode(latestCode: string | null, brand: string): string {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userRole = request.headers.get('x-user-role') || '';
+    const userRole = request.headers.get('x-user-role') as UserRole;
     const userId = request.headers.get('x-user-id') || '';
     const status = searchParams.get('status') || '';
     const discipline = searchParams.get('discipline') || '';
@@ -43,7 +44,15 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: true, data: [], meta: { total: 0, page: 1, limit, totalPages: 0 } });
       }
       const list = await cases.listCasesForClient(clientId);
-      return NextResponse.json({ success: true, data: list, meta: { total: list.length, page: 1, limit: list.length, totalPages: 1 } });
+      const safeList = list.map((item) => sanitizeCaseForRole(item, 'cliente'));
+      return NextResponse.json({ success: true, data: safeList, meta: { total: safeList.length, page: 1, limit: safeList.length, totalPages: safeList.length ? 1 : 0 } });
+    }
+
+    // El perito solo recibe casos propios y la consulta ni siquiera enlaza al cliente.
+    if (userRole === 'perito') {
+      const list = await cases.listCasesForExpert(userId);
+      const safeList = list.map((item) => sanitizeCaseForRole(item, 'perito'));
+      return NextResponse.json({ success: true, data: safeList, meta: { total: safeList.length, page: 1, limit: safeList.length, totalPages: safeList.length ? 1 : 0 } });
     }
 
     // Financiero users can only see cases assigned to them
@@ -92,6 +101,7 @@ export async function POST(request: NextRequest) {
     if (stop) return stop;
 
     const userId = request.headers.get('x-user-id');
+    const userRole = request.headers.get('x-user-role');
     const userName = request.headers.get('x-user-name') || 'Sistema';
     const body = await request.json();
     const {
@@ -159,6 +169,7 @@ export async function POST(request: NextRequest) {
       clientId: clientId || null,
       createdById: userId && userId !== 'admin' ? userId : null,
       commercialId: userId && userId !== 'admin' ? userId : null,
+      assignedJuridicoId: userRole === 'juridico' && userId ? userId : null,
     });
 
     if (!created) {

@@ -6,6 +6,7 @@ import { logCaseEvent } from '@/lib/sanity/logEvent';
 import type { Quote } from '@/lib/types';
 import { triggerEvent } from '@/lib/realtime/server';
 import { auditEntityChange } from '@/lib/audit';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
 type QuoteWithCase = Quote & { case?: { _id: string; caseCode: string; title: string } };
 
@@ -41,6 +42,8 @@ export async function POST(
     if (!caseId) {
       return NextResponse.json({ success: false, error: 'La cotización no tiene caso asociado' }, { status: 400 });
     }
+    const access = await requireCaseAccess(request, caseId);
+    if (access.response) return access.response;
 
     const version = (await quote.getMaxQuoteVersion(caseId)) + 1;
     const createdById = userId && userId !== 'admin' ? userId : null;
@@ -59,6 +62,7 @@ export async function POST(
       lastPaymentDate: existing.lastPaymentDate ?? null,
       customSplit: existing.customSplit,
       firstPaymentPercentage: existing.firstPaymentPercentage,
+      quotedBusinessDays: existing.quotedBusinessDays ?? 15,
       createdById,
     });
 
@@ -101,7 +105,7 @@ export async function POST(
 
     triggerEvent('quote:created', { caseId });
 
-    return NextResponse.json({ success: true, data: created }, { status: 201 });
+    return NextResponse.json({ success: true, data: created && { ...created, quoteDocumentUrl: undefined, downloadUrl: created.quoteDocumentUrl ? `/api/quotes/${created._id}/download` : undefined } }, { status: 201 });
   } catch (err) {
     console.error('Error revising quote:', err);
     return NextResponse.json({ success: false, error: 'Error creando la nueva versión' }, { status: 500 });

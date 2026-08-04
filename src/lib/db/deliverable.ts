@@ -1,5 +1,20 @@
-import { query, queryOne, buildInsert, buildUpdate, newId, pruneUndefined, nestedObj } from './pool';
-import type { Deliverable, DeliverablePhase, DeliverableStatus } from '@/lib/types';
+import {
+  query,
+  queryOne,
+  buildInsert,
+  buildUpdate,
+  newId,
+  pruneUndefined,
+  nestedObj,
+  withTransaction,
+} from './pool';
+import type {
+  CaseMessageAudience,
+  Deliverable,
+  DeliverablePhase,
+  DeliverableStatus,
+  UserRole,
+} from '@/lib/types';
 
 const submittedByObj = nestedObj('sb', { _id: 'sb.id', displayName: 'sb.display_name' });
 const reviewedByObj = nestedObj('rb', { _id: 'rb.id', displayName: 'rb.display_name' });
@@ -22,20 +37,88 @@ const JOINS = `
 `;
 
 export async function listCaseDeliverables(caseId: string): Promise<Deliverable[]> {
-  return query<Deliverable>(
+  const rows = await query<Deliverable>(
     `SELECT ${SELECT} FROM deliverable d ${JOINS}
      WHERE d.case_id = $1 ORDER BY d.phase_number ASC, d.version DESC`,
     [caseId],
   );
+  return Promise.all(rows.map(withAttachments));
 }
 
 export async function getDeliverableById(id: string): Promise<Deliverable | null> {
-  return queryOne<Deliverable>(
+  const row = await queryOne<Deliverable>(
     `SELECT ${SELECT}, ${caseObj} AS "case"
      FROM deliverable d ${JOINS} LEFT JOIN cases c ON c.id = d.case_id
      WHERE d.id = $1`,
     [id],
   );
+  return row ? withAttachments(row) : null;
+}
+
+async function withAttachments(item: Deliverable): Promise<Deliverable> {
+  const attachments = await query<{
+    _id: string; fileName: string; mimeType?: string; fileSize?: number;
+  }>(
+    `SELECT id AS "_id", file_name AS "fileName", mime_type AS "mimeType",
+       file_size AS "fileSize" FROM deliverable_attachment
+     WHERE deliverable_id = $1 ORDER BY created_at ASC`,
+    [item._id],
+  );
+  return { ...item, attachments };
+}
+
+export async function getDeliverableAccessRow(id: string): Promise<{
+  caseId: string;
+  status: DeliverableStatus;
+  fileUrl: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+} | null> {
+  return queryOne(
+    `SELECT case_id AS "caseId", status, file_url AS "fileUrl",
+       file_name AS "fileName", mime_type AS "mimeType"
+     FROM deliverable WHERE id = $1`,
+    [id],
+  );
+}
+
+export async function getDeliverableAttachmentAccessRow(id: string): Promise<{
+  caseId: string;
+  deliverableStatus: DeliverableStatus;
+  fileUrl: string;
+  fileName: string;
+  mimeType: string | null;
+} | null> {
+  return queryOne(
+    `SELECT d.case_id AS "caseId", d.status AS "deliverableStatus",
+       a.file_url AS "fileUrl", a.file_name AS "fileName", a.mime_type AS "mimeType"
+     FROM deliverable_attachment a
+     JOIN deliverable d ON d.id = a.deliverable_id
+     WHERE a.id = $1`,
+    [id],
+  );
+}
+
+export async function addDeliverableAttachment(input: {
+  deliverableId: string;
+  fileUrl: string;
+  fileAssetId?: string | null;
+  fileName: string;
+  mimeType?: string | null;
+  fileSize?: number | null;
+}): Promise<string> {
+  const id = newId();
+  const { text, values } = buildInsert('deliverable_attachment', {
+    id,
+    deliverable_id: input.deliverableId,
+    file_url: input.fileUrl,
+    file_asset_id: input.fileAssetId ?? null,
+    file_name: input.fileName,
+    mime_type: input.mimeType ?? null,
+    file_size: input.fileSize ?? null,
+  });
+  await query(text, values);
+  return id;
 }
 
 export async function countCaseDeliverables(caseId: string): Promise<number> {
@@ -44,6 +127,18 @@ export async function countCaseDeliverables(caseId: string): Promise<number> {
     [caseId],
   );
   return row?.count ?? 0;
+}
+
+export async function getNextDeliverableVersion(
+  caseId: string,
+  phase: DeliverablePhase,
+): Promise<number> {
+  const row = await queryOne<{ next: number }>(
+    `SELECT COALESCE(max(version), 0)::int + 1 AS next
+     FROM deliverable WHERE case_id = $1 AND phase = $2::deliverable_phase`,
+    [caseId, phase],
+  );
+  return row?.next ?? 1;
 }
 
 export async function listAllDeliverables(status = '', phase = '', limit = 20, offset = 0): Promise<Deliverable[]> {
@@ -62,6 +157,37 @@ export async function countAllDeliverables(status = '', phase = ''): Promise<num
     `SELECT count(*)::int AS count FROM deliverable
      WHERE ($1 = '' OR status = $1::deliverable_status) AND ($2 = '' OR phase = $2::deliverable_phase)`,
     [status, phase],
+  );
+  return row?.count ?? 0;
+}
+
+export async function listExpertDeliverables(
+  expertId: string,
+  status = '',
+  phase = '',
+  limit = 20,
+  offset = 0,
+): Promise<Deliverable[]> {
+  return query<Deliverable>(
+    `SELECT ${SELECT}, ${caseObj} AS "case"
+     FROM deliverable d ${JOINS}
+     JOIN cases c ON c.id = d.case_id
+     WHERE (c.assigned_expert_id = $1 OR c.assigned_financiero_id = $1)
+       AND ($2 = '' OR d.status = $2::deliverable_status)
+       AND ($3 = '' OR d.phase = $3::deliverable_phase)
+     ORDER BY d.created_at DESC LIMIT $4 OFFSET $5`,
+    [expertId, status, phase, limit, offset],
+  );
+}
+
+export async function countExpertDeliverables(expertId: string, status = '', phase = ''): Promise<number> {
+  const row = await queryOne<{ count: number }>(
+    `SELECT count(*)::int AS count FROM deliverable d
+     JOIN cases c ON c.id = d.case_id
+     WHERE (c.assigned_expert_id = $1 OR c.assigned_financiero_id = $1)
+       AND ($2 = '' OR d.status = $2::deliverable_status)
+       AND ($3 = '' OR d.phase = $3::deliverable_phase)`,
+    [expertId, status, phase],
   );
   return row?.count ?? 0;
 }
@@ -129,6 +255,68 @@ export async function updateDeliverable(id: string, patch: Partial<DeliverableIn
   const upd = buildUpdate('deliverable', id, toColumns(patch));
   if (upd) await query(upd.text, upd.values);
   return getDeliverableById(id);
+}
+
+/**
+ * Publica el resultado de la revisión y su mensaje de caso como una sola
+ * operación. De este modo un dictamen no puede quedar aprobado/rechazado sin
+ * la notificación persistente que explica el resultado en el hilo correcto.
+ */
+export async function reviewDeliverableWithMessage(input: {
+  id: string;
+  caseId: string;
+  status: Extract<DeliverableStatus, 'aprobado' | 'rechazado'>;
+  rejectionReason?: string | null;
+  reviewerId: string;
+  senderName: string;
+  senderRole: UserRole;
+  audience: CaseMessageAudience;
+  message: string;
+}): Promise<Deliverable | null> {
+  const messageId = newId();
+  const reviewerId = input.reviewerId !== 'admin' ? input.reviewerId : null;
+
+  await withTransaction(async (client) => {
+    const updated = await client.query<{ id: string }>(
+      `UPDATE deliverable
+       SET status = $1::deliverable_status,
+           rejection_reason = $2,
+           reviewed_by_id = $3,
+           approved_by_id = $4,
+           updated_at = now()
+       WHERE id = $5 AND case_id = $6
+         AND status IN ('enviado', 'en_revision')
+       RETURNING id`,
+      [
+        input.status,
+        input.status === 'rechazado' ? input.rejectionReason ?? null : null,
+        reviewerId,
+        input.status === 'aprobado' ? reviewerId : null,
+        input.id,
+        input.caseId,
+      ],
+    );
+    if (updated.rowCount !== 1) {
+      throw new Error('DELIVERABLE_STATE_CONFLICT');
+    }
+
+    await client.query(
+      `INSERT INTO case_message (
+         id, case_id, audience, sender_id, sender_name, sender_role, body
+       ) VALUES ($1, $2, $3::case_message_audience, $4, $5, $6::user_role, $7)`,
+      [
+        messageId,
+        input.caseId,
+        input.audience,
+        reviewerId,
+        input.senderName,
+        input.senderRole,
+        input.message,
+      ],
+    );
+  });
+
+  return getDeliverableById(input.id);
 }
 
 export async function deleteDeliverable(id: string): Promise<void> {

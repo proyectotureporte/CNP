@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { workPlan } from '@/lib/db';
-import { guardRole } from '@/lib/auth/guard';
 import { canManageWorkPlanActions } from '@/lib/auth/permissions';
+import { actorFromRequest } from '@/lib/auth/caseAccess';
 
 export async function GET(request: NextRequest) {
   try {
-    const stop = guardRole(request, canManageWorkPlanActions);
-    if (stop) return stop;
+    const actor = actorFromRequest(request);
+    if (!actor || (actor.role !== 'perito' && !canManageWorkPlanActions(actor.role))) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || '';
@@ -14,10 +16,15 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const offset = (page - 1) * limit;
 
-    const [data, total] = await Promise.all([
-      workPlan.listAllWorkPlans(status, limit, offset),
-      workPlan.countAllWorkPlans(status),
-    ]);
+    const [data, total] = actor.role === 'perito'
+      ? await Promise.all([
+          workPlan.listExpertWorkPlans(actor.userId, status, limit, offset),
+          workPlan.countExpertWorkPlans(actor.userId, status),
+        ])
+      : await Promise.all([
+          workPlan.listAllWorkPlans(status, limit, offset),
+          workPlan.countAllWorkPlans(status),
+        ]);
 
     return NextResponse.json({
       success: true,

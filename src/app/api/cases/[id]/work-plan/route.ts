@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cases, workPlan } from '@/lib/db';
-import { guardRole } from '@/lib/auth/guard';
-import { canManageWorkPlanActions } from '@/lib/auth/permissions';
+import { canEditWorkPlan } from '@/lib/auth/permissions';
+import { actorUserReference, requireCaseAccess } from '@/lib/auth/caseAccess';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
+    if (access.actor.role === 'cliente') {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
     const plan = await workPlan.getCaseWorkPlan(id);
     return NextResponse.json({ success: true, data: plan });
   } catch {
@@ -23,15 +28,22 @@ export async function POST(
   try {
     const { id } = await params;
 
-    const stop = guardRole(request, canManageWorkPlanActions);
-    if (stop) return stop;
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
+    if (!canEditWorkPlan(access.actor.role)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
 
-    const userId = request.headers.get('x-user-id');
     const body = await request.json();
 
     const caseData = await cases.getCaseById(id);
     if (!caseData) {
       return NextResponse.json({ success: false, error: 'Caso no encontrado' }, { status: 404 });
+    }
+
+    const existingPlan = await workPlan.getCaseWorkPlan(id);
+    if (existingPlan) {
+      return NextResponse.json({ success: false, error: 'El caso ya tiene un plan de trabajo' }, { status: 409 });
     }
 
     const created = await workPlan.createWorkPlan({
@@ -43,8 +55,10 @@ export async function POST(
       estimatedDays: body.estimatedDays || 0,
       deliverablesDescription: body.deliverablesDescription || '',
       status: 'borrador',
-      assignedExpertId: body.assignedExpert || null,
-      createdById: userId && userId !== 'admin' ? userId : null,
+      assignedExpertId: access.actor.role === 'perito'
+        ? access.actor.userId
+        : (body.assignedExpert || caseData.assignedExpert?._id || null),
+      createdById: actorUserReference(access.actor),
     });
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });

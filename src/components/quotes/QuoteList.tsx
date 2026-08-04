@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import {
   Plus, CheckCircle, XCircle, DollarSign,
   Loader2, Clock, FileText, Pencil, Upload, ExternalLink,
-  AlertTriangle, Info, Send, CopyPlus, CalendarClock,
+  Send, CopyPlus, CalendarClock,
 } from "lucide-react";
 import {
   Select,
@@ -86,7 +86,6 @@ export default function QuoteList({ caseId, userRole }: QuoteListProps) {
   const role = (userRole || user?.role || '') as UserRole;
   const canManageQuotes = !!user && canCreateQuote(role);
   const canApproveQuotes = !!user && canApproveQuote(role);
-  const isFinanciero = role === "financiero";
 
   const loadQuotes = useCallback(async () => {
     try {
@@ -367,9 +366,9 @@ export default function QuoteList({ caseId, userRole }: QuoteListProps) {
                   </div>
 
                   {/* Quote Document */}
-                  {quote.quoteDocumentUrl && (
+                  {quote.downloadUrl && (
                     <a
-                      href={quote.quoteDocumentUrl}
+                      href={quote.downloadUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
@@ -427,9 +426,9 @@ export default function QuoteList({ caseId, userRole }: QuoteListProps) {
                                 </div>
                               )}
                               {/* View receipt link - only for validated payments */}
-                              {payment.status === "validado" && payment.receiptUrl && (
+                              {payment.status === "validado" && payment.receiptDownloadUrl && (
                                 <a
-                                  href={payment.receiptUrl}
+                                  href={payment.receiptDownloadUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                 >

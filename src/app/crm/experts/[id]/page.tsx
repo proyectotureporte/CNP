@@ -486,6 +486,16 @@ export default function ExpertDetailPage({
               <p className="text-xs text-muted-foreground">Numero de Cuenta</p>
               <p className="text-sm font-medium font-mono">{expert.bankAccountNumber || "-"}</p>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Titular</p>
+                <p className="text-sm font-medium">{expert.bankAccountHolder || "-"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Documento del Titular</p>
+                <p className="text-sm font-medium">{expert.bankHolderDocument || "-"}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

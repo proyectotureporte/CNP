@@ -6,6 +6,9 @@ const clientList = nestedObj('cl', { _id: 'cl.id', name: 'cl.name', email: 'cl.e
 const clientFull = nestedObj('cl', { _id: 'cl.id', name: 'cl.name', email: 'cl.email', company: 'cl.company', phone: 'cl.phone', brand: 'cl.brand' });
 const userEmail = (a: string) => nestedObj(a, { _id: `${a}.id`, displayName: `${a}.display_name`, email: `${a}.email` });
 const userName = (a: string) => nestedObj(a, { _id: `${a}.id`, displayName: `${a}.display_name` });
+const userContact = (a: string) => nestedObj(a, {
+  _id: `${a}.id`, displayName: `${a}.display_name`, email: `${a}.email`, phone: `${a}.phone`,
+});
 
 const SCALARS = `
   c.id AS "_id", c.created_at AS "_createdAt", c.updated_at AS "_updatedAt",
@@ -13,6 +16,10 @@ const SCALARS = `
   c.status_changed_by_role AS "statusChangedByRole", c.complexity, c.priority,
   c.channel, c.commercial_status AS "commercialStatus", c.loss_reason AS "lossReason",
   c.execution_start_date AS "executionStartDate", c.execution_deadline AS "executionDeadline",
+  c.execution_business_days AS "executionBusinessDays",
+  c.execution_suspended_at AS "executionSuspendedAt",
+  c.execution_remaining_business_days AS "executionRemainingBusinessDays",
+  c.execution_state AS "executionState",
   c.estimated_amount AS "estimatedAmount", c.has_hearing AS "hasHearing",
   c.hearing_date AS "hearingDate", c.hearing_link AS "hearingLink", c.deadline_date AS "deadlineDate",
   c.city, c.court_name AS "courtName", c.case_number AS "caseNumber", c.risk_score AS "riskScore"
@@ -24,6 +31,7 @@ const JOINS = `
   LEFT JOIN crm_user ta ON ta.id = c.technical_analyst_id
   LEFT JOIN crm_user ae ON ae.id = c.assigned_expert_id
   LEFT JOIN crm_user af ON af.id = c.assigned_financiero_id
+  LEFT JOIN crm_user aj ON aj.id = c.assigned_juridico_id
   LEFT JOIN crm_user cb ON cb.id = c.created_by_id
 `;
 
@@ -34,6 +42,7 @@ export interface ListCasesParams {
   search?: string;
   deadlineThreshold?: string | null;
   financieroId?: string;
+  expertId?: string;
   limit?: number;
   offset?: number;
 }
@@ -46,6 +55,7 @@ function casesWhere(p: ListCasesParams): { clause: string; values: unknown[] } {
     p.search ?? '',
     p.deadlineThreshold ?? '',
     p.financieroId ?? '',
+    p.expertId ?? '',
   ];
   const clause = `
     c.status <> 'archivado'
@@ -55,6 +65,7 @@ function casesWhere(p: ListCasesParams): { clause: string; values: unknown[] } {
     AND ($4 = '' OR c.title ILIKE $4 || '%' OR c.case_code ILIKE $4 || '%' OR c.city ILIKE $4 || '%')
     AND ($5 = '' OR (c.deadline_date IS NOT NULL AND c.deadline_date <= $5::timestamptz AND c.status <> 'cancelado'))
     AND ($6 = '' OR c.assigned_financiero_id = $6)
+    AND ($7 = '' OR c.assigned_expert_id = $7 OR c.assigned_financiero_id = $7)
   `;
   return { clause, values };
 }
@@ -70,17 +81,22 @@ export async function listCases(p: ListCasesParams = {}): Promise<CaseExpanded[]
        c.status_changed_by_role AS "statusChangedByRole", c.complexity, c.priority,
        c.channel, c.commercial_status AS "commercialStatus",
        c.execution_start_date AS "executionStartDate", c.execution_deadline AS "executionDeadline",
+       c.execution_business_days AS "executionBusinessDays",
+       c.execution_suspended_at AS "executionSuspendedAt",
+       c.execution_remaining_business_days AS "executionRemainingBusinessDays",
+       c.execution_state AS "executionState",
        c.estimated_amount AS "estimatedAmount", c.has_hearing AS "hasHearing",
        c.hearing_date AS "hearingDate", c.hearing_link AS "hearingLink", c.deadline_date AS "deadlineDate",
        c.city, c.court_name AS "courtName", c.case_number AS "caseNumber",
        ${clientList} AS "client",
        ${userEmail('cm')} AS "commercial",
        ${userEmail('ae')} AS "assignedExpert",
-       ${userEmail('af')} AS "assignedFinanciero"
+       ${userEmail('af')} AS "assignedFinanciero",
+       ${userContact('aj')} AS "assignedJuridico"
      FROM cases c ${JOINS}
      WHERE ${clause}
      ORDER BY c.created_at DESC
-     LIMIT $7 OFFSET $8`,
+     LIMIT $8 OFFSET $9`,
     [...values, limit, offset],
   );
 }
@@ -102,6 +118,7 @@ export async function getCaseById(id: string): Promise<CaseExpanded | null> {
        ${userEmail('ta')} AS "technicalAnalyst",
        ${userEmail('ae')} AS "assignedExpert",
        ${userEmail('af')} AS "assignedFinanciero",
+       ${userContact('aj')} AS "assignedJuridico",
        ${userName('cb')} AS "createdBy"
      FROM cases c ${JOINS}
      WHERE c.id = $1`,
@@ -163,25 +180,46 @@ export async function listCasesByClient(clientId: string): Promise<CaseExpanded[
   );
 }
 
-/** Portal cliente: casos con sus refs principales. */
+/** Portal cliente: ficha técnica y contacto jurídico, sin nodo de perito. */
 export async function listCasesForClient(clientId: string): Promise<CaseExpanded[]> {
   return query<CaseExpanded>(
     `SELECT
        c.id AS "_id", c.created_at AS "_createdAt", c.updated_at AS "_updatedAt",
-       c.brand, c.case_code AS "caseCode", c.title, c.discipline, c.status, c.complexity, c.priority,
+       c.brand, c.case_code AS "caseCode", c.title, c.description,
+       c.discipline, c.status, c.complexity, c.priority,
        c.estimated_amount AS "estimatedAmount", c.has_hearing AS "hasHearing",
        c.hearing_date AS "hearingDate", c.deadline_date AS "deadlineDate",
        c.city, c.court_name AS "courtName", c.case_number AS "caseNumber",
-       ${clientList} AS "client",
-       ${userEmail('cm')} AS "commercial",
-       ${userEmail('ae')} AS "assignedExpert"
+       ${userContact('aj')} AS "assignedJuridico"
      FROM cases c
-     LEFT JOIN crm_client cl ON cl.id = c.client_id
-     LEFT JOIN crm_user cm ON cm.id = c.commercial_id
-     LEFT JOIN crm_user ae ON ae.id = c.assigned_expert_id
+     LEFT JOIN crm_user aj ON aj.id = c.assigned_juridico_id
      WHERE c.client_id = $1 AND c.status <> 'archivado'
      ORDER BY c.created_at DESC`,
     [clientId],
+  );
+}
+
+/** Portal perito: solo asignaciones propias y sin JOIN alguno a crm_client. */
+export async function listCasesForExpert(userId: string): Promise<CaseExpanded[]> {
+  return query<CaseExpanded>(
+    `SELECT
+       c.id AS "_id", c.created_at AS "_createdAt", c.updated_at AS "_updatedAt",
+       c.brand, c.case_code AS "caseCode", c.title, c.description,
+       c.discipline, c.status, c.complexity, c.priority,
+       c.execution_start_date AS "executionStartDate", c.execution_deadline AS "executionDeadline",
+       c.execution_business_days AS "executionBusinessDays",
+       c.execution_suspended_at AS "executionSuspendedAt",
+       c.execution_remaining_business_days AS "executionRemainingBusinessDays",
+       c.execution_state AS "executionState",
+       c.has_hearing AS "hasHearing", c.hearing_date AS "hearingDate",
+       c.deadline_date AS "deadlineDate", c.city, c.court_name AS "courtName",
+       c.case_number AS "caseNumber", ${userContact('aj')} AS "assignedJuridico"
+     FROM cases c
+     LEFT JOIN crm_user aj ON aj.id = c.assigned_juridico_id
+     WHERE (c.assigned_expert_id = $1 OR c.assigned_financiero_id = $1)
+       AND c.status <> 'archivado'
+     ORDER BY c.created_at DESC`,
+    [userId],
   );
 }
 
@@ -270,18 +308,21 @@ export async function casesWithUpcomingDeadline(today: string, maxThreshold: str
 export interface ExecutionDeadlineRow extends CaseAlertRow {
   executionDeadline: string;
   assignedFinancieroId: string | null;
+  assignedJuridicoId: string | null;
 }
 
-/** Casos en ejecución (item 20) cuyo plazo de 15 días hábiles vence dentro de la ventana. */
+/** Casos en ejecución cuyo plazo hábil cotizado vence dentro de la ventana. */
 export async function casesWithExecutionDeadlineSoon(threshold: string): Promise<ExecutionDeadlineRow[]> {
   return query<ExecutionDeadlineRow>(
     `SELECT id AS "_id", case_code AS "caseCode", title,
        execution_deadline AS "executionDeadline",
        commercial_id AS "commercialId", technical_analyst_id AS "technicalAnalystId",
-       assigned_expert_id AS "assignedExpertId", assigned_financiero_id AS "assignedFinancieroId"
+       assigned_expert_id AS "assignedExpertId", assigned_financiero_id AS "assignedFinancieroId",
+       assigned_juridico_id AS "assignedJuridicoId"
      FROM cases
      WHERE execution_deadline IS NOT NULL AND execution_deadline >= now()
        AND execution_deadline <= $1::timestamptz
+       AND execution_state = 'activa'
        AND status NOT IN ('cancelado', 'archivado')`,
     [threshold],
   );
@@ -323,6 +364,7 @@ export interface CaseInput {
   technicalAnalystId?: string | null;
   assignedExpertId?: string | null;
   assignedFinancieroId?: string | null;
+  assignedJuridicoId?: string | null;
   discipline?: Case['discipline'] | null;
   status?: Case['status'];
   statusChangedByRole?: string | null;
@@ -333,6 +375,10 @@ export interface CaseInput {
   lossReason?: string | null;
   executionStartDate?: string | null;
   executionDeadline?: string | null;
+  executionBusinessDays?: number;
+  executionSuspendedAt?: string | null;
+  executionRemainingBusinessDays?: number | null;
+  executionState?: Case['executionState'];
   estimatedAmount?: number | null;
   hasHearing?: boolean;
   hearingDate?: string | null;
@@ -356,6 +402,7 @@ function toColumns(input: Partial<CaseInput>): Record<string, unknown> {
     technical_analyst_id: input.technicalAnalystId,
     assigned_expert_id: input.assignedExpertId,
     assigned_financiero_id: input.assignedFinancieroId,
+    assigned_juridico_id: input.assignedJuridicoId,
     discipline: input.discipline,
     status: input.status,
     status_changed_by_role: input.statusChangedByRole,
@@ -366,6 +413,10 @@ function toColumns(input: Partial<CaseInput>): Record<string, unknown> {
     loss_reason: input.lossReason,
     execution_start_date: input.executionStartDate,
     execution_deadline: input.executionDeadline,
+    execution_business_days: input.executionBusinessDays,
+    execution_suspended_at: input.executionSuspendedAt,
+    execution_remaining_business_days: input.executionRemainingBusinessDays,
+    execution_state: input.executionState,
     estimated_amount: input.estimatedAmount,
     has_hearing: input.hasHearing,
     hearing_date: input.hearingDate,

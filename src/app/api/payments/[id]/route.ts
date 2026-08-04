@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { payment } from '@/lib/db';
-import type { PaymentStatus } from '@/lib/types';
+import { PAYMENT_STATUSES, type PaymentStatus } from '@/lib/types';
 import { guardRole } from '@/lib/auth/guard';
 import { canAccessFinances } from '@/lib/auth/permissions';
 import { triggerEvent } from '@/lib/realtime/server';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { maybeStartExecutionClock } from '@/lib/cases/execution';
 import { auditEntityChange } from '@/lib/audit';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     if (id === 'list') {
+      const stop = guardRole(request, canAccessFinances);
+      if (stop) return stop;
       const { searchParams } = new URL(request.url);
       const status = searchParams.get('status') || '';
       const page = parseInt(searchParams.get('page') || '1');
@@ -21,11 +24,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         payment.listAllPayments(status, limit, offset),
         payment.countAllPayments(status),
       ]);
-      return NextResponse.json({ success: true, data: payments, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } });
+      return NextResponse.json({ success: true, data: payments.map((item) => ({ ...item, receiptUrl: undefined, receiptDownloadUrl: item.receiptUrl ? `/api/payments/${item._id}/receipt-download` : undefined })), meta: { total, page, limit, totalPages: Math.ceil(total / limit) } });
     }
     const found = await payment.getPaymentById(id);
     if (!found) return NextResponse.json({ success: false, error: 'Pago no encontrado' }, { status: 404 });
-    return NextResponse.json({ success: true, data: found });
+    const caseId = found.caseRef?._id;
+    if (!caseId) return NextResponse.json({ success: false, error: 'Pago sin caso asociado' }, { status: 409 });
+    const access = await requireCaseAccess(request, caseId);
+    if (access.response) return access.response;
+    if (access.actor.role === 'perito') return NextResponse.json({ success: false, error: 'Pago no encontrado' }, { status: 404 });
+    if (access.actor.role === 'cliente') {
+      const paymentAccess = await payment.getPaymentAccessRow(id);
+      if (!paymentAccess?.clientVisible) {
+        return NextResponse.json({ success: false, error: 'Pago no encontrado' }, { status: 404 });
+      }
+    }
+    return NextResponse.json({ success: true, data: { ...found, receiptUrl: undefined, receiptDownloadUrl: found.receiptUrl ? `/api/payments/${id}/receipt-download` : undefined, ...(access.actor.role === 'cliente' ? { createdBy: undefined } : {}) } });
   } catch {
     return NextResponse.json({ success: false, error: 'Error obteniendo pago' }, { status: 500 });
   }
@@ -41,6 +55,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json();
     const existing = await payment.getPaymentById(id);
     if (!existing) return NextResponse.json({ success: false, error: 'Pago no encontrado' }, { status: 404 });
+    if (body.status !== undefined && !PAYMENT_STATUSES.includes(body.status as PaymentStatus)) {
+      return NextResponse.json({ success: false, error: 'Estado de pago no válido' }, { status: 400 });
+    }
+    const caseId = existing.caseRef?._id;
+    if (!caseId) return NextResponse.json({ success: false, error: 'Pago sin caso asociado' }, { status: 409 });
+    const access = await requireCaseAccess(request, caseId);
+    if (access.response) return access.response;
 
     const updated = await payment.updatePayment(id, {
       status: body.status as PaymentStatus | undefined,
@@ -74,7 +95,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     triggerEvent('payment:updated', { id });
 
-    return NextResponse.json({ success: true, data: updated });
+    return NextResponse.json({ success: true, data: updated && { ...updated, receiptUrl: undefined, receiptDownloadUrl: updated.receiptUrl ? `/api/payments/${id}/receipt-download` : undefined } });
   } catch {
     return NextResponse.json({ success: false, error: 'Error actualizando pago' }, { status: 500 });
   }

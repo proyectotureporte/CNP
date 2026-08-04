@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { expert } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
 import { guardRole } from '@/lib/auth/guard';
-import { canManageExperts } from '@/lib/auth/permissions';
+import { canManageExperts, hasPermission } from '@/lib/auth/permissions';
 
 export async function GET(request: NextRequest) {
   try {
+    const stop = guardRole(request, (role) => hasPermission(role, 'experts'));
+    if (stop) return stop;
     const { searchParams } = new URL(request.url);
     const discipline = searchParams.get('discipline') || '';
     const city = searchParams.get('city') || '';
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
       userRef, disciplines, specialization, subespecialidad, experienceYears, professionalCard,
       seniority, category, pregrado, numEspecializaciones, numMaestrias, doctorado,
       city, region, baseFee, feeCurrency, taxId,
-      bankName, bankAccountType, bankAccountNumber,
+      bankName, bankAccountType, bankAccountNumber, bankAccountHolder, bankHolderDocument,
     } = body;
 
     if (!disciplines || disciplines.length === 0) {
@@ -76,6 +78,8 @@ export async function POST(request: NextRequest) {
       bankName: bankName || '',
       bankAccountType: bankAccountType || null,
       bankAccountNumber: bankAccountNumber || '',
+      bankAccountHolder: bankAccountHolder || '',
+      bankHolderDocument: bankHolderDocument || '',
     });
 
     if (created) triggerEvent('expert:created', { id: created._id });

@@ -6,6 +6,7 @@ import { UserCircle } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/types";
 import type { UserRole } from "@/lib/types";
 import PasswordChangeForm from "@/components/crm/PasswordChangeForm";
+import ExpertSelfProfileForm from "@/components/experts/ExpertSelfProfileForm";
 
 interface UserInfo {
   sub: string;
@@ -133,6 +134,8 @@ export default function CrmProfilePage() {
                 </div>
               </div>
             </div>
+
+            {user.role === "perito" && <ExpertSelfProfileForm />}
 
             {/* Password change card */}
             <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">

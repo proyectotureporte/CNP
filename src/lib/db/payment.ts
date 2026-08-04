@@ -9,7 +9,7 @@ const FIELDS = `
   p.id AS "_id", p.created_at AS "_createdAt", p.payment_number AS "paymentNumber",
   p.amount, p.percentage, p.due_date AS "dueDate", p.payment_date AS "paymentDate",
   p.payment_method AS "paymentMethod", p.status, p.transaction_reference AS "transactionReference",
-  p.notes, p.file_url AS "receiptUrl"
+  p.notes, p.file_url AS "receiptUrl", p.file_name AS "receiptFileName"
 `;
 
 const JOINS = `
@@ -53,6 +53,34 @@ export async function getPaymentById(id: string): Promise<Payment | null> {
        cl.name AS "clientName", ${createdByObj} AS "createdBy"
      FROM payment p ${JOINS} WHERE p.id = $1`,
     [id],
+  );
+}
+
+export async function getPaymentAccessRow(id: string): Promise<{
+  caseId: string;
+  status: PaymentStatus;
+  clientVisible: boolean;
+  fileUrl: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+} | null> {
+  return queryOne(
+    `SELECT p.case_id AS "caseId", p.status,
+       (p.quote_id IS NULL OR q.status = 'aprobada') AS "clientVisible",
+       p.file_url AS "fileUrl", p.file_name AS "fileName", p.mime_type AS "mimeType"
+     FROM payment p LEFT JOIN quote q ON q.id = p.quote_id WHERE p.id = $1`,
+    [id],
+  );
+}
+
+/** Pagos publicables al cliente: manuales del caso o ligados a propuesta aprobada. */
+export async function listClientCasePayments(caseId: string): Promise<Payment[]> {
+  return query<Payment>(
+    `SELECT ${FIELDS}, ${quoteObj} AS "quoteRef", ${createdByObj} AS "createdBy"
+     FROM payment p ${JOINS}
+     WHERE p.case_id = $1 AND (p.quote_id IS NULL OR q.status = 'aprobada')
+     ORDER BY p.payment_number ASC`,
+    [caseId],
   );
 }
 
@@ -137,6 +165,7 @@ export interface PaymentInput {
   fileSize?: number | null;
   notes?: string | null;
   createdById?: string | null;
+  receiptUploadedById?: string | null;
 }
 
 function toColumns(input: Partial<PaymentInput>): Record<string, unknown> {
@@ -158,6 +187,7 @@ function toColumns(input: Partial<PaymentInput>): Record<string, unknown> {
     file_size: input.fileSize,
     notes: input.notes,
     created_by_id: input.createdById,
+    receipt_uploaded_by_id: input.receiptUploadedById,
   });
 }
 

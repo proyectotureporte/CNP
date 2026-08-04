@@ -7,6 +7,7 @@ import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
 import { notifyUsersAndAdmins } from '@/lib/notify';
 import { auditEntityChange } from '@/lib/audit';
+import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
 /** Comité del caso (RF-07): viabilidad, alcance, honorarios, entregables y tiempo. */
 export async function GET(
@@ -15,6 +16,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
+    if (!canManageCommittee(access.actor.role)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
     const review = await committeeReview.getCommitteeReviewByCase(id);
     return NextResponse.json({ success: true, data: review });
   } catch {
@@ -34,6 +40,8 @@ export async function PUT(
     if (stop) return stop;
 
     const { id } = await params;
+    const access = await requireCaseAccess(request, id);
+    if (access.response) return access.response;
     const userId = request.headers.get('x-user-id');
     const userName = request.headers.get('x-user-name');
     const body = await request.json();

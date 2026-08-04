@@ -3,8 +3,10 @@ import { systemSetting } from '@/lib/db';
 import { guardRole } from '@/lib/auth/guard';
 import { hasPermission } from '@/lib/auth/permissions';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const stop = guardRole(request, (role) => hasPermission(role, 'settings'));
+    if (stop) return stop;
     const settings = await systemSetting.listSystemSettings();
     return NextResponse.json({ success: true, data: settings });
   } catch {
