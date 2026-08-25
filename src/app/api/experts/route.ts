@@ -16,11 +16,12 @@ export async function GET(request: NextRequest) {
     const seniority = searchParams.get('seniority') || '';
     const category = searchParams.get('category') || '';
     const search = searchParams.get('search') || '';
+    const hasCases = searchParams.get('hasCases') === 'true';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
 
-    const filters = { discipline, city, availability, validationStatus, seniority, category, search };
+    const filters = { discipline, city, availability, validationStatus, seniority, category, search, hasCases };
 
     const [experts, total] = await Promise.all([
       expert.listExperts({ ...filters, limit, offset }),

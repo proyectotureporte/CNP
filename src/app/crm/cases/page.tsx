@@ -5,6 +5,10 @@ import { usePusher } from "@/hooks/usePusher";
 import Link from "next/link";
 import { Plus, Search, Filter, Clock, AlertTriangle, CheckCircle } from "lucide-react";
 import { CaseCard } from "@/components/cases/CaseCard";
+import {
+  CaseQuickAssignmentDialog,
+  type QuickAssignmentMode,
+} from "@/components/cases/CaseQuickAssignmentDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,7 +27,7 @@ import {
   type CaseExpanded,
 } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
-import { canCreateCase } from "@/lib/auth/permissions";
+import { canAssignExpert, canCreateCase, canEditCase } from "@/lib/auth/permissions";
 import type { UserRole } from "@/lib/types";
 
 function CasesCardSkeleton() {
@@ -56,6 +60,8 @@ function CasesCardSkeleton() {
 export default function CrmCasesPage() {
   const { user } = useAuth();
   const canCreate = !!user && canCreateCase(user.role as UserRole, user.allRoles);
+  const canAssignPerito = !!user && canAssignExpert(user.role as UserRole, user.allRoles);
+  const canAssignClient = !!user && canEditCase(user.role as UserRole, user.allRoles);
   const isExpert = user?.role === "perito";
   const [cases, setCases] = useState<CaseExpanded[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,6 +78,10 @@ export default function CrmCasesPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [quickAssignment, setQuickAssignment] = useState<{
+    item: CaseExpanded;
+    mode: QuickAssignmentMode;
+  } | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -326,7 +336,13 @@ export default function CrmCasesPage() {
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {cases.map((item) => (
-              <CaseCard key={item._id} item={item} hidePrivateDetails={isExpert} />
+              <CaseCard
+                key={item._id}
+                item={item}
+                hidePrivateDetails={isExpert}
+                onAssignExpert={canAssignPerito ? (selectedCase) => setQuickAssignment({ item: selectedCase, mode: "expert" }) : undefined}
+                onAssignClient={canAssignClient ? (selectedCase) => setQuickAssignment({ item: selectedCase, mode: "client" }) : undefined}
+              />
             ))}
           </div>
 
@@ -358,6 +374,14 @@ export default function CrmCasesPage() {
           )}
         </>
       )}
+
+      <CaseQuickAssignmentDialog
+        caseItem={quickAssignment?.item || null}
+        mode={quickAssignment?.mode || null}
+        open={Boolean(quickAssignment)}
+        onOpenChange={(open) => { if (!open) setQuickAssignment(null); }}
+        onAssigned={fetchCases}
+      />
     </>
   );
 }

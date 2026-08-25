@@ -39,9 +39,10 @@ const CASE_SUMMARY_LATERAL = `
 export interface ListClientsParams {
   search?: string;
   brand?: string;
+  hasCases?: boolean;
 }
 
-export async function listClients({ search = '', brand = '' }: ListClientsParams = {}): Promise<CrmClient[]> {
+export async function listClients({ search = '', brand = '', hasCases = false }: ListClientsParams = {}): Promise<CrmClient[]> {
   return query<CrmClient>(
     `SELECT ${BASE}, ${PERITUS_SUMMARY}, ${CASE_SUMMARY}
      FROM crm_client c
@@ -49,8 +50,9 @@ export async function listClients({ search = '', brand = '' }: ListClientsParams
      ${CASE_SUMMARY_LATERAL}
      WHERE ($1 = '' OR c.name ILIKE $1 || '%' OR c.email ILIKE $1 || '%' OR c.company ILIKE $1 || '%')
        AND ($2 = '' OR c.brand = $2::brand)
+       AND ($3::boolean IS FALSE OR coalesce(cs.case_count, 0) > 0)
      ORDER BY c.created_at DESC`,
-    [search, brand],
+    [search, brand, hasCases],
   );
 }
 

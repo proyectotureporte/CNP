@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cases } from '@/lib/db';
+import { cases, crmClient } from '@/lib/db';
 import { requireCaseAccess, sanitizeCaseForRole } from '@/lib/auth/caseAccess';
 import {
   CASE_STATUSES, CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES, CASE_CHANNELS,
@@ -124,7 +124,15 @@ export async function PUT(
       patch.status = body.status;
     }
 
-    if (body.clientId !== undefined) patch.clientId = body.clientId || null;
+    if (body.clientId !== undefined) {
+      if (body.clientId) {
+        const selectedClient = await crmClient.getClientById(body.clientId);
+        if (!selectedClient) {
+          return NextResponse.json({ success: false, error: 'Cliente no encontrado' }, { status: 404 });
+        }
+      }
+      patch.clientId = body.clientId || null;
+    }
 
     const updated = await cases.updateCase(id, patch);
 

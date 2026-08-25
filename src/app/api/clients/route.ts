@@ -17,8 +17,9 @@ export async function GET(request: NextRequest) {
     }
     const search = request.nextUrl.searchParams.get('search') || '';
     const brand = request.nextUrl.searchParams.get('brand') || '';
+    const hasCases = request.nextUrl.searchParams.get('hasCases') === 'true';
 
-    const clients = await crmClient.listClients({ search, brand });
+    const clients = await crmClient.listClients({ search, brand, hasCases });
     return NextResponse.json({ success: true, data: clients });
   } catch (err) {
     console.error('[clients] GET error:', err);

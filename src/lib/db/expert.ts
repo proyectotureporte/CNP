@@ -38,6 +38,7 @@ export interface ListExpertsParams {
   seniority?: string;
   category?: string;
   search?: string;
+  hasCases?: boolean;
   limit?: number;
   offset?: number;
 }
@@ -51,6 +52,7 @@ function expertsWhere(p: ListExpertsParams): { clause: string; values: unknown[]
     p.search ?? '',
     p.seniority ?? '',
     p.category ?? '',
+    p.hasCases ?? false,
   ];
   const clause = `
     ($1 = '' OR $1 = ANY(e.disciplines))
@@ -60,6 +62,11 @@ function expertsWhere(p: ListExpertsParams): { clause: string; values: unknown[]
     AND ($5 = '' OR e.specialization ILIKE $5 || '%' OR e.city ILIKE $5 || '%' OR e.tax_id ILIKE $5 || '%')
     AND ($6 = '' OR e.seniority = $6::expert_seniority)
     AND ($7 = '' OR e.category = $7::expert_category)
+    AND ($8::boolean IS FALSE OR EXISTS (
+      SELECT 1 FROM cases assigned_case
+      WHERE assigned_case.assigned_expert_id = e.user_id
+        AND assigned_case.status <> 'archivado'
+    ))
   `;
   return { clause, values };
 }
@@ -68,7 +75,7 @@ export async function listExperts(p: ListExpertsParams = {}): Promise<Expert[]> 
   const { clause, values } = expertsWhere(p);
   return query<Expert>(
     `SELECT ${LIST_SELECT} FROM expert e ${JOINS}
-     WHERE ${clause} ORDER BY e.rating DESC LIMIT $8 OFFSET $9`,
+     WHERE ${clause} ORDER BY e.rating DESC LIMIT $9 OFFSET $10`,
     [...values, p.limit ?? 20, p.offset ?? 0],
   );
 }

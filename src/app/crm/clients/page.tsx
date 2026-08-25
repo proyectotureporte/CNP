@@ -7,6 +7,13 @@ import Link from "next/link";
 import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import ClientCardGrid from "@/components/crm/ClientCardGrid";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { CrmClient } from "@/lib/types";
@@ -47,12 +54,13 @@ export default function CrmClientsPage() {
   const [clients, setClients] = useState<CrmClient[]>([]);
   const [search, setSearch] = useState("");
   const [brandFilter, setBrandFilter] = useState("");
+  const [hasCasesFilter, setHasCasesFilter] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [authorized, setAuthorized] = useState(false);
   const [page, setPage] = useState(1);
 
-  const fetchClients = useCallback(async (query: string, brand?: string) => {
+  const fetchClients = useCallback(async (query: string, brand?: string, hasCases = false) => {
     setLoading(true);
     setError("");
 
@@ -60,6 +68,7 @@ export default function CrmClientsPage() {
       const sp = new URLSearchParams();
       if (query) sp.set("search", query);
       if (brand) sp.set("brand", brand);
+      if (hasCases) sp.set("hasCases", "true");
       const params = sp.toString() ? `?${sp}` : "";
       const res = await fetch(`/api/clients${params}`);
       const data = await res.json();
@@ -99,14 +108,14 @@ export default function CrmClientsPage() {
 
     setPage(1);
     const timeout = window.setTimeout(() => {
-      fetchClients(search, brandFilter);
+      fetchClients(search, brandFilter, hasCasesFilter);
     }, 250);
 
     return () => window.clearTimeout(timeout);
-  }, [authorized, search, brandFilter, fetchClients]);
+  }, [authorized, search, brandFilter, hasCasesFilter, fetchClients]);
 
   usePusher(['client:created', 'client:updated', 'client:deleted'], () => {
-    if (authorized) fetchClients(search, brandFilter);
+    if (authorized) fetchClients(search, brandFilter, hasCasesFilter);
   });
 
   const totalPages = Math.max(1, Math.ceil(clients.length / CLIENTS_PER_PAGE));
@@ -140,7 +149,7 @@ export default function CrmClientsPage() {
       </div>
 
       {/* Brand filter */}
-      <div className="mb-6 flex gap-2">
+      <div className="mb-6 flex flex-wrap gap-2">
         <Button
           variant={brandFilter === "CNP" ? "default" : "outline"}
           size="sm"
@@ -155,8 +164,20 @@ export default function CrmClientsPage() {
         >
           Peritus
         </Button>
-        {brandFilter && (
-          <Button variant="ghost" size="sm" onClick={() => setBrandFilter("")}>
+        <Select
+          value={hasCasesFilter ? "with-cases" : "all"}
+          onValueChange={(value) => setHasCasesFilter(value === "with-cases")}
+        >
+          <SelectTrigger className="h-8 w-full sm:w-[210px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los clientes</SelectItem>
+            <SelectItem value="with-cases">Con casos asignados</SelectItem>
+          </SelectContent>
+        </Select>
+        {(brandFilter || hasCasesFilter) && (
+          <Button variant="ghost" size="sm" onClick={() => { setBrandFilter(""); setHasCasesFilter(false); }}>
             Limpiar
           </Button>
         )}

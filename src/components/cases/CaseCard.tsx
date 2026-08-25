@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { CalendarClock, Gavel, Landmark, UserRound } from 'lucide-react';
+import { CalendarClock, Gavel, Landmark, UserCheck, UserPlus, UserRound } from 'lucide-react';
+import { ActionPillButton } from '@/components/ui/action-pill-button';
 import { Badge } from '@/components/ui/badge';
 import {
   CASE_STATUS_COLORS,
@@ -15,6 +16,8 @@ import {
 interface CaseCardProps {
   item: CaseExpanded;
   hidePrivateDetails?: boolean;
+  onAssignExpert?: (item: CaseExpanded) => void;
+  onAssignClient?: (item: CaseExpanded) => void;
 }
 
 function formatAmount(amount?: number) {
@@ -50,23 +53,31 @@ function formatDeadline(deadlineDate?: string) {
   return { formatted, color: 'bg-emerald-100 text-emerald-800', label: 'Programada' };
 }
 
-export function CaseCard({ item, hidePrivateDetails = false }: CaseCardProps) {
+export function CaseCard({
+  item,
+  hidePrivateDetails = false,
+  onAssignExpert,
+  onAssignClient,
+}: CaseCardProps) {
   const statusColor = CASE_STATUS_COLORS[item.status as CaseStatus];
   const priorityColor = PRIORITY_COLORS[item.priority];
   const brand = item.brand || 'CNP';
   const deadline = formatDeadline(item.deadlineDate);
 
   return (
-    <Link
-      href={`/crm/cases/${item._id}`}
-      aria-label={`Abrir caso ${item.caseCode}: ${item.title}`}
-      className="group block h-full rounded-2xl outline-none ring-[#2969b0] focus-visible:ring-2 focus-visible:ring-offset-2"
+    <article
+      className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-white shadow-sm transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-[#2969b0]/35 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none"
     >
-      <article className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-white p-4 shadow-sm transition-[transform,box-shadow,border-color] duration-200 group-hover:-translate-y-0.5 group-hover:border-[#2969b0]/35 group-hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none">
-        <span
-          aria-hidden="true"
-          className={`absolute inset-x-0 top-0 h-0.5 ${brand === 'Peritus' ? 'bg-violet-500' : 'bg-sky-500'}`}
-        />
+      <span
+        aria-hidden="true"
+        className={`absolute inset-x-0 top-0 h-0.5 ${brand === 'Peritus' ? 'bg-violet-500' : 'bg-sky-500'}`}
+      />
+
+      <Link
+        href={`/crm/cases/${item._id}`}
+        aria-label={`Abrir caso ${item.caseCode}: ${item.title}`}
+        className="flex flex-1 flex-col p-4 outline-none ring-inset ring-[#2969b0] focus-visible:ring-2"
+      >
 
         <div className="flex min-w-0 items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
@@ -181,7 +192,32 @@ export function CaseCard({ item, hidePrivateDetails = false }: CaseCardProps) {
             )}
           </div>
         </div>
-      </article>
-    </Link>
+      </Link>
+
+      {(onAssignExpert || onAssignClient) && (
+        <div className="grid grid-cols-2 gap-2 border-t border-border/50 px-4 pb-4 pt-3">
+          {onAssignExpert && (
+            <ActionPillButton
+              type="button"
+              label="Asignar a perito"
+              icon={<UserCheck className="size-3.5" />}
+              tone="green"
+              className="min-h-8 px-2.5 py-1.5 text-[11px]"
+              onClick={() => onAssignExpert(item)}
+            />
+          )}
+          {onAssignClient && (
+            <ActionPillButton
+              type="button"
+              label="Asignar a cliente"
+              icon={<UserPlus className="size-3.5" />}
+              tone="blue"
+              className="min-h-8 px-2.5 py-1.5 text-[11px]"
+              onClick={() => onAssignClient(item)}
+            />
+          )}
+        </div>
+      )}
+    </article>
   );
 }

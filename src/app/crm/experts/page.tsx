@@ -41,6 +41,7 @@ export default function ExpertsPage() {
   const [validationStatus, setValidationStatus] = useState("");
   const [seniority, setSeniority] = useState("");
   const [category, setCategory] = useState("");
+  const [hasCases, setHasCases] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -54,6 +55,7 @@ export default function ExpertsPage() {
       if (validationStatus) params.set("validationStatus", validationStatus);
       if (seniority) params.set("seniority", seniority);
       if (category) params.set("category", category);
+      if (hasCases) params.set("hasCases", "true");
       params.set("page", String(page));
       params.set("limit", "20");
 
@@ -65,7 +67,7 @@ export default function ExpertsPage() {
       }
     } catch { /* ignore */ }
     finally { setLoading(false); }
-  }, [debouncedSearch, discipline, availability, validationStatus, seniority, category, page]);
+  }, [debouncedSearch, discipline, availability, validationStatus, seniority, category, hasCases, page]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -147,6 +149,13 @@ export default function ExpertsPage() {
               <SelectItem value="disponible">Disponible</SelectItem>
               <SelectItem value="ocupado">Ocupado</SelectItem>
               <SelectItem value="no_disponible">No Disponible</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={hasCases ? "with-cases" : "all"} onValueChange={(v) => { setHasCases(v === "with-cases"); setPage(1); }}>
+            <SelectTrigger className="w-full sm:w-[210px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los peritos</SelectItem>
+              <SelectItem value="with-cases">Con casos asignados</SelectItem>
             </SelectContent>
           </Select>
         </div>
