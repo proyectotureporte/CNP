@@ -1,9 +1,9 @@
 # PROJECT-MAP — CNP | Peritus
 
-Actualizado: 2026-08-25 · Commit base: cdafd32 · (RBAC definitivo + asignación/portales — migraciones 007..012)
+Actualizado: 2026-08-25 · Rama de producción: `main` · (RBAC definitivo + asignación/portales — migraciones 007..012)
 
 ## Identidad y stack
-CRM de peritajes judiciales para CNP (Colombia) + marca Peritus. Producción real en `https://cnp.com.co`, autoalojado en VPS `restaurar` (82.223.109.156): PM2 (`cnp`, fork ×1) + Nginx (TLS, proxy a :3000 con upgrade WS en `/ws`) + PostgreSQL 17 local (BD `cnp`, user `cnp_user`).
+CRM de peritajes judiciales para CNP (Colombia) + marca Peritus. Producción real en `https://cnp.com.co`, autoalojado en VPS `restaurar` (82.223.109.156): PM2 (`cnp`, fork ×1) + Nginx (TLS, proxy a :3000 con upgrade WS en `/ws`) + PostgreSQL 16 local (BD `cnp`, user `cnp_user`).
 
 - Next.js 16.1.6 App Router + React 19.2.3 + TypeScript estricto + Tailwind 4 + shadcn/ui (new-york)
 - Datos: `pg` con SQL crudo (sin ORM) — `src/lib/db/` (repositorios namespaced desde `index.ts`)
@@ -12,6 +12,7 @@ CRM de peritajes judiciales para CNP (Colombia) + marca Peritus. Producción rea
 - Archivos: Sanity CDN (`@sanity/client`, solo `assets.upload`) — en PG solo `file_url/file_asset_id/...`
 - Email: Resend (`src/lib/email.ts`, FROM `noresponder@cnp.com.co`) · WhatsApp: Evolution API + n8n
 - Cron: systemd timer `cnp-check-alerts` 3×/día → `POST /api/cron/check-alerts` con `x-cron-secret`
+- Despliegue: cada push a `main` ejecuta `.github/workflows/deploy-production.yml`; una llave SSH con comando forzado solo permite publicar el SHA exacto de `origin/main`. `scripts/deploy-production.sh` respalda la BD, instala con `npm ci`, compila, migra, recarga la única instancia PM2 y valida el sitio local y público. Los respaldos de reversión quedan en `/var/backups/cnp-deploy/`
 
 ## Mapa de rutas (páginas)
 | Ruta | Auth | Qué muestra |

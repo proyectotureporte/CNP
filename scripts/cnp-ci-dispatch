@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+APP_DIR="/var/www/cnp"
+LOCK_FILE="/var/lock/cnp-github-deploy.lock"
+
+read -r action requested_sha extra <<< "${SSH_ORIGINAL_COMMAND:-}"
+
+if [[ "$action" != "deploy" || ! "$requested_sha" =~ ^[0-9a-f]{40}$ || -n "${extra:-}" ]]; then
+  echo "Comando de despliegue no permitido." >&2
+  exit 64
+fi
+
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  echo "Ya hay un despliegue de CNP en curso." >&2
+  exit 75
+fi
+
+cd "$APP_DIR"
+previous_sha="$(git rev-parse HEAD)"
+
+git fetch --quiet origin main
+remote_sha="$(git rev-parse origin/main)"
+if [[ "$remote_sha" != "$requested_sha" ]]; then
+  echo "El commit solicitado ya no coincide con origin/main." >&2
+  exit 65
+fi
+
+git merge --ff-only "$requested_sha"
+exec bash scripts/deploy-production.sh "$requested_sha" "$previous_sha"

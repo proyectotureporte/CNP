@@ -1,0 +1,42 @@
+name: Deploy CNP production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cnp-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - name: Prepare restricted SSH connection
+        env:
+          PROD_SSH_KEY: ${{ secrets.CNP_PROD_SSH_KEY }}
+          PROD_KNOWN_HOSTS: ${{ secrets.CNP_PROD_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$PROD_SSH_KEY" > "$HOME/.ssh/cnp-production"
+          printf '%s\n' "$PROD_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/cnp-production" "$HOME/.ssh/known_hosts"
+
+      - name: Deploy exact main commit
+        env:
+          PROD_HOST: ${{ secrets.CNP_PROD_HOST }}
+          PROD_USER: ${{ secrets.CNP_PROD_USER }}
+        run: |
+          ssh \
+            -i "$HOME/.ssh/cnp-production" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "$PROD_USER@$PROD_HOST" \
+            "deploy $GITHUB_SHA"
