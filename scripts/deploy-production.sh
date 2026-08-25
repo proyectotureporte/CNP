@@ -30,7 +30,7 @@ cp -a package-lock.json "$BACKUP_DIR/package-lock.json"
 chmod 600 "$BACKUP_DIR/env.local"
 
 echo "[1/5] Respaldo específico de PostgreSQL..."
-sudo -u postgres pg_dump --format=custom --file="$BACKUP_DIR/cnp.dump" "$DATABASE_NAME"
+sudo -u postgres pg_dump --format=custom "$DATABASE_NAME" > "$BACKUP_DIR/cnp.dump"
 
 echo "[2/5] Instalando dependencias exactas..."
 npm ci --include=dev --no-audit --no-fund
