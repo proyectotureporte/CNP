@@ -21,7 +21,9 @@ export async function GET(
       }
       if (access.actor.role === 'cliente') {
         delete safe.createdBy;
-        if (safe.createdByRole === 'perito') safe.createdByName = 'Equipo técnico';
+        if (safe.createdByRole === 'perito' || safe.createdByRole === 'perito_interno') {
+          safe.createdByName = 'Equipo técnico';
+        }
         if (safe.eventType === 'assignment') {
           // La descripción histórica incluye el nombre del asignado. Se vuelve
           // genérica para que ninguna variante de rol revele al perito.
@@ -45,7 +47,7 @@ export async function POST(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (!['admin', 'juridico', 'administrativo'].includes(access.actor.role)) {
+    if (!access.actor.allRoles && access.actor.role !== 'comercial_juridico') {
       return NextResponse.json({ success: false, error: 'La línea de tiempo es de solo lectura para tu rol' }, { status: 403 });
     }
     const userId = access.actor.userId;

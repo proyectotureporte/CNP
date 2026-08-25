@@ -12,7 +12,10 @@ export async function GET(
   if (!file) return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
   const access = await requireCaseAccess(request, file.caseId);
   if (access.response) return access.response;
-  if (access.actor.role === 'perito' && file.category === 'pago') {
+  if (!access.actor.allRoles && !['comercial_juridico', 'junta', 'perito_interno', 'perito', 'cliente'].includes(access.actor.role)) {
+    return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
+  }
+  if (['perito', 'perito_interno'].includes(access.actor.role) && file.category === 'pago') {
     return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
   }
   if (access.actor.role === 'cliente' && (!file.isVisibleToClient || file.category === 'dictamen_final')) {

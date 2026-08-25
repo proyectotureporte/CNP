@@ -45,7 +45,7 @@ export async function POST(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (!['admin', 'juridico'].includes(access.actor.role)) {
+    if (!access.actor.allRoles && access.actor.role !== 'comercial_juridico') {
       return NextResponse.json({ success: false, error: 'Solo el área jurídica puede suspender o reanudar el plazo' }, { status: 403 });
     }
     const body = await request.json();

@@ -12,7 +12,7 @@ export async function GET(
   const { id } = await params;
   const access = await requireCaseAccess(request, id);
   if (access.response) return access.response;
-  if (!['admin', 'juridico', 'perito'].includes(access.actor.role)) {
+  if (!access.actor.allRoles && !['comercial_juridico', 'perito_interno', 'perito'].includes(access.actor.role)) {
     return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
   }
   const data = await documentRequest.listDocumentRequests(id);
@@ -27,11 +27,11 @@ export async function POST(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (access.actor.role !== 'perito') {
+    if (!access.actor.allRoles && !['perito_interno', 'perito'].includes(access.actor.role)) {
       return NextResponse.json({ success: false, error: 'Solo el perito puede solicitar documentación por esta acción' }, { status: 403 });
     }
     if (!access.row.assignedJuridicoId) {
-      return NextResponse.json({ success: false, error: 'El caso aún no tiene un abogado jurídico asignado' }, { status: 409 });
+      return NextResponse.json({ success: false, error: 'El caso aún no tiene un Comercial Jurídico asignado' }, { status: 409 });
     }
 
     const body = await request.json();
@@ -49,7 +49,7 @@ export async function POST(
     });
 
     try {
-      const recipients = await caseMessage.listMessageRecipients(id, 'juridico_perito', 'perito');
+      const recipients = await caseMessage.listMessageRecipients(id, 'juridico_perito', access.actor.role);
       await notifyUsers({
         userIds: recipients.map((recipient) => recipient.userId),
         title: 'El perito solicita documentación',
@@ -71,7 +71,7 @@ export async function POST(
     logCaseEvent({
       caseId: id,
       eventType: 'document_requested',
-      description: 'El perito solicitó documentación al abogado jurídico asignado',
+      description: 'El perito solicitó documentación al Comercial Jurídico asignado',
       userId: access.actor.userId,
       userName: access.actor.displayName,
     });

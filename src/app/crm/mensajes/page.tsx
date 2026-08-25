@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { usePusher } from "@/hooks/usePusher";
 import {
   MessageSquare,
@@ -59,6 +60,7 @@ interface LeadCounts {
 }
 
 export default function MensajesPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState<LeadWithLastMessage[]>([]);
   const [counts, setCounts] = useState<LeadCounts>({ cnp: 0, peritus: 0, descartados: 0 });
   const [selectedLead, setSelectedLead] = useState<LeadWithLastMessage | null>(null);
@@ -82,8 +84,6 @@ export default function MensajesPage() {
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Auth check disabled - route is public (will be protected by magic link in the future)
 
   // Fetch leads
   const fetchLeads = useCallback(async () => {
@@ -283,19 +283,12 @@ export default function MensajesPage() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-3 border-b px-4 py-3 sm:px-6">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2969b0]/10">
-          <MessageSquare className="h-5 w-5" style={{ color: "#2969b0" }} />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold" style={{ color: "#1b5697" }}>
-            Mensajes
-          </h1>
-          <p className="text-xs text-muted-foreground">Conversaciones WhatsApp</p>
-        </div>
+      <div className="flex h-14 shrink-0 items-center border-b bg-background px-3 sm:px-4">
+        <Button variant="outline" size="sm" onClick={() => router.push('/crm')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Volver al CRM
+        </Button>
       </div>
-
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left panel - Lead list */}

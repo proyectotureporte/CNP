@@ -36,16 +36,21 @@ export async function GET(
       return NextResponse.json({ success: true, data: documents });
     }
 
+    if (!access.actor.allRoles && !['comercial_juridico', 'junta', 'perito_interno', 'perito'].includes(access.actor.role)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
+
     const docs = await caseDocument.listCaseDocuments(id, category);
-    const visibleDocs = access.actor.role === 'perito'
+    const isExpert = access.actor.role === 'perito' || access.actor.role === 'perito_interno';
+    const visibleDocs = isExpert
       ? docs.filter((document) => document.category !== 'pago')
       : docs;
     let data: CaseDocument[] = visibleDocs.map((document) =>
-      safeDocument(document, access.actor.role === 'perito'),
+      safeDocument(document, isExpert),
     );
 
     // Los comprobantes del cliente son financieros; nunca se exponen al perito.
-    if (access.actor.role !== 'perito' && (!category || category === 'pago')) {
+    if (!isExpert && (!category || category === 'pago')) {
       const receipts = await query<{
         _id: string; _createdAt: string; paymentNumber: number;
         fileName: string | null; fileSize: number | null; mimeType: string | null;
@@ -90,13 +95,9 @@ export async function POST(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (access.actor.role === 'perito') {
-      return NextResponse.json({ success: false, error: 'El dictamen y sus anexos se cargan en la sección Entregas' }, { status: 403 });
-    }
-
     const contentType = request.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
-      if (!canManageDocumentChecklist(access.actor.role)) {
+      if (!canManageDocumentChecklist(access.actor.role, access.actor.allRoles)) {
         return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
       }
       const body = await request.json();
@@ -126,6 +127,10 @@ export async function POST(
       });
       triggerEvent('document:created', { caseId: id });
       return NextResponse.json({ success: true, data: placeholder }, { status: 201 });
+    }
+
+    if (!access.actor.allRoles && !['comercial_juridico', 'cliente'].includes(access.actor.role)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 
     const form = await request.formData();

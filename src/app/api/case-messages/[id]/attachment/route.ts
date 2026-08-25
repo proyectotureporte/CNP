@@ -14,7 +14,7 @@ export async function GET(
   }
   const access = await requireCaseAccess(request, attachment.caseId);
   if (access.response) return access.response;
-  if (access.actor.role === 'juridico' && access.row.assignedJuridicoId !== access.actor.userId) {
+  if (access.actor.role === 'comercial_juridico' && access.row.assignedJuridicoId !== access.actor.userId) {
     return NextResponse.json({ success: false, error: 'Adjunto no encontrado' }, { status: 404 });
   }
   if (!canUseMessageAudience(access.actor, attachment.audience)) {

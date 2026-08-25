@@ -133,28 +133,14 @@ export default function NotificationsPage() {
 
   return (
     <>
-      {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2969b0]/10">
-            <Bell className="h-5 w-5" style={{ color: '#2969b0' }} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: '#1b5697' }}>Notificaciones</h1>
-            <p className="text-sm text-muted-foreground">
-              {unreadCount > 0
-                ? `${unreadCount} notificacion${unreadCount === 1 ? '' : 'es'} sin leer`
-                : 'Todas las notificaciones leidas'}
-            </p>
-          </div>
-        </div>
-        {unreadCount > 0 && (
+      {unreadCount > 0 && (
+        <div className="mb-6 flex justify-end">
           <Button variant="outline" onClick={markAllRead}>
             <CheckCheck className="mr-2 h-4 w-4" />
             Marcar todas como leidas
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Content */}
       {loading ? (

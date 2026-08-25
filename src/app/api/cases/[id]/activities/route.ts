@@ -17,7 +17,7 @@ export async function GET(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (access.actor.role === 'cliente') {
+    if (!access.actor.allRoles && !['comercial_juridico', 'perito_interno', 'perito'].includes(access.actor.role)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
     const [activities, counts] = await Promise.all([
@@ -45,7 +45,7 @@ export async function POST(
 
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (!canEditWorkPlan(access.actor.role)) {
+    if (!canEditWorkPlan(access.actor.role, access.actor.allRoles)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 
@@ -58,7 +58,8 @@ export async function POST(
     }
 
     const currentPlan = await workPlan.getCaseWorkPlan(id);
-    if (access.actor.role === 'perito'
+    const isExpert = ['perito', 'perito_interno'].includes(access.actor.role);
+    if (isExpert
       && (!currentPlan || !['borrador', 'rechazado'].includes(currentPlan.status))) {
       return NextResponse.json(
         { success: false, error: 'Solo puedes agregar actividades mientras el plan esté en borrador o devuelto' },
@@ -66,13 +67,13 @@ export async function POST(
       );
     }
 
-    const assignedToId = access.actor.role === 'perito'
+    const assignedToId = isExpert
       ? access.actor.userId
       : (body.assignedTo || null);
-    if (assignedToId && access.actor.role !== 'perito') {
+    if (assignedToId && !isExpert) {
       const assignee = await crmUser.getUserById(assignedToId);
-      if (!assignee || assignee.role === 'cliente') {
-        return NextResponse.json({ success: false, error: 'La actividad no puede asignarse a un cliente final' }, { status: 400 });
+      if (!assignee || !['perito', 'perito_interno'].includes(assignee.role)) {
+        return NextResponse.json({ success: false, error: 'La actividad solo puede asignarse a un perito' }, { status: 400 });
       }
     }
 

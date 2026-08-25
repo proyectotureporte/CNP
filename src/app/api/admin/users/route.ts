@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Email, nombre y contrasena son requeridos' }, { status: 400 });
     }
 
-    const userRole = role || 'juridico';
+    const userRole = role || 'comercial_juridico';
     if (!USER_ROLES.includes(userRole)) {
       return NextResponse.json({ success: false, error: 'Rol invalido' }, { status: 400 });
     }

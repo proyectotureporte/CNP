@@ -14,7 +14,7 @@ export async function GET(
   }
   const access = await requireCaseAccess(request, file.caseId);
   if (access.response) return access.response;
-  if (access.actor.role === 'cliente') {
+  if (!access.actor.allRoles && !['comercial_juridico', 'perito_interno', 'perito'].includes(access.actor.role)) {
     return NextResponse.json({ success: false, error: 'Archivo no encontrado' }, { status: 404 });
   }
   return proxyStoredAsset(file);

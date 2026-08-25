@@ -328,7 +328,7 @@ export default function ExpertForm({ initialData, expertId }: ExpertFormProps) {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Nivel (seniority)</Label>
+                <Label>Nivel</Label>
                 <Select value={seniority || "none"} onValueChange={(v) => setSeniority(v === "none" ? "" : v)}>
                   <SelectTrigger><SelectValue placeholder="Sin clasificar" /></SelectTrigger>
                   <SelectContent>
@@ -385,7 +385,7 @@ export default function ExpertForm({ initialData, expertId }: ExpertFormProps) {
             <Separator />
 
             <div>
-              <Label className="text-sm">Formación académica (base para el nivel)</Label>
+              <Label className="text-sm">Formación académica para determinar el nivel</Label>
               <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={pregrado} onChange={(e) => setPregrado(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
@@ -410,7 +410,7 @@ export default function ExpertForm({ initialData, expertId }: ExpertFormProps) {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="experienceYears">Anos de Experiencia</Label>
+                <Label htmlFor="experienceYears">Años de experiencia</Label>
                 <Input
                   id="experienceYears"
                   type="number"

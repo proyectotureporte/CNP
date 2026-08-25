@@ -20,7 +20,7 @@ export async function POST(
     if (!caseId) return NextResponse.json({ success: false, error: 'Plan no encontrado' }, { status: 404 });
     const access = await requireCaseAccess(request, caseId);
     if (access.response) return access.response;
-    if (!canEditWorkPlan(access.actor.role)) {
+    if (!canEditWorkPlan(access.actor.role, access.actor.allRoles)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
     const existing = await workPlan.getWorkPlanById(id);
@@ -41,17 +41,16 @@ export async function POST(
       logCaseEvent({
         caseId: wp.case._id,
         eventType: 'other',
-        description: 'Plan de trabajo enviado a revisión del comité',
+        description: 'Plan de trabajo enviado a revisión del Comercial Jurídico',
         userId, userName,
       });
       notifyUsersAndAdmins({
-        userIds: [],
+        userIds: [access.row.assignedJuridicoId],
         type: 'info',
         priority: 'normal',
         title: `Plan de Trabajo por Revisar: ${wp.case.caseCode}`,
-        message: `El plan de trabajo del caso "${wp.case.title}" fue enviado y espera revisión del comité.`,
+        message: `El plan de trabajo del caso "${wp.case.title}" fue enviado y espera revisión del Comercial Jurídico.`,
         linkUrl: `/crm/work-plans`,
-        mailbox: 'comite',
       }).catch((err) => console.error('[work-plan:submit] Error notificando:', err));
     }
 

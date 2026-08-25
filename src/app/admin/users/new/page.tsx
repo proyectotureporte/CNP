@@ -11,7 +11,7 @@ export default function AdminNewUserPage() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [role, setRole] = useState<UserRole>("juridico");
+  const [role, setRole] = useState<UserRole>("comercial_juridico");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);

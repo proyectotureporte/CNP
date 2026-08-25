@@ -13,7 +13,7 @@ export async function POST(
   try {
     const { id } = await params;
     const actor = actorFromRequest(request);
-    if (!actor || !canAccessFinances(actor.role)) {
+    if (!actor || !canAccessFinances(actor.role, actor.allRoles)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
     const row = await commission.getCommissionAccessRow(id);

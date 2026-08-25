@@ -4,31 +4,37 @@ import { useEffect, useState, useCallback } from "react";
 import { usePusher } from "@/hooks/usePusher";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, Users } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import ClientTable from "@/components/crm/ClientTable";
+import ClientCardGrid from "@/components/crm/ClientCardGrid";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { CrmClient } from "@/lib/types";
 
-function TableSkeleton() {
+const CLIENTS_PER_PAGE = 20;
+
+function CardsSkeleton() {
   return (
-    <div className="rounded-xl border border-border/60 bg-white shadow-sm">
-      <div className="border-b px-6 py-4">
-        <div className="grid grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-3 w-20" />
-          ))}
-        </div>
-      </div>
-      {[1, 2, 3, 4, 5, 6].map((i) => (
-        <div key={i} className="border-b border-border/30 px-6 py-4 last:border-b-0">
-          <div className="grid grid-cols-5 gap-4">
-            <Skeleton className="h-3 w-28" />
-            <Skeleton className="h-3 w-36" />
-            <Skeleton className="h-3 w-24" />
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {Array.from({ length: 12 }, (_, index) => (
+        <div key={index} className="rounded-2xl border border-border/60 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <Skeleton className="h-5 w-20 rounded-full" />
             <Skeleton className="h-5 w-16 rounded-full" />
-            <Skeleton className="h-3 w-16" />
+          </div>
+          <Skeleton className="mt-4 h-4 w-3/4" />
+          <Skeleton className="mt-2 h-3 w-1/2" />
+          <div className="mt-4 space-y-2 border-t pt-3">
+            <Skeleton className="h-14 w-full rounded-xl" />
+            <div className="grid grid-cols-2 gap-2">
+              <Skeleton className="h-14 w-full rounded-xl" />
+              <Skeleton className="h-14 w-full rounded-xl" />
+            </div>
+            <Skeleton className="h-16 w-full rounded-xl" />
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t pt-3">
+            <Skeleton className="h-7 w-24" />
+            <Skeleton className="h-8 w-20 rounded-full" />
           </div>
         </div>
       ))}
@@ -43,6 +49,8 @@ export default function CrmClientsPage() {
   const [brandFilter, setBrandFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [authorized, setAuthorized] = useState(false);
+  const [page, setPage] = useState(1);
 
   const fetchClients = useCallback(async (query: string, brand?: string) => {
     setLoading(true);
@@ -80,67 +88,54 @@ export default function CrmClientsPage() {
         router.push("/crm/login");
         return;
       }
-      fetchClients("");
+      setAuthorized(true);
     }
 
     init();
   }, [router, fetchClients]);
 
   useEffect(() => {
-    fetchClients(search, brandFilter);
-  }, [brandFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!authorized) return;
+
+    setPage(1);
+    const timeout = window.setTimeout(() => {
+      fetchClients(search, brandFilter);
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
+  }, [authorized, search, brandFilter, fetchClients]);
 
   usePusher(['client:created', 'client:updated', 'client:deleted'], () => {
-    fetchClients(search, brandFilter);
+    if (authorized) fetchClients(search, brandFilter);
   });
 
-  function handleSearch() {
-    fetchClients(search, brandFilter);
-  }
+  const totalPages = Math.max(1, Math.ceil(clients.length / CLIENTS_PER_PAGE));
+  const visibleClients = clients.slice(
+    (page - 1) * CLIENTS_PER_PAGE,
+    page * CLIENTS_PER_PAGE,
+  );
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  }
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   return (
     <>
-      {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2969b0]/10">
-            <Users className="h-5 w-5" style={{ color: '#2969b0' }} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: '#1b5697' }}>Clientes</h1>
-            <p className="text-sm text-muted-foreground">
-              Gestiona tu cartera de clientes
-            </p>
-          </div>
-        </div>
-        <Button asChild>
-          <Link href="/crm/clients/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Nuevo Cliente
-          </Link>
-        </Button>
-      </div>
-
-      {/* Search */}
-      <div className="mb-6 flex gap-3">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative max-w-md flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={handleKeyDown}
             placeholder="Buscar por nombre, empresa o email..."
             className="pl-9"
           />
         </div>
-        <Button variant="secondary" onClick={handleSearch}>
-          Buscar
+        <Button asChild className="sm:ml-auto">
+          <Link href="/crm/clients/new">
+            <Plus className="mr-2 h-4 w-4" />
+            Nuevo Cliente
+          </Link>
         </Button>
       </div>
 
@@ -174,13 +169,33 @@ export default function CrmClientsPage() {
         </div>
       )}
 
-      {/* Table */}
-      {loading ? <TableSkeleton /> : (
-        <ClientTable
-          clients={clients}
-          showActions
-          onValidated={() => fetchClients(search, brandFilter)}
-        />
+      {/* Client cards */}
+      {loading ? <CardsSkeleton /> : <ClientCardGrid clients={visibleClients} />}
+
+      {!loading && clients.length > 0 && totalPages > 1 && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Página {page} de {totalPages} ({clients.length} clientes)
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+            >
+              Anterior
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            >
+              Siguiente
+            </Button>
+          </div>
+        </div>
       )}
     </>
   );

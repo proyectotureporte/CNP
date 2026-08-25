@@ -112,7 +112,7 @@ export async function GET(
     if (!caseId) return NextResponse.json({ success: false, error: 'Cotización sin caso asociado' }, { status: 409 });
     const access = await requireCaseAccess(request, caseId);
     if (access.response) return access.response;
-    if (access.actor.role === 'perito') return NextResponse.json({ success: false, error: 'Cotización no encontrada' }, { status: 404 });
+    if (!access.actor.allRoles && !['comercial_juridico', 'cliente'].includes(access.actor.role)) return NextResponse.json({ success: false, error: 'Cotización no encontrada' }, { status: 404 });
     if (access.actor.role === 'cliente' && typed.status === 'borrador') {
       return NextResponse.json({ success: false, error: 'Cotización no encontrada' }, { status: 404 });
     }

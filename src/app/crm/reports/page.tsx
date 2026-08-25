@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePusher } from "@/hooks/usePusher";
-import { Download, FileSpreadsheet, DollarSign, Users, Briefcase, BarChart3 } from "lucide-react";
+import { Download, FileSpreadsheet, DollarSign, Users, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -175,7 +175,7 @@ function CasesReport() {
   function handleExportCSV() {
     const headers = [
       "Codigo",
-      "Titulo",
+      "Caso",
       "Disciplina",
       "Estado",
       "Cliente",
@@ -299,7 +299,7 @@ function CasesReport() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[130px]">Codigo</TableHead>
-                <TableHead>Titulo</TableHead>
+                <TableHead>Caso</TableHead>
                 <TableHead>Disciplina</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Cliente</TableHead>
@@ -410,7 +410,7 @@ function ExpertsPerformanceReport() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Disciplinas</TableHead>
                 <TableHead className="text-center">Rating</TableHead>
-                <TableHead className="text-center">Exp. (anios)</TableHead>
+                <TableHead className="text-center">Exp. (años)</TableHead>
                 <TableHead className="text-center">Casos</TableHead>
                 <TableHead>Disponibilidad</TableHead>
               </TableRow>
@@ -624,20 +624,6 @@ function RevenueReport() {
 export default function CrmReportsPage() {
   return (
     <>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2969b0]/10">
-            <BarChart3 className="h-5 w-5" style={{ color: '#2969b0' }} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: '#1b5697' }}>Reportes</h1>
-            <p className="text-sm text-muted-foreground">
-              Consulta reportes de casos, rendimiento de peritos e ingresos
-            </p>
-          </div>
-        </div>
-      </div>
-
       <Tabs defaultValue="casos" className="space-y-6">
         <TabsList>
           <TabsTrigger value="casos">

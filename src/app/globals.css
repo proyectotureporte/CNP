@@ -49,6 +49,16 @@ body {
   overflow-x: hidden;
 }
 
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer !important;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed !important;
+}
+
 /* Anchor offset for fixed header */
 section[id] {
   scroll-margin-top: 80px;

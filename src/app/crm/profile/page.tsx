@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserCircle } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/types";
 import type { UserRole } from "@/lib/types";
 import PasswordChangeForm from "@/components/crm/PasswordChangeForm";
@@ -83,21 +82,6 @@ export default function CrmProfilePage() {
 
   return (
     <>
-      {/* Page header */}
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2969b0]/10">
-              <UserCircle className="h-5 w-5" style={{ color: '#2969b0' }} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold" style={{ color: '#1b5697' }}>Mi Perfil</h1>
-              <p className="text-sm text-muted-foreground">
-                Administra tu informacion personal y seguridad
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Loading skeleton */}
         {loading && <ProfileSkeleton />}
 

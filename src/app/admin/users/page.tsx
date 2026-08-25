@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Users } from "lucide-react";
@@ -35,6 +35,7 @@ export default function AdminUsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<CrmUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showActiveInternalOnly, setShowActiveInternalOnly] = useState(false);
 
   async function loadUsers() {
     try {
@@ -58,11 +59,22 @@ export default function AdminUsersPage() {
   }
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setShowActiveInternalOnly(
+      params.get('scope') === 'internal' && params.get('status') === 'active'
+    );
     loadUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   usePusher(['user:created', 'user:updated'], () => { loadUsers(); });
+
+  const visibleUsers = useMemo(
+    () => showActiveInternalOnly
+      ? users.filter((user) => user.active && user.role !== 'cliente')
+      : users,
+    [showActiveInternalOnly, users],
+  );
 
   async function handleDeactivate(id: string) {
     const confirmed = window.confirm(
@@ -118,8 +130,19 @@ export default function AdminUsersPage() {
           </Link>
         </div>
 
+        {showActiveInternalOnly && !loading && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#2969b0]/15 bg-[#2969b0]/5 px-4 py-3 text-sm">
+            <span className="font-medium text-[#1b5697]">
+              Mostrando {visibleUsers.length} cuentas internas activas
+            </span>
+            <Link href="/admin/users" className="text-xs font-semibold text-[#2969b0] hover:underline">
+              Ver todos los usuarios
+            </Link>
+          </div>
+        )}
+
         {loading ? <UsersSkeleton /> : (
-          <UserTable users={users} onDeactivate={handleDeactivate} />
+          <UserTable users={visibleUsers} onDeactivate={handleDeactivate} />
         )}
     </>
   );

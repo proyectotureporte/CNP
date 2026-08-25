@@ -25,7 +25,9 @@ function publicDeliverable(item: Deliverable, clientView: boolean): Deliverable 
     downloadUrl: `/api/deliverable-attachments/${attachment._id}/download`,
   }));
   if (clientView) {
-    delete safe.submittedBy;
+    if (!(item.phase === 'dictamen_final' && item.status === 'aprobado')) {
+      delete safe.submittedBy;
+    }
     delete safe.reviewedBy;
     delete safe.approvedBy;
     delete safe.rejectionReason;
@@ -42,6 +44,9 @@ export async function GET(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
+    if (!access.actor.allRoles && !['comercial_juridico', 'perito_interno', 'perito', 'cliente'].includes(access.actor.role)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
 
     let items = await deliverable.listCaseDeliverables(id);
     if (access.actor.role === 'cliente') {
@@ -65,13 +70,13 @@ export async function POST(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (!['perito', 'admin'].includes(access.actor.role)) {
+    if (!access.actor.allRoles && !['perito', 'perito_interno'].includes(access.actor.role)) {
       return NextResponse.json({ success: false, error: 'Solo el perito asignado puede cargar el dictamen' }, { status: 403 });
     }
 
     const form = await request.formData();
     const requestedPhase = String(form.get('phase') || 'dictamen_final') as DeliverablePhase;
-    const phase = access.actor.role === 'perito' ? 'dictamen_final' : requestedPhase;
+    const phase = requestedPhase;
     const dictamen = form.get('dictamen');
     const annexes = form.getAll('anexos').filter((item): item is File => item instanceof File && item.size > 0);
     const comments = String(form.get('comments') || '').trim();

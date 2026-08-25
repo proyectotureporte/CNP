@@ -22,7 +22,7 @@ export async function POST(
     if (!caseId) return NextResponse.json({ success: false, error: 'Plan no encontrado' }, { status: 404 });
     const access = await requireCaseAccess(request, caseId);
     if (access.response) return access.response;
-    if (!canReviewWorkPlan(access.actor.role)) {
+    if (!canReviewWorkPlan(access.actor.role, access.actor.allRoles)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
     if (rejectionComments.length < 5 || rejectionComments.length > 2000) {
@@ -53,7 +53,6 @@ export async function POST(
         title: `Plan de Trabajo Rechazado: ${wp.case.caseCode}`,
         message: `El plan de trabajo del caso "${wp.case.title}" fue rechazado. Motivo: ${rejectionComments}`,
         linkUrl: `/crm/cases/${wp.case._id}`,
-        mailbox: 'comite',
       }).catch((err) => console.error('[work-plan:reject] Error notificando:', err));
     }
 

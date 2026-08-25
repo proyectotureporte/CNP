@@ -12,18 +12,12 @@ export async function GET(
   const actor = actorFromRequest(request);
   const file = await commission.getCommissionAccessRow(id);
   if (!actor || !file) return NextResponse.json({ success: false, error: 'Comprobante no encontrado' }, { status: 404 });
-  if (actor.role === 'perito') {
-    if (file.expertId !== actor.userId) {
-      return NextResponse.json({ success: false, error: 'Comprobante no encontrado' }, { status: 404 });
-    }
-  } else {
-    if (!canAccessFinances(actor.role)) {
-      return NextResponse.json({ success: false, error: 'Comprobante no encontrado' }, { status: 404 });
-    }
-    if (file.caseId) {
-      const access = await requireCaseAccess(request, file.caseId);
-      if (access.response) return access.response;
-    }
+  if (!canAccessFinances(actor.role, actor.allRoles)) {
+    return NextResponse.json({ success: false, error: 'Comprobante no encontrado' }, { status: 404 });
+  }
+  if (file.caseId) {
+    const access = await requireCaseAccess(request, file.caseId);
+    if (access.response) return access.response;
   }
   return proxyStoredAsset(file);
 }

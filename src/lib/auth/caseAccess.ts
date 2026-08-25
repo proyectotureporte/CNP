@@ -12,6 +12,7 @@ export interface RequestActor {
   userId: string;
   role: UserRole;
   displayName: string;
+  allRoles: boolean;
 }
 
 export interface CaseAccessRow {
@@ -31,6 +32,7 @@ export function actorFromRequest(request: Request): RequestActor | null {
     userId,
     role,
     displayName: request.headers.get('x-user-name') || 'Usuario',
+    allRoles: request.headers.get('x-user-all-roles') === 'true',
   };
 }
 
@@ -51,7 +53,7 @@ export async function getCaseAccessRow(caseId: string): Promise<CaseAccessRow | 
 }
 
 const INTERNAL_CASE_ROLES: UserRole[] = [
-  'admin', 'juridico', 'administrativo', 'mercadeo', 'postventa',
+  'admin', 'comercial_juridico', 'junta',
 ];
 
 export async function canActorAccessCase(
@@ -59,10 +61,8 @@ export async function canActorAccessCase(
   row: CaseAccessRow,
 ): Promise<boolean> {
   if (INTERNAL_CASE_ROLES.includes(actor.role)) return true;
-  if (actor.role === 'financiero') return row.assignedFinancieroId === actor.userId;
-  if (actor.role === 'perito') {
-    return row.assignedExpertId === actor.userId || row.assignedFinancieroId === actor.userId;
-  }
+  if (actor.role === 'perito_interno') return row.assignedFinancieroId === actor.userId;
+  if (actor.role === 'perito') return row.assignedExpertId === actor.userId;
   if (actor.role === 'cliente') {
     const clientId = await getClientIdForUser(actor.userId);
     return Boolean(clientId && row.clientId === clientId);
@@ -105,7 +105,8 @@ export function canUseMessageAudience(
   actor: RequestActor,
   audience: CaseMessageAudience,
 ): boolean {
-  if (actor.role === 'admin' || actor.role === 'juridico') return true;
+  if (actor.allRoles) return true;
+  if (actor.role === 'comercial_juridico') return true;
   if (actor.role === 'perito') return audience === 'juridico_perito';
   if (actor.role === 'cliente') return audience === 'juridico_cliente';
   return false;

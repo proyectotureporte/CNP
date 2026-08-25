@@ -395,7 +395,7 @@ export default function ExecutiveDashboardPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-[120px]">Codigo</TableHead>
-                        <TableHead>Titulo</TableHead>
+                        <TableHead>Caso</TableHead>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Estado</TableHead>
                         <TableHead className="text-right">

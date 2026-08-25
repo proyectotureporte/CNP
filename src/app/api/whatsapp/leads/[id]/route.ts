@@ -3,13 +3,14 @@ import { whatsappLead } from '@/lib/db';
 import type { LeadStatus } from '@/lib/types';
 import { triggerEvent } from '@/lib/realtime/server';
 import { guardRole } from '@/lib/auth/guard';
+import { canUseWhatsappInbox } from '@/lib/auth/permissions';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const stop = guardRole(request, (role) => ['admin', 'juridico', 'mercadeo'].includes(role));
+    const stop = guardRole(request, canUseWhatsappInbox);
     if (stop) return stop;
     const { id } = await params;
     const lead = await whatsappLead.getWhatsappLeadById(id);
@@ -30,7 +31,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const stop = guardRole(request, (role) => ['admin', 'juridico', 'mercadeo'].includes(role));
+    const stop = guardRole(request, canUseWhatsappInbox);
     if (stop) return stop;
     const { id } = await params;
     const body = await request.json();

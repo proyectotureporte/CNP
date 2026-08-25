@@ -28,14 +28,21 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userRole = request.headers.get('x-user-role') as UserRole;
     const userId = request.headers.get('x-user-id') || '';
+    const allRoles = request.headers.get('x-user-all-roles') === 'true';
     const status = searchParams.get('status') || '';
     const discipline = searchParams.get('discipline') || '';
     const brand = searchParams.get('brand') || '';
     const search = searchParams.get('search') || '';
     const deadlineFilter = searchParams.get('deadlineFilter') || '';
+    const clientId = searchParams.get('clientId') || '';
+    const expertId = searchParams.get('expertId') || '';
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const offset = (page - 1) * limit;
+
+    if (userRole === 'admin' && !allRoles) {
+      return NextResponse.json({ success: false, error: 'El admin técnico no tiene acceso al listado operativo de casos' }, { status: 403 });
+    }
 
     // Portal clients can only see their own cases
     if (userRole === 'cliente') {
@@ -44,19 +51,25 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: true, data: [], meta: { total: 0, page: 1, limit, totalPages: 0 } });
       }
       const list = await cases.listCasesForClient(clientId);
-      const safeList = list.map((item) => sanitizeCaseForRole(item, 'cliente'));
-      return NextResponse.json({ success: true, data: safeList, meta: { total: safeList.length, page: 1, limit: safeList.length, totalPages: safeList.length ? 1 : 0 } });
+      const total = list.length;
+      const safeList = list
+        .slice(offset, offset + limit)
+        .map((item) => sanitizeCaseForRole(item, 'cliente'));
+      return NextResponse.json({ success: true, data: safeList, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } });
     }
 
     // El perito solo recibe casos propios y la consulta ni siquiera enlaza al cliente.
     if (userRole === 'perito') {
       const list = await cases.listCasesForExpert(userId);
-      const safeList = list.map((item) => sanitizeCaseForRole(item, 'perito'));
-      return NextResponse.json({ success: true, data: safeList, meta: { total: safeList.length, page: 1, limit: safeList.length, totalPages: safeList.length ? 1 : 0 } });
+      const total = list.length;
+      const safeList = list
+        .slice(offset, offset + limit)
+        .map((item) => sanitizeCaseForRole(item, 'perito'));
+      return NextResponse.json({ success: true, data: safeList, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } });
     }
 
-    // Financiero users can only see cases assigned to them
-    const financieroId = userRole === 'financiero' ? userId : '';
+    // El perito interno solo ve casos asignados mediante assignedFinanciero.
+    const financieroId = userRole === 'perito_interno' ? userId : '';
 
     // Calculate deadline threshold based on filter
     let deadlineThreshold = '';
@@ -70,7 +83,9 @@ export async function GET(request: NextRequest) {
       deadlineThreshold = d.toISOString().split('T')[0];
     }
 
-    const filters = { status, discipline, brand, search, deadlineThreshold, financieroId };
+    const filters = {
+      status, discipline, brand, search, deadlineThreshold, financieroId, clientId, expertId,
+    };
 
     const [list, total] = await Promise.all([
       cases.listCases({ ...filters, limit, offset }),
@@ -105,13 +120,13 @@ export async function POST(request: NextRequest) {
     const userName = request.headers.get('x-user-name') || 'Sistema';
     const body = await request.json();
     const {
-      title, description, discipline, complexity, priority, channel,
+      title, description, dictamenObject, discipline, complexity, priority, channel,
       clientId, estimatedAmount, hasHearing, hearingDate, hearingLink, deadlineDate,
       city, courtName, caseNumber, brand: bodyBrand,
     } = body;
 
     if (!title) {
-      return NextResponse.json({ success: false, error: 'El titulo es requerido' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'El caso es requerido' }, { status: 400 });
     }
     if (discipline && !CASE_DISCIPLINES.includes(discipline)) {
       return NextResponse.json({ success: false, error: 'Disciplina no valida' }, { status: 400 });
@@ -151,6 +166,7 @@ export async function POST(request: NextRequest) {
       caseCode,
       title,
       description: description || '',
+      dictamenObject: dictamenObject || '',
       discipline: discipline || 'otro',
       status: 'creado',
       complexity: complexity || 'media',
@@ -169,7 +185,7 @@ export async function POST(request: NextRequest) {
       clientId: clientId || null,
       createdById: userId && userId !== 'admin' ? userId : null,
       commercialId: userId && userId !== 'admin' ? userId : null,
-      assignedJuridicoId: userRole === 'juridico' && userId ? userId : null,
+      assignedJuridicoId: userRole === 'comercial_juridico' && userId ? userId : null,
     });
 
     if (!created) {

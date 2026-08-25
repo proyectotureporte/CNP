@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cases, crmUser, expert } from '@/lib/db';
+import { cases } from '@/lib/db';
 import { requireCaseAccess, sanitizeCaseForRole } from '@/lib/auth/caseAccess';
 import {
   CASE_STATUSES, CASE_DISCIPLINES, CASE_COMPLEXITIES, CASE_PRIORITIES, CASE_CHANNELS,
@@ -8,6 +8,7 @@ import {
 import { VALID_TRANSITIONS } from '@/lib/cases/stateMachine';
 import { triggerEvent } from '@/lib/realtime/server';
 import { auditEntityChange } from '@/lib/audit';
+import { canEditCase } from '@/lib/auth/permissions';
 
 export async function GET(
   request: NextRequest,
@@ -46,9 +47,7 @@ export async function PUT(
     const { id } = await params;
     const userRole = request.headers.get('x-user-role') || '';
 
-    // Las actualizaciones técnicas del perito tienen endpoints acotados; el
-    // CRUD general del caso queda únicamente en manos de admin/jurídico.
-    if (!['admin', 'juridico'].includes(userRole)) {
+    if (!canEditCase(userRole as Parameters<typeof canEditCase>[0], request.headers.get('x-user-all-roles') === 'true')) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 
@@ -59,18 +58,11 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Caso no encontrado' }, { status: 404 });
     }
 
-    // Juridico cannot edit cases that are already gestionado
-    if (userRole === 'juridico' && existing.status !== 'creado') {
-      return NextResponse.json(
-        { success: false, error: 'No puede editar este caso. Solo puede editar casos en estado Creado.' },
-        { status: 403 }
-      );
-    }
-
     const patch: Parameters<typeof cases.updateCase>[1] = {};
 
     if (body.title !== undefined) patch.title = body.title;
     if (body.description !== undefined) patch.description = body.description;
+    if (body.dictamenObject !== undefined) patch.dictamenObject = body.dictamenObject;
     if (body.city !== undefined) patch.city = body.city;
     if (body.courtName !== undefined) patch.courtName = body.courtName;
     if (body.caseNumber !== undefined) patch.caseNumber = body.caseNumber;
@@ -90,6 +82,12 @@ export async function PUT(
     if (body.discipline !== undefined) {
       if (!CASE_DISCIPLINES.includes(body.discipline)) {
         return NextResponse.json({ success: false, error: 'Disciplina no valida' }, { status: 400 });
+      }
+      if (existing.assignedFinanciero && !['financiero', 'contable'].includes(body.discipline)) {
+        return NextResponse.json(
+          { success: false, error: 'Antes de cambiar la disciplina debes retirar la asignación del perito interno' },
+          { status: 409 },
+        );
       }
       patch.discipline = body.discipline;
     }
@@ -126,70 +124,7 @@ export async function PUT(
       patch.status = body.status;
     }
 
-    // Reference fields (vacío => limpiar). Las asignaciones que involucren a
-    // un perito repiten aquí la validación del endpoint /assign para que ningún
-    // flujo alternativo pueda saltarse el bloqueo bancario de G-01.
-    if (body.assignedExpertId) {
-      const assignedUser = await crmUser.getUserById(body.assignedExpertId);
-      if (!assignedUser || assignedUser.role !== 'perito') {
-        return NextResponse.json({ success: false, error: 'El usuario asignado debe tener rol perito' }, { status: 400 });
-      }
-      const profile = await expert.getExpertByUserId(body.assignedExpertId);
-      if (profile?.validationStatus !== 'activado') {
-        return NextResponse.json(
-          { success: false, error: 'No se puede asignar el caso: el perfil del perito debe estar activado y categorizado.' },
-          { status: 409 },
-        );
-      }
-      if (!profile.bankName?.trim()
-        || !profile.bankAccountType?.trim()
-        || !profile.bankAccountNumber?.trim()
-        || !profile.bankAccountHolder?.trim()
-        || !profile.bankHolderDocument?.trim()) {
-        return NextResponse.json(
-          { success: false, error: 'No se puede asignar el caso: el perito debe completar sus datos bancarios.' },
-          { status: 409 },
-        );
-      }
-    }
-    if (body.assignedFinancieroId) {
-      const assignedUser = await crmUser.getUserById(body.assignedFinancieroId);
-      if (!assignedUser || !['financiero', 'perito'].includes(assignedUser.role)) {
-        return NextResponse.json({ success: false, error: 'El responsable financiero no tiene un rol válido' }, { status: 400 });
-      }
-      if (assignedUser.role === 'perito') {
-        const profile = await expert.getExpertByUserId(body.assignedFinancieroId);
-        if (profile?.validationStatus !== 'activado') {
-          return NextResponse.json(
-            { success: false, error: 'No se puede asignar el caso: el perfil del perito debe estar activado y categorizado.' },
-            { status: 409 },
-          );
-        }
-        if (!profile.bankName?.trim()
-          || !profile.bankAccountType?.trim()
-          || !profile.bankAccountNumber?.trim()
-          || !profile.bankAccountHolder?.trim()
-          || !profile.bankHolderDocument?.trim()) {
-          return NextResponse.json(
-            { success: false, error: 'No se puede asignar el caso: el perito debe completar sus datos bancarios.' },
-            { status: 409 },
-          );
-        }
-      }
-    }
-    if (body.assignedJuridicoId) {
-      const assignedUser = await crmUser.getUserById(body.assignedJuridicoId);
-      if (!assignedUser || assignedUser.role !== 'juridico') {
-        return NextResponse.json({ success: false, error: 'El interlocutor debe tener rol jurídico' }, { status: 400 });
-      }
-    }
-
     if (body.clientId !== undefined) patch.clientId = body.clientId || null;
-    if (body.commercialId !== undefined) patch.commercialId = body.commercialId || null;
-    if (body.technicalAnalystId !== undefined) patch.technicalAnalystId = body.technicalAnalystId || null;
-    if (body.assignedExpertId !== undefined) patch.assignedExpertId = body.assignedExpertId || null;
-    if (body.assignedFinancieroId !== undefined) patch.assignedFinancieroId = body.assignedFinancieroId || null;
-    if (body.assignedJuridicoId !== undefined) patch.assignedJuridicoId = body.assignedJuridicoId || null;
 
     const updated = await cases.updateCase(id, patch);
 
@@ -198,6 +133,7 @@ export async function PUT(
       const snapshot = (c: typeof existing) => ({
         title: c.title,
         description: c.description ?? null,
+        dictamenObject: c.dictamenObject ?? null,
         discipline: c.discipline ?? null,
         status: c.status,
         complexity: c.complexity,
@@ -211,10 +147,6 @@ export async function PUT(
         courtName: c.courtName ?? null,
         caseNumber: c.caseNumber ?? null,
         clientId: c.client?._id ?? null,
-        commercialId: c.commercial?._id ?? null,
-        technicalAnalystId: c.technicalAnalyst?._id ?? null,
-        assignedExpertId: c.assignedExpert?._id ?? null,
-        assignedFinancieroId: c.assignedFinanciero?._id ?? null,
       });
       auditEntityChange({
         request,
@@ -244,7 +176,7 @@ export async function DELETE(
     const { id } = await params;
     const userRole = request.headers.get('x-user-role') || '';
 
-    if (!['admin', 'juridico'].includes(userRole)) {
+    if (!canEditCase(userRole as Parameters<typeof canEditCase>[0], request.headers.get('x-user-all-roles') === 'true')) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 

@@ -15,7 +15,7 @@ export async function GET(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (access.actor.role === 'perito') {
+    if (!access.actor.allRoles && !['comercial_juridico', 'cliente'].includes(access.actor.role)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 

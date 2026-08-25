@@ -5,7 +5,7 @@ import { actorFromRequest } from '@/lib/auth/caseAccess';
 export async function GET(request: NextRequest) {
   try {
     const actor = actorFromRequest(request);
-    if (!actor || !['admin', 'juridico', 'administrativo'].includes(actor.role)) {
+    if (!actor || (!actor.allRoles && actor.role !== 'comercial_juridico')) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
     const users = await crmUser.listActiveUsersBasic();

@@ -20,7 +20,7 @@ export async function PUT(
     }
     const access = await requireCaseAccess(request, row.caseId);
     if (access.response) return access.response;
-    if (!canReviewDeliverable(access.actor.role)) {
+    if (!canReviewDeliverable(access.actor.role, access.actor.allRoles)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
     if (!['enviado', 'en_revision'].includes(row.status)) {

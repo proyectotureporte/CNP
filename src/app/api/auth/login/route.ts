@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminConfig, crmUser } from '@/lib/db';
 import { comparePassword } from '@/lib/auth/passwords';
 import { signToken } from '@/lib/auth/jwt';
+import { normalizeUserRole } from '@/lib/types';
+import { hasAllRolesAccess } from '@/lib/auth/allRoles';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +11,7 @@ export async function POST(request: NextRequest) {
     const { email, password: rawPassword, type } = body as {
       email?: string;
       password: string;
-      type: 'admin' | 'crm' | 'portal';
+      type: 'admin' | 'crm' | 'portal' | 'perito';
     };
 
     const password = rawPassword?.trim();
@@ -64,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     // CRM login - username + password (all roles except admin-only)
-    if (type === 'crm') {
+    if (type === 'crm' || type === 'perito') {
       if (!email) {
         return NextResponse.json(
           { success: false, error: 'Email requerido' },
@@ -88,26 +90,48 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const normalizedRole = normalizeUserRole(user.role as string);
+      if (!normalizedRole) {
+        return NextResponse.json(
+          { success: false, error: 'La cuenta no tiene un rol válido. Contacte al administrador.' },
+          { status: 403 }
+        );
+      }
+
       // Block clients from logging in through the CRM login form
-      if (user.role === 'cliente') {
+      if (normalizedRole === 'cliente') {
         return NextResponse.json(
           { success: false, error: 'Acceso solo para personal interno. Los clientes deben usar el Portal Cliente.' },
+          { status: 403 }
+        );
+      }
+      if (type === 'perito' && normalizedRole !== 'perito') {
+        return NextResponse.json(
+          { success: false, error: 'Este acceso es exclusivo para peritos externos.' },
+          { status: 403 }
+        );
+      }
+      if (type === 'crm' && normalizedRole === 'perito') {
+        return NextResponse.json(
+          { success: false, error: 'Los peritos externos deben usar el Portal Perito.' },
           { status: 403 }
         );
       }
 
       const token = await signToken({
         sub: user._id,
-        role: user.role || 'juridico',
+        role: normalizedRole,
         displayName: user.displayName,
+        allRoles: hasAllRolesAccess(user.email),
       });
 
       const response = NextResponse.json({
         success: true,
         data: {
-          role: user.role || 'juridico',
+          role: normalizedRole,
           displayName: user.displayName,
           userId: user._id,
+          allRoles: hasAllRolesAccess(user.email),
         },
       });
 
@@ -148,7 +172,8 @@ export async function POST(request: NextRequest) {
       }
 
       // Only allow clients through portal login
-      if (user.role !== 'cliente') {
+      const normalizedRole = normalizeUserRole(user.role as string);
+      if (normalizedRole !== 'cliente') {
         return NextResponse.json(
           { success: false, error: 'Este acceso es solo para clientes. Use /crm/login para personal interno.' },
           { status: 403 }
@@ -157,14 +182,14 @@ export async function POST(request: NextRequest) {
 
       const token = await signToken({
         sub: user._id,
-        role: user.role,
+        role: normalizedRole,
         displayName: user.displayName,
       });
 
       const response = NextResponse.json({
         success: true,
         data: {
-          role: user.role,
+          role: normalizedRole,
           displayName: user.displayName,
           userId: user._id,
         },

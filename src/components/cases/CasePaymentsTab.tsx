@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Download, Loader2, Receipt, Upload, Wallet } from "lucide-react";
+import { Download, Loader2, Receipt, Upload } from "lucide-react";
 import { usePusher } from "@/hooks/usePusher";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ function formatDate(value?: string) {
   return value ? new Date(value).toLocaleDateString("es-CO") : "Sin fecha";
 }
 
-export default function CasePaymentsTab({ caseId, userRole }: { caseId: string; userRole: string }) {
+export default function CasePaymentsTab({ caseId, userRole, allRoles = false }: { caseId: string; userRole: string; allRoles?: boolean }) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
@@ -30,7 +29,7 @@ export default function CasePaymentsTab({ caseId, userRole }: { caseId: string; 
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const load = useCallback(async () => {
-    if (userRole === "perito") {
+    if (!allRoles && !['cliente', 'junta'].includes(userRole)) {
       setLoading(false);
       return;
     }
@@ -46,7 +45,7 @@ export default function CasePaymentsTab({ caseId, userRole }: { caseId: string; 
     } finally {
       setLoading(false);
     }
-  }, [caseId, userRole]);
+  }, [allRoles, caseId, userRole]);
 
   useEffect(() => { load(); }, [load]);
   usePusher(["payment:updated", "payment:receipt"], () => { load(); });
@@ -68,12 +67,6 @@ export default function CasePaymentsTab({ caseId, userRole }: { caseId: string; 
       setUploadingId(null);
       if (fileRefs.current[paymentId]) fileRefs.current[paymentId]!.value = "";
     }
-  }
-
-  if (userRole === "perito") {
-    return (
-      <Card><CardContent className="flex flex-col items-center py-12 text-center"><Wallet className="mb-3 h-8 w-8 text-muted-foreground" /><h3 className="font-semibold">Pagos de tu servicio</h3><p className="mb-4 max-w-md text-sm text-muted-foreground">Los pagos del cliente son privados. Tus propios comprobantes se consultan en Mis pagos.</p><Button asChild><Link href="/crm/commissions">Ir a Mis pagos</Link></Button></CardContent></Card>
-    );
   }
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>;

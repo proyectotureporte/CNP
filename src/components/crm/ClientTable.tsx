@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { ActionPillButton } from "@/components/ui/action-pill-button";
 import { useAuth } from "@/hooks/useAuth";
 import { canManageClients } from "@/lib/auth/permissions";
 import type { CrmClient, UserRole } from "@/lib/types";
@@ -66,25 +67,6 @@ function formatDate(dateString: string): string {
   }
 }
 
-function EyeIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="shrink-0"
-    >
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
 function PencilIcon() {
   return (
     <svg
@@ -129,8 +111,9 @@ export default function ClientTable({
   showActions = true,
   onValidated,
 }: ClientTableProps) {
+  const router = useRouter();
   const { user } = useAuth();
-  const canValidate = !!user && canManageClients(user.role as UserRole);
+  const canValidate = !!user && canManageClients(user.role as UserRole, user.allRoles);
 
   const [rejectTarget, setRejectTarget] = useState<{ id: string; name: string } | null>(null);
   const [rejectNotes, setRejectNotes] = useState("");
@@ -214,7 +197,24 @@ export default function ClientTable({
                 return (
                   <tr
                     key={client._id}
-                    className="border-b border-gray-50 transition-all duration-200 hover:bg-gray-50/50"
+                    role={showActions ? "link" : undefined}
+                    tabIndex={showActions ? 0 : undefined}
+                    aria-label={showActions ? `Abrir ficha de ${client.name}` : undefined}
+                    onClick={(event) => {
+                      if (!showActions) return;
+                      if ((event.target as HTMLElement).closest('button, a, input, select, textarea')) return;
+                      router.push(`/crm/clients/${client._id}`);
+                    }}
+                    onKeyDown={(event) => {
+                      if (!showActions || event.target !== event.currentTarget) return;
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        router.push(`/crm/clients/${client._id}`);
+                      }
+                    }}
+                    className={`border-b border-gray-50 transition-all duration-200 hover:bg-gray-50/70 ${
+                      showActions ? "cursor-pointer outline-none focus-visible:bg-[#2969b0]/5 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2969b0]/40" : ""
+                    }`}
                   >
                     {/* Nombre + badges debajo */}
                     <td className="px-4 py-3.5 text-sm font-medium text-gray-900">
@@ -264,20 +264,14 @@ export default function ClientTable({
                     {showActions && (
                       <td className="px-4 py-3.5 text-sm text-center">
                         <div className="flex flex-wrap items-center justify-center gap-1">
-                          <Link
-                            href={`/crm/clients/${client._id}`}
-                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-medium text-[#2969b0] transition-all duration-200 hover:bg-[#2969b0]/5"
-                          >
-                            <EyeIcon />
-                            Ver
-                          </Link>
-                          <Link
-                            href={`/crm/clients/${client._id}/edit`}
-                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-medium text-[#2969b0] transition-all duration-200 hover:bg-[#2969b0]/5"
-                          >
-                            <PencilIcon />
-                            Editar
-                          </Link>
+                          <ActionPillButton
+                            type="button"
+                            label="Editar"
+                            tone="blue"
+                            icon={<PencilIcon />}
+                            className="min-h-8 px-3 py-1.5 text-xs"
+                            onClick={() => router.push(`/crm/clients/${client._id}/edit`)}
+                          />
                           {/* Botones de validación Peritus */}
                           {showValidateButtons && (
                             <>

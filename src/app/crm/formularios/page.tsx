@@ -59,16 +59,6 @@ export default function FormulariosPage() {
 
   return (
     <>
-      <div className="mb-6 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2969b0]/10">
-          <Inbox className="h-5 w-5" style={{ color: "#2969b0" }} />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: "#1b5697" }}>Formularios Web</h1>
-          <p className="text-sm text-muted-foreground">Solicitudes recibidas desde el sitio web</p>
-        </div>
-      </div>
-
       {loading ? (
         <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-24" />)}</div>
       ) : leads.length === 0 ? (

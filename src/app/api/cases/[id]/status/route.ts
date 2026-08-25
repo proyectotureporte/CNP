@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cases, crmUser } from '@/lib/db';
+import { cases } from '@/lib/db';
 import { CASE_STATUSES, CASE_STATUS_LABELS, type CaseStatus } from '@/lib/types';
 import { VALID_TRANSITIONS, canChangeStatus } from '@/lib/cases/stateMachine';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
@@ -20,7 +20,7 @@ export async function PUT(
     const userName = access.actor.displayName;
     const userRole = access.actor.role;
     const body = await request.json();
-    const { status, assignedFinancieroId } = body as { status: string; assignedFinancieroId?: string };
+    const { status } = body as { status: string };
 
     if (!status || !CASE_STATUSES.includes(status as CaseStatus)) {
       return NextResponse.json({ success: false, error: 'Estado no valido' }, { status: 400 });
@@ -31,7 +31,7 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Caso no encontrado' }, { status: 404 });
     }
 
-    if (!canChangeStatus(userRole, existing.statusChangedByRole)) {
+    if (!access.actor.allRoles && !canChangeStatus(userRole, existing.statusChangedByRole)) {
       return NextResponse.json(
         { success: false, error: 'No tiene permisos para cambiar el estado de este caso en este momento' },
         { status: 403 }
@@ -49,37 +49,10 @@ export async function PUT(
       );
     }
 
-    // Juridico must assign financiero when setting to gestionado
-    if (userRole === 'juridico' && status === 'gestionado' && !assignedFinancieroId) {
-      return NextResponse.json(
-        { success: false, error: 'Debe asignar un usuario financiero al gestionar el caso' },
-        { status: 400 }
-      );
-    }
-    if (status === 'gestionado' && assignedFinancieroId) {
-      const financialUser = await crmUser.getUserById(assignedFinancieroId);
-      if (!financialUser || financialUser.role !== 'financiero') {
-        return NextResponse.json(
-          { success: false, error: 'El responsable seleccionado debe tener rol financiero' },
-          { status: 400 },
-        );
-      }
-    }
-
     const patch: Parameters<typeof cases.updateCase>[1] = {
       status: status as CaseStatus,
       statusChangedByRole: userRole,
     };
-
-    if (status === 'gestionado' && assignedFinancieroId) {
-      patch.assignedFinancieroId = assignedFinancieroId;
-    }
-
-    // When financiero returns case to creado, clear the chain and the assignment
-    if (status === 'creado' && userRole === 'financiero') {
-      patch.statusChangedByRole = 'financiero';
-      patch.assignedFinancieroId = null;
-    }
 
     const updated = await cases.updateCase(id, patch);
 
@@ -97,29 +70,23 @@ export async function PUT(
       action: 'update',
       entityType: 'case',
       entityId: id,
-      before: { status: existing.status, assignedFinanciero: existing.assignedFinanciero?._id ?? null },
-      after: { status, assignedFinanciero: patch.assignedFinancieroId ?? existing.assignedFinanciero?._id ?? null },
+      before: { status: existing.status },
+      after: { status },
     });
 
     // RF-03/RF-13: toda transición notifica a los implicados del caso (+admins).
-    const returned = status === 'creado' && userRole === 'financiero';
     notifyUsersAndAdmins({
       userIds: [
         existing.commercial?._id,
         existing.technicalAnalyst?._id,
         existing.assignedExpert?._id,
         existing.assignedFinanciero?._id,
-        patch.assignedFinancieroId ?? undefined,
         existing.createdBy?._id,
       ].filter((uid) => uid !== userId),
-      type: returned ? 'warning' : 'info',
-      priority: returned ? 'alta' : 'normal',
-      title: returned
-        ? `Caso Devuelto: ${existing.caseCode}`
-        : `Cambio de estado: ${existing.caseCode}`,
-      message: returned
-        ? `El caso "${existing.title}" fue devuelto por el area financiera y requiere su atencion.`
-        : `El caso "${existing.title}" pasó de "${fromLabel}" a "${toLabel}" (${userName || userRole}).`,
+      type: 'info',
+      priority: 'normal',
+      title: `Cambio de estado: ${existing.caseCode}`,
+      message: `El caso "${existing.title}" pasó de "${fromLabel}" a "${toLabel}" (${userName || userRole}).`,
       linkUrl: `/crm/cases/${id}`,
       mailbox: 'admin',
     }).catch((err) => console.error('[status] Error notificando cambio de estado:', err));

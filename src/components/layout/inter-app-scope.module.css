@@ -1,0 +1,13 @@
+.root {
+  min-height: 100vh;
+  font-family: var(--font-app-inter), Inter, Arial, sans-serif;
+}
+
+.root *,
+:global(body.app-font-inter) * {
+  font-family: inherit !important;
+}
+
+:global(body.app-font-inter) {
+  font-family: var(--font-app-inter), Inter, Arial, sans-serif !important;
+}

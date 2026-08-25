@@ -11,7 +11,7 @@ export async function GET(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (access.actor.role === 'cliente') {
+    if (!access.actor.allRoles && !['comercial_juridico', 'perito_interno', 'perito'].includes(access.actor.role)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
     const plan = await workPlan.getCaseWorkPlan(id);
@@ -30,7 +30,7 @@ export async function POST(
 
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (!canEditWorkPlan(access.actor.role)) {
+    if (!canEditWorkPlan(access.actor.role, access.actor.allRoles)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 
@@ -55,7 +55,7 @@ export async function POST(
       estimatedDays: body.estimatedDays || 0,
       deliverablesDescription: body.deliverablesDescription || '',
       status: 'borrador',
-      assignedExpertId: access.actor.role === 'perito'
+      assignedExpertId: ['perito', 'perito_interno'].includes(access.actor.role)
         ? access.actor.userId
         : (body.assignedExpert || caseData.assignedExpert?._id || null),
       createdById: actorUserReference(access.actor),

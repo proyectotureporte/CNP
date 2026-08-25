@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { caseDocument, query } from '@/lib/db';
 import { guardRole } from '@/lib/auth/guard';
+import { canUseWhatsappInbox } from '@/lib/auth/permissions';
 import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
 // Transfer lead documents to a case as caseDocuments (same Sanity asset, referenced by URL)
@@ -9,7 +10,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const stop = guardRole(request, (role) => ['admin', 'juridico', 'mercadeo'].includes(role));
+    const stop = guardRole(request, canUseWhatsappInbox);
     if (stop) return stop;
     const { id } = await params;
     const body = await request.json();

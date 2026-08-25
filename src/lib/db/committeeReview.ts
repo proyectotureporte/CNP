@@ -1,8 +1,8 @@
 import { query, queryOne, buildInsert, newId, nestedObj } from './pool';
 import type { CommitteeReview, CommitteeViability } from '@/lib/types';
 
-// Decisión de comité por caso (RF-07): viabilidad, alcance, honorarios,
-// entregables y tiempo. Una fila por caso (case_id UNIQUE) — upsert.
+// Decisión de Junta por caso. Las columnas históricas de alcance/entregables
+// se conservan por compatibilidad, pero el flujo vigente usa decisión, motivo y valor.
 
 const decidedByObj = nestedObj('u', { _id: 'u.id', displayName: 'u.display_name' });
 
@@ -48,8 +48,9 @@ export async function upsertCommitteeReview(input: CommitteeReviewInput): Promis
     decided_by_id: decidedById,
     decided_at: input.viability ? new Date().toISOString() : null,
   });
+  const insertWithoutReturning = text.replace(/ RETURNING id$/, '');
   await query(
-    `${text}
+    `${insertWithoutReturning}
      ON CONFLICT (case_id) DO UPDATE SET
        viability = EXCLUDED.viability,
        viability_reason = EXCLUDED.viability_reason,
@@ -59,7 +60,8 @@ export async function upsertCommitteeReview(input: CommitteeReviewInput): Promis
        estimated_days = EXCLUDED.estimated_days,
        notes = EXCLUDED.notes,
        decided_by_id = EXCLUDED.decided_by_id,
-       decided_at = EXCLUDED.decided_at`,
+       decided_at = EXCLUDED.decided_at
+     RETURNING id`,
     values,
   );
   return getCommitteeReviewByCase(input.caseId);

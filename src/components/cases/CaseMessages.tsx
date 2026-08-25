@@ -13,11 +13,12 @@ import type { CaseMessage, CaseMessageAudience, UserRole } from "@/lib/types";
 interface CaseMessagesProps {
   caseId: string;
   userRole: UserRole | string;
+  readOnly?: boolean;
 }
 
 const THREAD_LABELS: Record<CaseMessageAudience, string> = {
-  juridico_perito: "Jurídico ↔ Perito",
-  juridico_cliente: "Jurídico ↔ Cliente final",
+  juridico_perito: "Comercial Jurídico ↔ Perito",
+  juridico_cliente: "Comercial Jurídico ↔ Cliente final",
 };
 
 function fixedAudience(role: string): CaseMessageAudience | null {
@@ -33,7 +34,7 @@ function formatDateTime(value: string) {
   });
 }
 
-export default function CaseMessages({ caseId, userRole }: CaseMessagesProps) {
+export default function CaseMessages({ caseId, userRole, readOnly = false }: CaseMessagesProps) {
   const lockedAudience = fixedAudience(userRole);
   const [audience, setAudience] = useState<CaseMessageAudience>(lockedAudience || "juridico_perito");
   const [messages, setMessages] = useState<CaseMessage[]>([]);
@@ -146,7 +147,7 @@ export default function CaseMessages({ caseId, userRole }: CaseMessagesProps) {
         </CardContent>
       </Card>
 
-      <form onSubmit={sendMessage} className="space-y-3 rounded-lg border bg-white p-4">
+      {!readOnly && <form onSubmit={sendMessage} className="space-y-3 rounded-lg border bg-white p-4">
         <div className="space-y-2">
           <Label htmlFor={`message-${caseId}`}>Nuevo mensaje</Label>
           <Textarea
@@ -182,7 +183,7 @@ export default function CaseMessages({ caseId, userRole }: CaseMessagesProps) {
             Enviar
           </Button>
         </div>
-      </form>
+      </form>}
     </div>
   );
 }

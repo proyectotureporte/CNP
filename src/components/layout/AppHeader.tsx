@@ -20,9 +20,11 @@ import { useNotifications } from '@/hooks/useNotifications';
 interface AppHeaderProps {
   userName: string;
   userRole: UserRole;
+  allRoles?: boolean;
+  variant?: 'crm' | 'admin';
 }
 
-export default function AppHeader({ userName, userRole }: AppHeaderProps) {
+export default function AppHeader({ userName, userRole, allRoles = false, variant = 'crm' }: AppHeaderProps) {
   const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
   const [open, setOpen] = useState(false);
 
@@ -30,25 +32,34 @@ export default function AppHeader({ userName, userRole }: AppHeaderProps) {
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-white px-4">
-      <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="mr-2 h-4" />
+      <SidebarTrigger className={variant === 'crm' ? '-ml-1 md:hidden' : '-ml-1'} />
+      <Separator
+        orientation="vertical"
+        className={variant === 'crm' ? 'mr-2 h-4 md:hidden' : 'mr-2 h-4'}
+      />
 
       {/* Breadcrumb area with logo */}
       <div className="flex flex-1 items-center justify-between">
         <div className="flex items-center gap-3">
-          <Image
-            src="/images/favicon.png"
-            alt="CNP"
-            width={24}
-            height={24}
-            className="rounded"
-          />
-          <span className="text-sm font-semibold" style={{ color: '#1b5697' }}>
-            CNP | PERITUS
-          </span>
+          <Link
+            href={variant === 'admin' ? '/admin' : '/crm'}
+            aria-label="Ir al dashboard"
+            className="flex items-center gap-3 rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-[#2969b0] focus-visible:ring-offset-2"
+          >
+            <Image
+              src="/images/favicon.png"
+              alt="CNP"
+              width={24}
+              height={24}
+              className="rounded"
+            />
+            <span className="text-sm font-semibold" style={{ color: '#1b5697' }}>
+              CNP | PERITUS
+            </span>
+          </Link>
           <Separator orientation="vertical" className="h-4" />
           <span className="text-xs font-medium text-muted-foreground">
-            {ROLE_LABELS[userRole] || userRole}
+            {allRoles ? `${ROLE_LABELS[userRole] || userRole} · Acceso total` : ROLE_LABELS[userRole] || userRole}
           </span>
         </div>
 

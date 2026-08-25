@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  ClipboardList,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -66,7 +65,6 @@ export default function DeliverablesPage() {
   const [phase, setPhase] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
 
   // Review dialog
   const [reviewTarget, setReviewTarget] = useState<DeliverableWithCase | null>(null);
@@ -87,7 +85,6 @@ export default function DeliverablesPage() {
       if (data.success) {
         setDeliverables(data.data);
         setTotalPages(data.meta?.totalPages || 1);
-        setTotal(data.meta?.total || 0);
       }
     } catch {
       /* ignore */
@@ -128,27 +125,10 @@ export default function DeliverablesPage() {
     }
   }
 
-  const canReview = !!user && canReviewDeliverable(user.role as UserRole);
+  const canReview = !!user && canReviewDeliverable(user.role as UserRole, user.allRoles);
 
   return (
     <>
-      {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2969b0]/10">
-            <ClipboardList className="h-5 w-5" style={{ color: '#2969b0' }} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: '#1b5697' }}>
-              Entregas
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {total} entrega{total !== 1 ? 's' : ''} en el sistema
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Filters */}
       <div className="mb-4 flex flex-wrap gap-3">
         <Select

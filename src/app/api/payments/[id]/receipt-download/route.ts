@@ -12,7 +12,7 @@ export async function GET(
   if (!file) return NextResponse.json({ success: false, error: 'Comprobante no encontrado' }, { status: 404 });
   const access = await requireCaseAccess(request, file.caseId);
   if (access.response) return access.response;
-  if (access.actor.role === 'perito') {
+  if (!access.actor.allRoles && !['junta', 'cliente'].includes(access.actor.role)) {
     return NextResponse.json({ success: false, error: 'Comprobante no encontrado' }, { status: 404 });
   }
   if (access.actor.role === 'cliente' && !file.clientVisible) {

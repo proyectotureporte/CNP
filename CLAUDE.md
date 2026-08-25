@@ -19,9 +19,10 @@ dev: `node server.js` · build: `npm run build` · typecheck: `npx tsc --noEmit`
 
 ## Reglas de ESTE proyecto
 - Verificación antes de push: `npx tsc --noEmit && npm run build`
-- 7 roles: admin, juridico, financiero, administrativo, mercadeo, postventa, cliente. Permisos en `src/lib/types.ts` (ROLE_PERMISSIONS, ROLE_CASE_TABS) + `src/lib/auth/permissions.ts` (helpers `canX`). Enforcement en servidor: `guardRole(request, canX)` de `src/lib/auth/permissions` vía `src/lib/auth/guard.ts` (lee `x-user-role`); la UI usa los MISMOS helpers. Al tocar permisos, cambiar SIEMPRE en los helpers (fuente única), no a mano en componentes/rutas
+- 6 roles definitivos: admin, comercial_juridico, junta, perito_interno, perito y cliente. `ferneyolicas@gmail.com` conserva rol admin y recibe la bandera JWT `allRoles`, no un séptimo rol. Permisos en `src/lib/types.ts` (ROLE_PERMISSIONS, ROLE_CASE_TABS) + `src/lib/auth/permissions.ts` (helpers `canX`). Enforcement en servidor: `guardRole(request, canX)` vía `src/lib/auth/guard.ts`; la UI usa los MISMOS helpers. Al tocar permisos, cambiar SIEMPRE en los helpers, no a mano en componentes/rutas
 - Cookies: `crm-token` (CRM y portal) y `admin-token` (superadmin sub:'admin', login solo con contraseña maestra)
 - Headers de seguridad en `server.js`, NO en next.config (no corre `headers()` con servidor custom). `output:'standalone'` PROHIBIDO (mataría el hub WS)
+- Inter es la tipografía de toda la aplicación operativa (`/crm`, `/admin`, `/portal`, `/perito`) mediante `src/components/layout/InterAppScope.tsx`; las landings públicas conservan sus fuentes de marca
 - IDs TEXT (UUID o `_id` heredado de Sanity). Tabla de casos se llama `cases` (palabra reservada)
 - Peritos (`expert`): `seniority` (junior/senior/master) + `category` (7 macro-categorías) + ciclo de vida en `validation_status` = candidato → en_evaluacion → activado (+ rechazado), NO pendiente/aprobado (migración 003 migró los datos). Formación: pregrado/num_especializaciones/num_maestrias/doctorado. Clasificación automática: `src/lib/peritos/clasificacion.ts`. ALTER de `expert` se aplica como `postgres` (la tabla es de cnp_user), no con `db:migrate`
 - Gotchas: PM2 SIEMPRE fork 1 instancia; Nginx debe proxyear upgrade WS en `/ws`; las `NEXT_PUBLIC_` requieren rebuild

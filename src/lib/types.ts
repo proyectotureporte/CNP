@@ -4,48 +4,56 @@
 
 export const USER_ROLES = [
   'admin',
-  'juridico',
-  'financiero',
-  'administrativo',
-  'mercadeo',
-  'postventa',
-  'cliente',
+  'comercial_juridico',
+  'junta',
+  'perito_interno',
   'perito',
+  'cliente',
 ] as const;
 
 export type UserRole = (typeof USER_ROLES)[number];
 
+const LEGACY_ROLE_MAP: Record<string, UserRole> = {
+  juridico: 'comercial_juridico',
+  administrativo: 'comercial_juridico',
+  mercadeo: 'comercial_juridico',
+  postventa: 'comercial_juridico',
+  financiero: 'perito_interno',
+  tecnico: 'perito_interno',
+};
+
+/** Compatibilidad temporal para sesiones y filas creadas antes de la migración RBAC. */
+export function normalizeUserRole(role: string | null | undefined): UserRole | null {
+  if (!role) return null;
+  if ((USER_ROLES as readonly string[]).includes(role)) return role as UserRole;
+  return LEGACY_ROLE_MAP[role] ?? null;
+}
+
 export const ROLE_LABELS: Record<UserRole, string> = {
-  admin: 'Administrador',
-  juridico: 'Juridico',
-  financiero: 'Financiero',
-  administrativo: 'Administrativo',
-  mercadeo: 'Mercadeo',
-  postventa: 'Post Venta',
+  admin: 'Admin técnico',
+  comercial_juridico: 'Comercial Jurídico',
+  junta: 'Junta',
+  perito_interno: 'Perito Interno',
+  perito: 'Perito Externo',
   cliente: 'Cliente',
-  perito: 'Perito',
 };
 
 export const ROLE_COLORS: Record<UserRole, { bg: string; text: string; dot: string }> = {
   admin: { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' },
-  juridico: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
-  financiero: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
-  administrativo: { bg: 'bg-cyan-50', text: 'text-cyan-700', dot: 'bg-cyan-500' },
-  mercadeo: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
-  postventa: { bg: 'bg-rose-50', text: 'text-rose-700', dot: 'bg-rose-500' },
-  cliente: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+  comercial_juridico: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
+  junta: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
+  perito_interno: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
   perito: { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
+  cliente: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
 };
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  admin: ['dashboard', 'cases', 'experts', 'clients', 'users', 'quotes', 'deliverables', 'work-plans', 'evaluations', 'payments', 'commissions', 'reports', 'settings', 'notifications', 'profile', 'audit-logs', 'cartera', 'mensajes'],
-  juridico: ['dashboard', 'cases', 'clients', 'experts', 'deliverables', 'formularios', 'notifications', 'profile', 'mensajes'],
-  financiero: ['dashboard', 'cases', 'quotes', 'payments', 'commissions', 'experts', 'notifications', 'profile', 'cartera'],
-  administrativo: ['dashboard', 'cases', 'work-plans', 'experts', 'notifications', 'profile'],
-  mercadeo: ['dashboard', 'cases', 'clients', 'formularios', 'notifications', 'profile', 'mensajes'],
-  postventa: ['dashboard', 'cases', 'evaluations', 'notifications', 'profile'],
+  admin: ['dashboard', 'users', 'clients', 'settings', 'audit-logs', 'reports', 'notifications', 'profile', 'case-support'],
+  comercial_juridico: ['dashboard', 'cases', 'clients', 'experts', 'quotes', 'work-plans', 'deliverables', 'evaluations', 'formularios', 'notifications', 'profile', 'mensajes'],
+  junta: ['dashboard', 'cases', 'cartera', 'commissions', 'reports', 'notifications', 'profile'],
+  perito_interno: ['dashboard', 'cases', 'work-plans', 'deliverables', 'notifications', 'profile'],
+  perito: ['cases', 'work-plans', 'deliverables', 'notifications', 'profile'],
   cliente: ['cases', 'payments', 'notifications', 'profile', 'mensajes'],
-  perito: ['cases', 'work-plans', 'deliverables', 'commissions', 'notifications', 'profile'],
 };
 
 // ============================================
@@ -248,6 +256,8 @@ export interface CrmClient extends SanityDocument {
   clientType?: ClientType;
   createdBy: string;
   peritusRegistro?: PeritusRegistro;
+  associatedCasesCount?: number;
+  soleAssociatedCaseId?: string | null;
 }
 
 export interface Company extends SanityDocument {
@@ -271,6 +281,7 @@ export interface Case extends SanityDocument {
   caseCode: string;
   title: string;
   description?: string;
+  dictamenObject?: string;
   client?: { _ref: string; _type: 'reference' };
   commercial?: { _ref: string; _type: 'reference' };
   technicalAnalyst?: { _ref: string; _type: 'reference' };
@@ -311,6 +322,7 @@ export interface CaseExpanded {
   caseCode: string;
   title: string;
   description?: string;
+  dictamenObject?: string;
   discipline: CaseDiscipline;
   status: CaseStatus;
   statusChangedByRole?: string;
@@ -533,13 +545,25 @@ export const EXPERT_SENIORITIES = ['junior', 'senior', 'master'] as const;
 export type ExpertSeniority = (typeof EXPERT_SENIORITIES)[number];
 
 export const EXPERT_SENIORITY_LABELS: Record<ExpertSeniority, string> = {
-  junior: 'Junior', senior: 'Senior', master: 'Master',
+  junior: 'Junior', senior: 'Senior', master: 'Máster',
 };
 
 export const EXPERT_SENIORITY_COLORS: Record<ExpertSeniority, { bg: string; text: string; dot: string }> = {
-  junior: { bg: 'bg-slate-50', text: 'text-slate-700', dot: 'bg-slate-400' },
-  senior: { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
-  master: { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' },
+  junior: {
+    bg: 'bg-gradient-to-br from-slate-100/80 via-white/65 to-slate-300/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]',
+    text: 'text-slate-700',
+    dot: 'bg-gradient-to-br from-white to-slate-500',
+  },
+  senior: {
+    bg: 'bg-gradient-to-br from-sky-100/80 via-blue-50/65 to-blue-300/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]',
+    text: 'text-blue-800',
+    dot: 'bg-gradient-to-br from-sky-200 to-blue-700',
+  },
+  master: {
+    bg: 'bg-gradient-to-br from-purple-100/80 via-fuchsia-50/65 to-purple-300/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]',
+    text: 'text-purple-800',
+    dot: 'bg-gradient-to-br from-fuchsia-200 to-purple-700',
+  },
 };
 
 // Macro-categorías de perito (agrupación por área de conocimiento).
@@ -616,6 +640,8 @@ export interface Expert {
   rating: number;
   totalCases: number;
   completedCases: number;
+  associatedCasesCount?: number;
+  soleAssociatedCaseId?: string | null;
   validationStatus: ExpertValidationStatus;
   validatedBy?: { _id: string; displayName: string };
   validationNotes?: string;
@@ -653,8 +679,23 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 
 export interface DashboardStats {
   totalClients: number;
-  activeUsers: number;
   recentClients: CrmClient[];
+  clientGrowthByMonth: DashboardMetricPoint[];
+  clientRegistrationsByDay: DashboardMetricPoint[];
+  caseRegistrationsByDay: DashboardCaseMetricPoint[];
+}
+
+export interface DashboardMetricPoint {
+  date: string;
+  value: number;
+}
+
+export interface DashboardCaseMetricPoint {
+  date: string;
+  brand: 'CNP' | 'Peritus';
+  total: number;
+  upcoming: number;
+  urgent: number;
 }
 
 // ============================================
@@ -1094,11 +1135,24 @@ export interface WhatsappMessage {
 }
 
 export const ROLE_CASE_TABS: Record<string, string[]> = {
-  admin: ['summary', 'documents', 'committee', 'quotes', 'contract', 'work-plan', 'deliverables', 'payments', 'messages', 'timeline'],
-  juridico: ['summary', 'documents', 'committee', 'quotes', 'work-plan', 'deliverables', 'payments', 'messages', 'timeline'],
-  financiero: ['summary', 'documents', 'quotes', 'contract', 'work-plan', 'deliverables', 'timeline'],
-  administrativo: ['summary', 'documents', 'work-plan', 'deliverables', 'timeline'],
-  mercadeo: ['summary', 'timeline'],
-  postventa: ['summary', 'deliverables', 'timeline'],
-  perito: ['summary', 'documents', 'work-plan', 'deliverables', 'payments', 'messages', 'timeline'],
+  admin: ['summary', 'timeline'],
+  comercial_juridico: ['summary', 'documents', 'committee', 'quotes', 'work-plan', 'deliverables', 'timeline'],
+  junta: ['summary', 'documents', 'committee', 'timeline'],
+  perito_interno: ['summary', 'documents', 'work-plan', 'deliverables', 'timeline'],
+  perito: ['summary', 'documents', 'work-plan', 'deliverables', 'timeline'],
+  cliente: ['summary', 'documents', 'quotes', 'deliverables', 'payments', 'messages', 'timeline'],
 };
+
+/** Vista de supervisión individual: reúne las pestañas de todos los roles sin crear un rol nuevo. */
+export const ALL_ROLE_CASE_TABS = [
+  'summary',
+  'documents',
+  'committee',
+  'quotes',
+  'contract',
+  'work-plan',
+  'deliverables',
+  'payments',
+  'messages',
+  'timeline',
+];

@@ -7,19 +7,16 @@ import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { notifyUsers } from '@/lib/notify';
 import { auditEntityChange } from '@/lib/audit';
 
-type AssignRole = 'commercial' | 'technicalAnalyst' | 'assignedExpert' | 'assignedFinanciero' | 'assignedJuridico';
+type AssignRole = 'assignedExpert' | 'assignedFinanciero';
 
-const VALID_ASSIGN_ROLES: AssignRole[] = ['commercial', 'technicalAnalyst', 'assignedExpert', 'assignedFinanciero', 'assignedJuridico'];
+const VALID_ASSIGN_ROLES: AssignRole[] = ['assignedExpert', 'assignedFinanciero'];
 
-const ROLE_FIELD: Record<AssignRole, 'commercialId' | 'technicalAnalystId' | 'assignedExpertId' | 'assignedFinancieroId' | 'assignedJuridicoId'> = {
-  commercial: 'commercialId',
-  technicalAnalyst: 'technicalAnalystId',
+const ROLE_FIELD: Record<AssignRole, 'assignedExpertId' | 'assignedFinancieroId'> = {
   assignedExpert: 'assignedExpertId',
   assignedFinanciero: 'assignedFinancieroId',
-  assignedJuridico: 'assignedJuridicoId',
 };
 
-export async function POST(
+async function assignUser(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -49,51 +46,50 @@ export async function POST(
     }
 
     const user = await crmUser.getUserById(userId);
-    if (!user) {
+    if (!user || !user.active) {
       return NextResponse.json({ success: false, error: 'Usuario no encontrado' }, { status: 404 });
     }
 
-    if (role === 'assignedJuridico' && user.role !== 'juridico') {
-      return NextResponse.json({ success: false, error: 'El interlocutor debe tener rol jurídico' }, { status: 400 });
-    }
     if (role === 'assignedExpert' && user.role !== 'perito') {
       return NextResponse.json({ success: false, error: 'El usuario asignado debe tener rol perito' }, { status: 400 });
     }
-    if (role === 'assignedFinanciero' && !['financiero', 'perito'].includes(user.role)) {
+    if (role === 'assignedFinanciero' && user.role !== 'perito_interno') {
       return NextResponse.json({ success: false, error: 'El usuario no puede asumir esta asignación' }, { status: 400 });
+    }
+    if (role === 'assignedFinanciero' && !['financiero', 'contable'].includes(existing.discipline)) {
+      return NextResponse.json(
+        { success: false, error: 'El perito interno solo recibe casos financieros o contables' },
+        { status: 409 },
+      );
     }
 
     // G-01: ningún perito entra en producción sin una cuenta pagable completa.
-    if (user.role === 'perito' && (role === 'assignedExpert' || role === 'assignedFinanciero')) {
-      const expertProfile = await expert.getExpertByUserId(userId);
-      if (expertProfile?.validationStatus !== 'activado') {
+    if (user.role === 'perito' && role === 'assignedExpert') {
+      const assignable = await expert.isAssignableExpertForDiscipline(userId, existing.discipline);
+      if (!assignable) {
         return NextResponse.json(
-          { success: false, error: 'No se puede asignar el caso: el perfil del perito debe estar activado y categorizado.' },
-          { status: 409 },
-        );
-      }
-      const bankingComplete = Boolean(
-        expertProfile?.bankName?.trim()
-        && expertProfile.bankAccountType?.trim()
-        && expertProfile.bankAccountNumber?.trim()
-        && expertProfile.bankAccountHolder?.trim()
-        && expertProfile.bankHolderDocument?.trim()
-      );
-      if (!bankingComplete) {
-        return NextResponse.json(
-          { success: false, error: 'No se puede asignar el caso: el perito debe completar banco, tipo y número de cuenta, titular y documento del titular.' },
+          { success: false, error: 'No se puede asignar el caso: el perito debe estar activado, disponible, habilitado para la disciplina y tener sus datos bancarios completos.' },
           { status: 409 },
         );
       }
     }
 
-    const updated = await cases.updateCase(id, { [ROLE_FIELD[role as AssignRole]]: userId });
+    const assignmentPatch: Parameters<typeof cases.updateCase>[1] = {
+      [ROLE_FIELD[role as AssignRole]]: userId,
+    };
+    if (role === 'assignedExpert') assignmentPatch.assignedFinancieroId = null;
+    if (role === 'assignedFinanciero') assignmentPatch.assignedExpertId = null;
+    // Los casos históricos pueden no tener interlocutor tras la unificación de
+    // roles. El Comercial Jurídico que hace la primera asignación queda como
+    // responsable para que cliente y perito tengan un canal operativo.
+    if (!existing.assignedJuridico) assignmentPatch.assignedJuridicoId = request.headers.get('x-user-id');
+    const updated = await cases.updateCase(id, assignmentPatch);
 
     const actorId = request.headers.get('x-user-id');
     const actorName = request.headers.get('x-user-name');
     const roleLabel = ({
-      commercial: 'comercial', technicalAnalyst: 'analista técnico', assignedExpert: 'perito',
-      assignedFinanciero: 'responsable financiero', assignedJuridico: 'abogado jurídico',
+      assignedExpert: 'perito externo',
+      assignedFinanciero: 'perito interno',
     } as Record<AssignRole, string>)[role as AssignRole];
 
     logCaseEvent({
@@ -137,3 +133,6 @@ export async function POST(
     );
   }
 }
+
+export const POST = assignUser;
+export const PUT = assignUser;

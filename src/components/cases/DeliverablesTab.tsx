@@ -20,10 +20,12 @@ import {
   type DeliverablePhase,
   type DeliverableStatus,
 } from "@/lib/types";
+import { canReviewDeliverable, canUploadDeliverable } from "@/lib/auth/permissions";
 
 interface DeliverablesTabProps {
   caseId: string;
   userRole?: string;
+  allRoles?: boolean;
 }
 
 function formatDate(value?: string) {
@@ -35,7 +37,7 @@ function formatSize(value?: number) {
   return value < 1024 * 1024 ? `${(value / 1024).toFixed(1)} KB` : `${(value / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export default function DeliverablesTab({ caseId, userRole = "admin" }: DeliverablesTabProps) {
+export default function DeliverablesTab({ caseId, userRole = "admin", allRoles = false }: DeliverablesTabProps) {
   const [items, setItems] = useState<Deliverable[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -121,8 +123,8 @@ export default function DeliverablesTab({ caseId, userRole = "admin" }: Delivera
     }
   }
 
-  const canUpload = userRole === "perito" || userRole === "admin";
-  const canReview = userRole === "admin" || userRole === "juridico";
+  const canUpload = canUploadDeliverable(userRole as Parameters<typeof canUploadDeliverable>[0], allRoles);
+  const canReview = canReviewDeliverable(userRole as Parameters<typeof canReviewDeliverable>[0], allRoles);
 
   return (
     <div className="space-y-5">
@@ -195,6 +197,9 @@ export default function DeliverablesTab({ caseId, userRole = "admin" }: Delivera
                       </div>
                       <p className="truncate text-sm font-medium">{item.fileName || "Dictamen"}</p>
                       <p className="text-xs text-muted-foreground">Enviado {formatDate(item._createdAt)}</p>
+                      {userRole === "cliente" && item.status === "aprobado" && item.submittedBy?.displayName && (
+                        <p className="text-xs font-medium text-foreground">Perito: {item.submittedBy.displayName}</p>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {item.downloadUrl && (

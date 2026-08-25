@@ -22,6 +22,20 @@ const PERITUS_LATERAL = `
   ) rp ON TRUE
 `;
 
+const CASE_SUMMARY = `
+  coalesce(cs.case_count, 0) AS "associatedCasesCount",
+  cs.sole_case_id AS "soleAssociatedCaseId"
+`;
+
+const CASE_SUMMARY_LATERAL = `
+  LEFT JOIN LATERAL (
+    SELECT count(*)::int AS case_count,
+      CASE WHEN count(*) = 1 THEN min(id) ELSE NULL END AS sole_case_id
+    FROM cases
+    WHERE client_id = c.id AND status <> 'archivado'
+  ) cs ON TRUE
+`;
+
 export interface ListClientsParams {
   search?: string;
   brand?: string;
@@ -29,9 +43,10 @@ export interface ListClientsParams {
 
 export async function listClients({ search = '', brand = '' }: ListClientsParams = {}): Promise<CrmClient[]> {
   return query<CrmClient>(
-    `SELECT ${BASE}, ${PERITUS_SUMMARY}
+    `SELECT ${BASE}, ${PERITUS_SUMMARY}, ${CASE_SUMMARY}
      FROM crm_client c
      ${PERITUS_LATERAL}
+     ${CASE_SUMMARY_LATERAL}
      WHERE ($1 = '' OR c.name ILIKE $1 || '%' OR c.email ILIKE $1 || '%' OR c.company ILIKE $1 || '%')
        AND ($2 = '' OR c.brand = $2::brand)
      ORDER BY c.created_at DESC`,
@@ -45,9 +60,10 @@ export async function listClientsForFinanciero(
   { search = '', brand = '' }: ListClientsParams = {},
 ): Promise<CrmClient[]> {
   return query<CrmClient>(
-    `SELECT ${BASE}, ${PERITUS_SUMMARY}
+    `SELECT ${BASE}, ${PERITUS_SUMMARY}, ${CASE_SUMMARY}
      FROM crm_client c
      ${PERITUS_LATERAL}
+     ${CASE_SUMMARY_LATERAL}
      WHERE c.id IN (
        SELECT DISTINCT client_id FROM cases
        WHERE assigned_financiero_id = $3 AND client_id IS NOT NULL

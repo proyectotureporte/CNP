@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { whatsappMessage, whatsappLead, queryOne } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
 import { guardRole } from '@/lib/auth/guard';
+import { canUseWhatsappInbox } from '@/lib/auth/permissions';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const stop = guardRole(request, (role) => ['admin', 'juridico', 'mercadeo'].includes(role));
+    const stop = guardRole(request, canUseWhatsappInbox);
     if (stop) return stop;
     const { id } = await params;
     const messages = await whatsappMessage.listWhatsappMessages(id);
@@ -24,7 +25,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const stop = guardRole(request, (role) => ['admin', 'juridico', 'mercadeo'].includes(role));
+    const stop = guardRole(request, canUseWhatsappInbox);
     if (stop) return stop;
     const { id } = await params;
     const body = await request.json();

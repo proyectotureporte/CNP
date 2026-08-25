@@ -5,7 +5,7 @@ import { actorFromRequest } from '@/lib/auth/caseAccess';
 
 function externalRoleBlocked(request: NextRequest) {
   const actor = actorFromRequest(request);
-  return !actor || actor.role === 'cliente' || actor.role === 'perito';
+  return !actor || actor.role !== 'admin';
 }
 
 export async function GET(request: NextRequest) {

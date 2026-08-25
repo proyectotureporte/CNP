@@ -48,43 +48,32 @@ import {
   CASE_EVENT_LABELS,
   CASE_CHANNEL_LABELS,
   COMMERCIAL_STATUS_LABELS, COMMERCIAL_STATUS_COLORS,
-  ROLE_CASE_TABS,
+  ALL_ROLE_CASE_TABS, ROLE_CASE_TABS,
   type CaseExpanded, type CaseStatus, type CaseComplexity, type CasePriority,
   type CaseEvent, type CaseEventType, type CaseChannel, type CommercialStatus,
 } from "@/lib/types";
 import { VALID_TRANSITIONS, COMMERCIAL_TRANSITIONS } from "@/lib/cases/stateMachine";
-import { canChangeCommercialStatus } from "@/lib/auth/permissions";
+import {
+  canAddCaseTimelineNote,
+  canAssignExpert,
+  canChangeCommercialStatus,
+  canEditCase,
+} from "@/lib/auth/permissions";
 import { useAuth } from "@/hooks/useAuth";
 
 const EMPTY_CASE_TABS: string[] = [];
 
 // Returns available transitions based on role and chain
-function getAvailableTransitions(
-  status: CaseStatus,
-  role: string,
-  statusChangedByRole?: string
-): CaseStatus[] {
-  const transitions = VALID_TRANSITIONS[status] || [];
-  if (role === 'admin') return transitions;
+function getAvailableTransitions(status: CaseStatus, role: string, allRoles = false): CaseStatus[] {
+  return allRoles || role === 'comercial_juridico' ? VALID_TRANSITIONS[status] || [] : [];
+}
 
-  // Juridico: only when case is in creado and no one changed it yet (or financiero returned it)
-  if (role === 'juridico') {
-    if (status === 'creado' && (!statusChangedByRole || statusChangedByRole === 'financiero')) {
-      return ['gestionado', 'cancelado'];
-    }
-    return [];
-  }
-
-  // Financiero: only when juridico changed it (case is gestionado, changed by juridico)
-  if (role === 'financiero') {
-    if (statusChangedByRole === 'juridico') {
-      // Can return to creado (devolver) or cancel
-      if (status === 'gestionado') return ['creado', 'cancelado'];
-    }
-    return [];
-  }
-
-  return [];
+interface AssignmentOption {
+  userId: string;
+  displayName: string;
+  specialization?: string;
+  city?: string;
+  rating?: number;
 }
 
 function formatDate(dateStr?: string) {
@@ -123,9 +112,12 @@ export default function CrmCaseDetailPage({
   const [events, setEvents] = useState<CaseEvent[]>([]);
   const [activeTab, setActiveTab] = useState("summary");
   const [refreshKey, setRefreshKey] = useState(0);
-  const [showFinancieroDialog, setShowFinancieroDialog] = useState(false);
-  const [financieroUsers, setFinancieroUsers] = useState<{ _id: string; displayName: string; role: string }[]>([]);
-  const [selectedFinancieroId, setSelectedFinancieroId] = useState("");
+  const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
+  const [assignmentType, setAssignmentType] = useState<'internal' | 'external'>('internal');
+  const [assignmentOptions, setAssignmentOptions] = useState<{ internal: AssignmentOption[]; external: AssignmentOption[] }>({ internal: [], external: [] });
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [assigning, setAssigning] = useState(false);
   const [commercialChanging, setCommercialChanging] = useState(false);
   const [showLossDialog, setShowLossDialog] = useState(false);
   const [lossReason, setLossReason] = useState("");
@@ -133,7 +125,7 @@ export default function CrmCaseDetailPage({
   const [noteSaving, setNoteSaving] = useState(false);
 
   const userRole = user?.role || '';
-  const visibleTabs = ROLE_CASE_TABS[userRole] || EMPTY_CASE_TABS;
+  const visibleTabs = user?.allRoles ? ALL_ROLE_CASE_TABS : ROLE_CASE_TABS[userRole] || EMPTY_CASE_TABS;
 
   useEffect(() => {
     const requested = searchParams.get("tab");
@@ -187,53 +179,23 @@ export default function CrmCaseDetailPage({
   }, [activeTab, loadEvents]);
 
   async function handleStatusChange(newStatus: string) {
-    // If juridico selects gestionado, show the financiero picker dialog
-    if (userRole === 'juridico' && newStatus === 'gestionado') {
-      // Load financiero users
-      try {
-        const res = await fetch('/api/users');
-        const data = await res.json();
-        if (data.success) {
-          const financieros = data.data.filter((u: { role: string }) => u.role === 'financiero');
-          setFinancieroUsers(financieros);
-        }
-      } catch { /* ignore */ }
-      setSelectedFinancieroId("");
-      setShowFinancieroDialog(true);
-      return;
-    }
-
     await executeStatusChange(newStatus);
   }
 
-  async function executeStatusChange(newStatus: string, assignedFinancieroId?: string) {
+  async function executeStatusChange(newStatus: string) {
     setStatusChanging(true);
     try {
-      const bodyPayload: Record<string, string> = { status: newStatus };
-      if (assignedFinancieroId) {
-        bodyPayload.assignedFinancieroId = assignedFinancieroId;
-      }
-
       const res = await fetch(`/api/cases/${id}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bodyPayload),
+        body: JSON.stringify({ status: newStatus }),
       });
       const data = await res.json();
       if (data.success) {
         setCaseData((prev) => {
           if (!prev) return null;
-          const updated = { ...prev, status: newStatus as CaseStatus };
-          // Update the assignedFinanciero display if we just assigned one
-          if (assignedFinancieroId) {
-            const fin = financieroUsers.find((u) => u._id === assignedFinancieroId);
-            if (fin) {
-              updated.assignedFinanciero = { _id: fin._id, displayName: fin.displayName, email: '' };
-            }
-          }
-          return updated;
+          return { ...prev, status: newStatus as CaseStatus };
         });
-        setShowFinancieroDialog(false);
       } else {
         setError(data.error || "Error al cambiar estado");
       }
@@ -244,12 +206,50 @@ export default function CrmCaseDetailPage({
     }
   }
 
-  function handleConfirmGestionado() {
-    if (!selectedFinancieroId) {
-      setError("Debe seleccionar un usuario financiero");
-      return;
+  async function openAssignmentDialog() {
+    setShowAssignmentDialog(true);
+    setAssignmentType(['financiero', 'contable'].includes(caseData?.discipline || '') ? 'internal' : 'external');
+    setSelectedAssigneeId("");
+    setAssignmentLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/cases/${id}/assignment-options`);
+      const data = await res.json();
+      if (data.success) setAssignmentOptions(data.data);
+      else setError(data.error || "Error obteniendo peritos disponibles");
+    } catch {
+      setError("Error de conexion");
+    } finally {
+      setAssignmentLoading(false);
     }
-    executeStatusChange('gestionado', selectedFinancieroId);
+  }
+
+  async function handleAssignExpert() {
+    if (!selectedAssigneeId) return;
+    setAssigning(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/cases/${id}/assign`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: assignmentType === 'external' ? 'assignedExpert' : 'assignedFinanciero',
+          userId: selectedAssigneeId,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCaseData(data.data);
+        setShowAssignmentDialog(false);
+        setSelectedAssigneeId("");
+      } else {
+        setError(data.error || "Error asignando el perito");
+      }
+    } catch {
+      setError("Error de conexion");
+    } finally {
+      setAssigning(false);
+    }
   }
 
   // --- Pipeline comercial (RF-18) ---
@@ -332,13 +332,13 @@ export default function CrmCaseDetailPage({
   const statusColor = CASE_STATUS_COLORS[caseData.status];
   const complexityColor = COMPLEXITY_COLORS[caseData.complexity as CaseComplexity];
   const priorityColor = PRIORITY_COLORS[caseData.priority as CasePriority];
-  const validNext = getAvailableTransitions(caseData.status, userRole, caseData.statusChangedByRole);
-  const isReadOnlyForJuridico = userRole === 'juridico' && caseData.status !== 'creado';
+  const validNext = getAvailableTransitions(caseData.status, userRole, user?.allRoles);
   const commercialStatus = (caseData.commercialStatus ?? 'prospecto') as CommercialStatus;
   const commercialColor = COMMERCIAL_STATUS_COLORS[commercialStatus];
-  const commercialNext = canChangeCommercialStatus(userRole as Parameters<typeof canChangeCommercialStatus>[0])
+  const commercialNext = canChangeCommercialStatus(userRole as Parameters<typeof canChangeCommercialStatus>[0], user?.allRoles)
     ? COMMERCIAL_TRANSITIONS[commercialStatus] || []
     : [];
+  const isCaseExpert = userRole === 'perito' || userRole === 'perito_interno';
 
   return (
     <>
@@ -350,14 +350,6 @@ export default function CrmCaseDetailPage({
         <span>/</span>
         <span className="text-foreground font-medium">{caseData.caseCode}</span>
       </nav>
-
-      {/* Read-only banner for juridico */}
-      {isReadOnlyForJuridico && (
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4" />
-          Este caso esta en estado <strong>{CASE_STATUS_LABELS[caseData.status]}</strong> y es de solo lectura. El financiero asignado puede devolverlo si necesita correccion.
-        </div>
-      )}
 
       {/* Error banner */}
       {error && (
@@ -386,7 +378,7 @@ export default function CrmCaseDetailPage({
               <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${statusColor?.dot}`} />
               {CASE_STATUS_LABELS[caseData.status]}
             </Badge>
-            {userRole !== 'perito' && (
+            {!isCaseExpert && (
               <Badge className={`${commercialColor?.bg} ${commercialColor?.text} border-0`}>
                 <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${commercialColor?.dot}`} />
                 {COMMERCIAL_STATUS_LABELS[commercialStatus]}
@@ -407,7 +399,13 @@ export default function CrmCaseDetailPage({
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
           </Button>
-          {!isReadOnlyForJuridico && ['admin', 'juridico'].includes(userRole) && (
+          {canAssignExpert(userRole as Parameters<typeof canAssignExpert>[0], user?.allRoles) && (
+            <Button variant="outline" size="sm" onClick={openAssignmentDialog}>
+              <UserCheck className="mr-2 h-4 w-4" />
+              Asignar perito
+            </Button>
+          )}
+          {canEditCase(userRole as Parameters<typeof canEditCase>[0], user?.allRoles) && (
             <Button variant="outline" size="sm" asChild>
               <Link href={`/crm/cases/${id}/edit`}>
                 <Pencil className="mr-2 h-4 w-4" />
@@ -423,10 +421,7 @@ export default function CrmCaseDetailPage({
               <SelectContent>
                 {validNext.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {/* When financiero returns case to creado, show "Devolver" */}
-                    {s === 'creado' && userRole === 'financiero'
-                      ? 'Devolver a Juridico'
-                      : CASE_STATUS_LABELS[s]}
+                    {CASE_STATUS_LABELS[s]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -507,7 +502,7 @@ export default function CrmCaseDetailPage({
                 </div>
               </CardContent>
             </Card>
-            {userRole !== 'perito' && <Card>
+            {!isCaseExpert && <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
                   <div className="rounded-lg bg-green-50 p-2">
@@ -522,7 +517,7 @@ export default function CrmCaseDetailPage({
             </Card>}
           </div>
 
-          <ExecutionClockCard caseId={id} userRole={userRole} />
+          <ExecutionClockCard caseId={id} userRole={userRole} allRoles={user?.allRoles} />
 
           {/* Details */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -536,6 +531,12 @@ export default function CrmCaseDetailPage({
                   <div>
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Descripcion</p>
                     <p className="mt-1 text-sm whitespace-pre-wrap">{caseData.description}</p>
+                  </div>
+                )}
+                {caseData.dictamenObject && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Objeto del dictamen</p>
+                    <p className="mt-1 text-sm whitespace-pre-wrap">{caseData.dictamenObject}</p>
                   </div>
                 )}
                 <Separator />
@@ -626,10 +627,10 @@ export default function CrmCaseDetailPage({
                     <>
                       <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
                         <p className="text-xs text-blue-700">Cliente final</p>
-                        <p className="text-sm font-medium text-blue-950">Datos protegidos · contacto únicamente a través del jurídico</p>
+                        <p className="text-sm font-medium text-blue-950">Datos protegidos · contacto únicamente a través del Comercial Jurídico</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Abogado jurídico asignado</p>
+                        <p className="text-xs text-muted-foreground">Comercial Jurídico asignado</p>
                         <p className="text-sm font-medium">{caseData.assignedJuridico?.displayName || "Pendiente de asignar"}</p>
                         {caseData.assignedJuridico?.email && <p className="text-xs text-muted-foreground">{caseData.assignedJuridico.email}</p>}
                         {caseData.assignedJuridico?.phone && <p className="text-xs text-muted-foreground">{caseData.assignedJuridico.phone}</p>}
@@ -638,11 +639,9 @@ export default function CrmCaseDetailPage({
                   ) : (
                     <>
                       <div><p className="text-xs text-muted-foreground">Cliente</p><p className="text-sm font-medium">{caseData.client ? `${caseData.client.name} (${caseData.client.company || "Sin empresa"})` : "-"}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Asesor Comercial</p><p className="text-sm font-medium">{caseData.commercial?.displayName || "-"}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Analista Técnico</p><p className="text-sm font-medium">{caseData.technicalAnalyst?.displayName || "-"}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Perito Asignado</p><p className="text-sm font-medium">{caseData.assignedExpert?.displayName || "-"}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Financiero Asignado</p><p className="text-sm font-medium">{caseData.assignedFinanciero?.displayName || "-"}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Jurídico Asignado</p><p className="text-sm font-medium">{caseData.assignedJuridico?.displayName || "-"}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Perito externo</p><p className="text-sm font-medium">{caseData.assignedExpert?.displayName || "-"}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Perito interno</p><p className="text-sm font-medium">{caseData.assignedFinanciero?.displayName || "-"}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Comercial Jurídico</p><p className="text-sm font-medium">{caseData.assignedJuridico?.displayName || "-"}</p></div>
                     </>
                   )}
                 </CardContent>
@@ -657,7 +656,7 @@ export default function CrmCaseDetailPage({
               <CardTitle className="text-base">Documentos</CardTitle>
             </CardHeader>
             <CardContent>
-              <DocumentList caseId={id} userRole={userRole} />
+              <DocumentList caseId={id} userRole={userRole} allRoles={user?.allRoles} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -668,7 +667,7 @@ export default function CrmCaseDetailPage({
               <CardTitle className="text-base">Comité</CardTitle>
             </CardHeader>
             <CardContent>
-              <CommitteeTab caseId={id} userRole={userRole} />
+              <CommitteeTab caseId={id} userRole={userRole} allRoles={user?.allRoles} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -709,17 +708,17 @@ export default function CrmCaseDetailPage({
               <CardTitle className="text-base">Entregas</CardTitle>
             </CardHeader>
             <CardContent>
-              <DeliverablesTab caseId={id} userRole={userRole} />
+              <DeliverablesTab caseId={id} userRole={userRole} allRoles={user?.allRoles} />
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="payments" className="mt-6">
-          <CasePaymentsTab caseId={id} userRole={userRole} />
+          <CasePaymentsTab caseId={id} userRole={userRole} allRoles={user?.allRoles} />
         </TabsContent>
 
         <TabsContent value="messages" className="mt-6">
-          <CaseMessages caseId={id} userRole={userRole} />
+          <CaseMessages caseId={id} userRole={userRole} readOnly={user?.allRoles} />
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-6">
@@ -729,7 +728,7 @@ export default function CrmCaseDetailPage({
             </CardHeader>
             <CardContent>
               {/* RF-04: nota manual a la bitácora */}
-              {['admin', 'juridico', 'administrativo'].includes(userRole) && (
+              {canAddCaseTimelineNote(userRole as Parameters<typeof canAddCaseTimelineNote>[0], user?.allRoles) && (
                 <>
                   <div className="mb-6 space-y-2">
                     <Label>Agregar nota</Label>
@@ -821,32 +820,56 @@ export default function CrmCaseDetailPage({
         </DialogContent>
       </Dialog>
 
-      {/* Financiero assignment dialog */}
-      <Dialog open={showFinancieroDialog} onOpenChange={setShowFinancieroDialog}>
+      {/* Expert assignment dialog */}
+      <Dialog open={showAssignmentDialog} onOpenChange={setShowAssignmentDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserCheck className="h-5 w-5" />
-              Asignar Usuario Financiero
+              Asignar perito
             </DialogTitle>
             <DialogDescription>
-              Seleccione el usuario financiero que gestionara este caso. Solo este usuario podra ver el caso y su cliente.
+              Elija si el caso será atendido por el perito interno de la firma o por un perito externo habilitado para la disciplina.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Usuario Financiero</Label>
-              {financieroUsers.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No hay usuarios financieros disponibles</p>
+              <Label>Tipo de perito</Label>
+              <Select
+                value={assignmentType}
+                onValueChange={(value: 'internal' | 'external') => {
+                  setAssignmentType(value);
+                  setSelectedAssigneeId("");
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="internal">Perito interno</SelectItem>
+                  <SelectItem value="external">Perito externo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Perito</Label>
+              {assignmentLoading ? (
+                <p className="text-sm text-muted-foreground">Cargando peritos disponibles...</p>
+              ) : assignmentOptions[assignmentType].length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No hay peritos {assignmentType === 'internal' ? 'internos' : 'externos habilitados para esta disciplina'} disponibles.
+                </p>
               ) : (
-                <Select value={selectedFinancieroId} onValueChange={setSelectedFinancieroId}>
+                <Select value={selectedAssigneeId} onValueChange={setSelectedAssigneeId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar financiero..." />
+                    <SelectValue placeholder="Seleccionar perito..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {financieroUsers.map((u) => (
-                      <SelectItem key={u._id} value={u._id}>
-                        {u.displayName}
+                    {assignmentOptions[assignmentType].map((option) => (
+                      <SelectItem key={option.userId} value={option.userId}>
+                        {option.displayName}
+                        {option.specialization ? ` · ${option.specialization}` : ''}
+                        {option.city ? ` · ${option.city}` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -855,14 +878,14 @@ export default function CrmCaseDetailPage({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowFinancieroDialog(false)}>
+            <Button variant="outline" onClick={() => setShowAssignmentDialog(false)}>
               Cancelar
             </Button>
             <Button
-              onClick={handleConfirmGestionado}
-              disabled={!selectedFinancieroId || statusChanging}
+              onClick={handleAssignExpert}
+              disabled={!selectedAssigneeId || assigning || assignmentLoading}
             >
-              {statusChanging ? "Asignando..." : "Confirmar y Gestionar"}
+              {assigning ? "Asignando..." : "Confirmar asignación"}
             </Button>
           </DialogFooter>
         </DialogContent>

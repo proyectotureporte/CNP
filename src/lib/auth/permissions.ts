@@ -1,7 +1,7 @@
 import { ROLE_PERMISSIONS, type UserRole } from '@/lib/types';
 
-export function hasPermission(role: UserRole, permission: string): boolean {
-  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+export function hasPermission(role: UserRole, permission: string, allRoles = false): boolean {
+  return allRoles || (ROLE_PERMISSIONS[role]?.includes(permission) ?? false);
 }
 
 const ROUTE_PERMISSION_MAP: Record<string, string> = {
@@ -31,8 +31,13 @@ const ROUTE_PERMISSION_MAP: Record<string, string> = {
   '/admin/cartera': 'cartera',
 };
 
-export function canAccessRoute(role: UserRole, pathname: string): boolean {
-  if (role === 'admin') return true;
+export function canAccessRoute(role: UserRole, pathname: string, allRoles = false): boolean {
+  if (allRoles) return true;
+  // El admin técnico no tiene el módulo Casos, pero puede abrir una ficha
+  // concreta en lectura para soporte desde Clientes/Reportes.
+  if (role === 'admin' && /^\/crm\/cases\/[^/]+$/.test(pathname)) {
+    return hasPermission(role, 'case-support');
+  }
 
   // Match the most specific route first (longest prefix) so e.g. /crm/quotes
   // resolves to 'quotes' instead of the greedy '/crm' -> 'dashboard'.
@@ -48,79 +53,98 @@ export function canAccessRoute(role: UserRole, pathname: string): boolean {
   return false;
 }
 
-export function canManageUsers(role: UserRole): boolean {
-  return role === 'admin';
+export function canManageUsers(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'admin';
 }
 
-export function canCreateCase(role: UserRole): boolean {
-  return ['admin', 'juridico'].includes(role);
+export function canCreateCase(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
 }
 
-export function canCreateClient(role: UserRole): boolean {
-  return ['admin', 'juridico', 'mercadeo'].includes(role);
+export function canCreateClient(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
 }
 
-export function canCreateQuote(role: UserRole): boolean {
-  return ['admin', 'financiero'].includes(role);
+export function canCreateQuote(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
 }
 
-export function canAssignExpert(role: UserRole): boolean {
-  return ['admin', 'administrativo'].includes(role);
+export function canAssignExpert(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
 }
 
-export function canApproveQuote(role: UserRole): boolean {
-  return ['admin', 'cliente'].includes(role);
+export function canApproveQuote(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'cliente';
 }
 
-export function canReviewDeliverable(role: UserRole): boolean {
-  return ['admin', 'juridico'].includes(role);
+export function canReviewDeliverable(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
 }
 
-export function canAccessFinances(role: UserRole): boolean {
-  return ['admin', 'financiero'].includes(role);
+export function canAccessFinances(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'junta';
 }
 
-export function canManageWorkPlanActions(role: UserRole): boolean {
-  return ['admin', 'administrativo'].includes(role);
+export function canManageWorkPlanActions(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
 }
 
 /** El perito asignado puede redactar su plan y actualizar sus actividades. */
-export function canEditWorkPlan(role: UserRole): boolean {
-  return ['admin', 'administrativo', 'perito'].includes(role);
+export function canEditWorkPlan(role: UserRole, allRoles = false): boolean {
+  return allRoles || ['comercial_juridico', 'perito_interno', 'perito'].includes(role);
 }
 
 /** La aprobación/devolución del plan sigue separada de quien lo redacta. */
-export function canReviewWorkPlan(role: UserRole): boolean {
-  return ['admin', 'administrativo'].includes(role);
+export function canReviewWorkPlan(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
 }
 
-// Expert directory management (create/edit/validate peritos) stays with admin.
-export function canManageExperts(role: UserRole): boolean {
-  return role === 'admin';
+// El Comercial Jurídico valida y administra la red de peritos que puede asignar.
+export function canManageExperts(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
 }
 
-// Editing/deleting existing clients + validating Peritus registro: legal owners
-// only (mercadeo only creates/converts leads).
-export function canManageClients(role: UserRole): boolean {
-  return ['admin', 'juridico'].includes(role);
+// El mismo rol que capta al contacto conserva el expediente del cliente.
+export function canManageClients(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
 }
 
-// Post-sale evaluation of the expert: post-venta closes the loop.
-export function canManageEvaluations(role: UserRole): boolean {
-  return ['admin', 'postventa'].includes(role);
+// El Comercial Jurídico cierra el ciclo evaluando el servicio recibido.
+export function canManageEvaluations(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
 }
 
-// Comité (RF-07): viabilidad/alcance/honorarios los decide el área jurídica + admin.
-export function canManageCommittee(role: UserRole): boolean {
-  return ['admin', 'juridico'].includes(role);
+// Junta: una etapa, una decisión y un valor; ningún rol operativo escribe aquí.
+export function canManageCommittee(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'junta';
+}
+
+export function canReadCommittee(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'junta' || role === 'comercial_juridico';
 }
 
 // Pipeline comercial (RF-18): quien gestiona la relación comercial del caso.
-export function canChangeCommercialStatus(role: UserRole): boolean {
-  return ['admin', 'juridico', 'financiero', 'mercadeo'].includes(role);
+export function canChangeCommercialStatus(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
 }
 
 // Checklist documental (RF-05): definir requeridos y marcar estado.
-export function canManageDocumentChecklist(role: UserRole): boolean {
-  return ['admin', 'juridico', 'administrativo'].includes(role);
+export function canManageDocumentChecklist(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
+}
+
+export function canEditCase(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
+}
+
+export function canUploadDeliverable(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'perito_interno' || role === 'perito';
+}
+
+export function canAddCaseTimelineNote(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
+}
+
+export function canUseWhatsappInbox(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
 }

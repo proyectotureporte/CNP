@@ -12,6 +12,9 @@ export async function GET(
   if (!file) return NextResponse.json({ success: false, error: 'Anexo no encontrado' }, { status: 404 });
   const access = await requireCaseAccess(request, file.caseId);
   if (access.response) return access.response;
+  if (!access.actor.allRoles && !['comercial_juridico', 'perito_interno', 'perito', 'cliente'].includes(access.actor.role)) {
+    return NextResponse.json({ success: false, error: 'Anexo no encontrado' }, { status: 404 });
+  }
   if (access.actor.role === 'cliente' && file.deliverableStatus !== 'aprobado') {
     return NextResponse.json({ success: false, error: 'Anexo no encontrado' }, { status: 404 });
   }

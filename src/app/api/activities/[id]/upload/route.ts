@@ -21,8 +21,8 @@ export async function POST(
     if (!context) return NextResponse.json({ success: false, error: 'Actividad no encontrada' }, { status: 404 });
     const access = await requireCaseAccess(request, context.caseId);
     if (access.response) return access.response;
-    if (!canEditWorkPlan(access.actor.role)) return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
-    if (access.actor.role === 'perito'
+    if (!canEditWorkPlan(access.actor.role, access.actor.allRoles)) return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    if (['perito', 'perito_interno'].includes(access.actor.role)
       && !['borrador', 'rechazado', 'aprobado'].includes(context.workPlanStatus || '')) {
       return NextResponse.json(
         { success: false, error: 'No puedes cambiar evidencias mientras el plan está en revisión' },

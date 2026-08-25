@@ -62,6 +62,7 @@ export default function CaseForm({ initialData, caseId }: CaseFormProps) {
 
   const [title, setTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.description || "");
+  const [dictamenObject, setDictamenObject] = useState(initialData?.dictamenObject || "");
   const [discipline, setDiscipline] = useState<string>(initialData?.discipline || "otro");
   const [complexity, setComplexity] = useState<string>(initialData?.complexity || "media");
   const [priority, setPriority] = useState<string>(initialData?.priority || "normal");
@@ -125,6 +126,7 @@ export default function CaseForm({ initialData, caseId }: CaseFormProps) {
       const payload = {
         title,
         description,
+        dictamenObject,
         discipline,
         complexity,
         priority,
@@ -306,15 +308,15 @@ export default function CaseForm({ initialData, caseId }: CaseFormProps) {
             Datos básicos
           </h3>
 
-          {/* Title */}
+          {/* Case identifier */}
           <div className="space-y-2">
-            <Label htmlFor="title">Titulo del caso *</Label>
+            <Label htmlFor="title">Caso *</Label>
             <Input
               id="title"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Dictamen pericial de..."
+              placeholder="Cliente o identificación del caso"
             />
           </div>
 
@@ -326,6 +328,17 @@ export default function CaseForm({ initialData, caseId }: CaseFormProps) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Qué necesita el cliente y resumen de la situación..."
+              rows={4}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="dictamenObject">Objeto del dictamen</Label>
+            <Textarea
+              id="dictamenObject"
+              value={dictamenObject}
+              onChange={(e) => setDictamenObject(e.target.value)}
+              placeholder="Defina con precisión qué debe analizar, verificar o concluir el dictamen..."
               rows={4}
             />
           </div>

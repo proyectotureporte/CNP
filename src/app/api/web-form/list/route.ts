@@ -10,7 +10,7 @@ export async function GET() {
 
   const payload = await verifyToken(token).catch(() => null);
   if (!payload) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  if (!['admin', 'juridico', 'mercadeo'].includes(payload.role)) {
+  if (!payload.allRoles && payload.role !== 'comercial_juridico') {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 

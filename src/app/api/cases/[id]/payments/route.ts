@@ -12,7 +12,7 @@ export async function GET(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (access.actor.role === 'perito') {
+    if (!access.actor.allRoles && !['junta', 'cliente'].includes(access.actor.role)) {
       return NextResponse.json({ success: false, error: 'Los pagos del cliente no forman parte del portal del perito' }, { status: 403 });
     }
     const payments = access.actor.role === 'cliente'
@@ -40,7 +40,7 @@ export async function POST(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (!canAccessFinances(access.actor.role)) {
+    if (!canAccessFinances(access.actor.role, access.actor.allRoles)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
     const body = await request.json();

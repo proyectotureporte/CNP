@@ -268,7 +268,7 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "429683C4C977415CAAFCCE10F7D57E11"
+              "value": "={{ $env.EVOLUTION_API_KEY }}"
             }
           ]
         },
@@ -352,6 +352,87 @@
       ],
       "id": "2093a117-803f-4cbd-94a6-7d8758c2928c",
       "name": "If1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CNP_APP_URL + '/api/whatsapp/webhook' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-webhook-secret",
+              "value": "={{ $env.WHATSAPP_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'message', phone: $('Extraer Datos1').item.json.telefono, content: $('Extraer Datos1').item.json.mensaje, direction: 'incoming', sender: 'client' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1536,
+        1008
+      ],
+      "id": "4a15d20d-fcc7-49ad-83c2-3e71c865cd64",
+      "name": "Registrar entrada CRM"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CNP_APP_URL + '/api/whatsapp/webhook' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-webhook-secret",
+              "value": "={{ $env.WHATSAPP_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'message', phone: $('Extraer Datos1').item.json.telefono, content: $node['Code in JavaScript'].isExecuted ? $node['Code in JavaScript'].json.texto_final_whatsapp : $('AI Agent1').first().json.output, direction: 'outgoing', sender: 'ai' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2848,
+        800
+      ],
+      "id": "ac928fa1-8daf-498a-b0bb-3606d470d44a",
+      "name": "Registrar salida CRM"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CNP_APP_URL + '/api/whatsapp/webhook' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-webhook-secret",
+              "value": "={{ $env.WHATSAPP_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'complete', phone: $('Extraer Datos1').item.json.telefono, nombre: $json.nombre, ciudad: $json.ciudad, motivo: $json.motivo, observacion: $json.observacion, mensaje: $json.texto_final_whatsapp }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2432,
+        528
+      ],
+      "id": "84301515-3c89-4e51-ac92-c30f120683f7",
+      "name": "Completar lead CRM"
     }
   ],
   "pinData": {},
@@ -379,6 +460,17 @@
         [
           {
             "node": "Responder WhatsApp1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder WhatsApp1": {
+      "main": [
+        [
+          {
+            "node": "Registrar salida CRM",
             "type": "main",
             "index": 0
           }
@@ -447,6 +539,11 @@
             "node": "Guardar en Sheets",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Completar lead CRM",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -456,6 +553,11 @@
         [
           {
             "node": "Extraer Datos1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Registrar entrada CRM",
             "type": "main",
             "index": 0
           }

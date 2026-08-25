@@ -3,7 +3,7 @@ import type { CaseStatus, CommercialStatus } from '@/lib/types';
 // Fuente ÚNICA de la máquina de estados del caso: la importan tanto la API
 // (api/cases/[id]/status) como la UI (crm/cases/[id]). No duplicar.
 
-// Cadena administrativa: juridico → financiero → admin
+// El Comercial Jurídico opera el ciclo del caso de punta a punta.
 export const VALID_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
   creado: ['gestionado', 'cancelado'],
   gestionado: ['creado', 'cancelado', 'archivado'],
@@ -12,14 +12,8 @@ export const VALID_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
 };
 
 export function canChangeStatus(userRole: string, statusChangedByRole?: string): boolean {
-  if (userRole === 'admin') return true;
-  if (userRole === 'juridico') {
-    return !statusChangedByRole || statusChangedByRole === 'financiero';
-  }
-  if (userRole === 'financiero') {
-    return statusChangedByRole === 'juridico';
-  }
-  return false;
+  void statusChangedByRole;
+  return userRole === 'comercial_juridico';
 }
 
 // Pipeline COMERCIAL (RF-18): independiente del estado técnico/administrativo.

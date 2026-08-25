@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import { usePusher } from "@/hooks/usePusher";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { DollarSign, ChevronLeft, ChevronRight, CreditCard } from "lucide-react";
+import { DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
 import { PAYMENT_STATUS_COLORS, type Payment, type PaymentStatus } from "@/lib/types";
 
 function formatCurrency(v: number) { return `$${v.toLocaleString("es-CO")}`; }
@@ -42,17 +42,6 @@ export default function PaymentsPage() {
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2969b0]/10">
-            <CreditCard className="h-5 w-5" style={{ color: '#2969b0' }} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: '#1b5697' }}>Pagos</h1>
-            <p className="text-sm text-muted-foreground">Gestiona los pagos del sistema</p>
-          </div>
-        </div>
-      </div>
       <div className="mb-4 flex gap-3">
         <Select value={status} onValueChange={(v) => { setStatus(v === "all" ? "" : v); setPage(1); }}>
           <SelectTrigger className="w-[180px]"><SelectValue placeholder="Estado" /></SelectTrigger>

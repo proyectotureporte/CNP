@@ -74,7 +74,7 @@ export default function ExpertSuggestions({ caseId, onAssign }: ExpertSuggestion
       const res = await fetch(`/api/cases/${caseId}/assign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assignedExpert: expert.user._id }),
+        body: JSON.stringify({ role: "assignedExpert", userId: expert.user._id }),
       });
       const data = await res.json();
       if (data.success) {
@@ -189,7 +189,7 @@ export default function ExpertSuggestions({ caseId, onAssign }: ExpertSuggestion
                   </span>
                   <span className="flex items-center gap-1">
                     <Briefcase className="h-3 w-3" />
-                    {expert.experienceYears} anos
+                    {expert.experienceYears} años
                   </span>
                   {expert.city && (
                     <span className="flex items-center gap-1">

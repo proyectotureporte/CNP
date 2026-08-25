@@ -18,7 +18,9 @@ export async function GET(
     if (!caseId) return NextResponse.json({ success: false, error: 'Plan no encontrado' }, { status: 404 });
     const access = await requireCaseAccess(request, caseId);
     if (access.response) return access.response;
-    if (access.actor.role === 'cliente') return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    if (!access.actor.allRoles && !['comercial_juridico', 'perito_interno', 'perito'].includes(access.actor.role)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
     const activities = await workPlanActivity.listByWorkPlan(id);
     const counts = {
       total: activities.length,
@@ -49,7 +51,7 @@ export async function POST(
     if (!caseId) return NextResponse.json({ success: false, error: 'Plan no encontrado' }, { status: 404 });
     const access = await requireCaseAccess(request, caseId);
     if (access.response) return access.response;
-    if (!canEditWorkPlan(access.actor.role)) return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    if (!canEditWorkPlan(access.actor.role, access.actor.allRoles)) return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
 
     const body = await request.json();
 
@@ -61,19 +63,20 @@ export async function POST(
     if (!plan) {
       return NextResponse.json({ success: false, error: 'Plan de trabajo no encontrado' }, { status: 404 });
     }
-    if (access.actor.role === 'perito' && !['borrador', 'rechazado'].includes(plan.status)) {
+    const isExpert = ['perito', 'perito_interno'].includes(access.actor.role);
+    if (isExpert && !['borrador', 'rechazado'].includes(plan.status)) {
       return NextResponse.json(
         { success: false, error: 'Solo puedes agregar actividades mientras el plan esté en borrador o devuelto' },
         { status: 409 },
       );
     }
-    const assignedToId = access.actor.role === 'perito'
+    const assignedToId = isExpert
       ? access.actor.userId
       : (body.assignedTo || null);
-    if (assignedToId && access.actor.role !== 'perito') {
+    if (assignedToId && !isExpert) {
       const assignee = await crmUser.getUserById(assignedToId);
-      if (!assignee || assignee.role === 'cliente') {
-        return NextResponse.json({ success: false, error: 'La actividad no puede asignarse a un cliente final' }, { status: 400 });
+      if (!assignee || !['perito', 'perito_interno'].includes(assignee.role)) {
+        return NextResponse.json({ success: false, error: 'La actividad solo puede asignarse a un perito' }, { status: 400 });
       }
     }
     const created = await workPlanActivity.createActivity({

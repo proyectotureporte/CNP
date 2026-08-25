@@ -12,7 +12,8 @@ const userContact = (a: string) => nestedObj(a, {
 
 const SCALARS = `
   c.id AS "_id", c.created_at AS "_createdAt", c.updated_at AS "_updatedAt",
-  c.brand, c.case_code AS "caseCode", c.title, c.description, c.discipline, c.status,
+  c.brand, c.case_code AS "caseCode", c.title, c.description,
+  c.dictamen_object AS "dictamenObject", c.discipline, c.status,
   c.status_changed_by_role AS "statusChangedByRole", c.complexity, c.priority,
   c.channel, c.commercial_status AS "commercialStatus", c.loss_reason AS "lossReason",
   c.execution_start_date AS "executionStartDate", c.execution_deadline AS "executionDeadline",
@@ -43,6 +44,7 @@ export interface ListCasesParams {
   deadlineThreshold?: string | null;
   financieroId?: string;
   expertId?: string;
+  clientId?: string;
   limit?: number;
   offset?: number;
 }
@@ -56,6 +58,7 @@ function casesWhere(p: ListCasesParams): { clause: string; values: unknown[] } {
     p.deadlineThreshold ?? '',
     p.financieroId ?? '',
     p.expertId ?? '',
+    p.clientId ?? '',
   ];
   const clause = `
     c.status <> 'archivado'
@@ -66,6 +69,7 @@ function casesWhere(p: ListCasesParams): { clause: string; values: unknown[] } {
     AND ($5 = '' OR (c.deadline_date IS NOT NULL AND c.deadline_date <= $5::timestamptz AND c.status <> 'cancelado'))
     AND ($6 = '' OR c.assigned_financiero_id = $6)
     AND ($7 = '' OR c.assigned_expert_id = $7 OR c.assigned_financiero_id = $7)
+    AND ($8 = '' OR c.client_id = $8)
   `;
   return { clause, values };
 }
@@ -77,7 +81,7 @@ export async function listCases(p: ListCasesParams = {}): Promise<CaseExpanded[]
   return query<CaseExpanded>(
     `SELECT
        c.id AS "_id", c.created_at AS "_createdAt", c.updated_at AS "_updatedAt",
-       c.brand, c.case_code AS "caseCode", c.title, c.discipline, c.status,
+       c.brand, c.case_code AS "caseCode", c.title, c.dictamen_object AS "dictamenObject", c.discipline, c.status,
        c.status_changed_by_role AS "statusChangedByRole", c.complexity, c.priority,
        c.channel, c.commercial_status AS "commercialStatus",
        c.execution_start_date AS "executionStartDate", c.execution_deadline AS "executionDeadline",
@@ -96,8 +100,31 @@ export async function listCases(p: ListCasesParams = {}): Promise<CaseExpanded[]
      FROM cases c ${JOINS}
      WHERE ${clause}
      ORDER BY c.created_at DESC
-     LIMIT $8 OFFSET $9`,
+     LIMIT $9 OFFSET $10`,
     [...values, limit, offset],
+  );
+}
+
+/** Casos operativos sin perito, compatibles con al menos una disciplina. */
+export async function listUnassignedCasesForDisciplines(disciplines: string[]): Promise<CaseExpanded[]> {
+  if (disciplines.length === 0) return [];
+
+  return query<CaseExpanded>(
+    `SELECT
+       c.id AS "_id", c.created_at AS "_createdAt", c.updated_at AS "_updatedAt",
+       c.brand, c.case_code AS "caseCode", c.title,
+       c.dictamen_object AS "dictamenObject", c.discipline, c.status,
+       c.priority, c.deadline_date AS "deadlineDate",
+       ${clientList} AS "client"
+     FROM cases c
+     LEFT JOIN crm_client cl ON cl.id = c.client_id
+     WHERE c.status NOT IN ('cancelado', 'archivado')
+       AND c.assigned_expert_id IS NULL
+       AND c.assigned_financiero_id IS NULL
+       AND c.discipline::text = ANY($1::text[])
+     ORDER BY c.created_at DESC
+     LIMIT 100`,
+    [disciplines],
   );
 }
 
@@ -185,7 +212,7 @@ export async function listCasesForClient(clientId: string): Promise<CaseExpanded
   return query<CaseExpanded>(
     `SELECT
        c.id AS "_id", c.created_at AS "_createdAt", c.updated_at AS "_updatedAt",
-       c.brand, c.case_code AS "caseCode", c.title, c.description,
+       c.brand, c.case_code AS "caseCode", c.title, c.description, c.dictamen_object AS "dictamenObject",
        c.discipline, c.status, c.complexity, c.priority,
        c.estimated_amount AS "estimatedAmount", c.has_hearing AS "hasHearing",
        c.hearing_date AS "hearingDate", c.deadline_date AS "deadlineDate",
@@ -204,7 +231,7 @@ export async function listCasesForExpert(userId: string): Promise<CaseExpanded[]
   return query<CaseExpanded>(
     `SELECT
        c.id AS "_id", c.created_at AS "_createdAt", c.updated_at AS "_updatedAt",
-       c.brand, c.case_code AS "caseCode", c.title, c.description,
+       c.brand, c.case_code AS "caseCode", c.title, c.description, c.dictamen_object AS "dictamenObject",
        c.discipline, c.status, c.complexity, c.priority,
        c.execution_start_date AS "executionStartDate", c.execution_deadline AS "executionDeadline",
        c.execution_business_days AS "executionBusinessDays",
@@ -216,7 +243,7 @@ export async function listCasesForExpert(userId: string): Promise<CaseExpanded[]
        c.case_number AS "caseNumber", ${userContact('aj')} AS "assignedJuridico"
      FROM cases c
      LEFT JOIN crm_user aj ON aj.id = c.assigned_juridico_id
-     WHERE (c.assigned_expert_id = $1 OR c.assigned_financiero_id = $1)
+     WHERE c.assigned_expert_id = $1
        AND c.status <> 'archivado'
      ORDER BY c.created_at DESC`,
     [userId],
@@ -359,6 +386,7 @@ export interface CaseInput {
   caseCode?: string | null;
   title: string;
   description?: string | null;
+  dictamenObject?: string | null;
   clientId?: string | null;
   commercialId?: string | null;
   technicalAnalystId?: string | null;
@@ -397,6 +425,7 @@ function toColumns(input: Partial<CaseInput>): Record<string, unknown> {
     case_code: input.caseCode,
     title: input.title,
     description: input.description,
+    dictamen_object: input.dictamenObject,
     client_id: input.clientId,
     commercial_id: input.commercialId,
     technical_analyst_id: input.technicalAnalystId,

@@ -1,5 +1,5 @@
 import { query, queryOne, buildInsert, buildUpdate, newId, pruneUndefined, nestedObj } from './pool';
-import type { CrmUser, UserRole } from '@/lib/types';
+import { normalizeUserRole, type CrmUser, type UserRole } from '@/lib/types';
 
 const companyObj = nestedObj('co', { _id: 'co.id', name: 'co.name', type: 'co.type' });
 
@@ -16,47 +16,70 @@ const WITH_HASH = `${SAFE}, u.password_hash AS "passwordHash"`;
 
 const FROM = `FROM crm_user u LEFT JOIN company co ON co.id = u.company_id`;
 
+function normalizedUser(user: CrmUser | null): CrmUser | null {
+  if (!user) return null;
+  const role = normalizeUserRole(user.role as string);
+  return role ? { ...user, role } : null;
+}
+
+function normalizedUsers(users: CrmUser[]): CrmUser[] {
+  return users.map(normalizedUser).filter((user): user is CrmUser => Boolean(user));
+}
+
+const STORED_ROLE_ALIASES: Record<UserRole, string[]> = {
+  admin: ['admin'],
+  comercial_juridico: ['comercial_juridico', 'juridico', 'administrativo', 'mercadeo', 'postventa'],
+  junta: ['junta'],
+  perito_interno: ['perito_interno', 'financiero', 'tecnico'],
+  perito: ['perito'],
+  cliente: ['cliente'],
+};
+
 /** Para login: incluye passwordHash. Solo usuarios activos. */
 export async function getUserByUsername(username: string): Promise<CrmUser | null> {
-  return queryOne<CrmUser>(
+  return normalizedUser(await queryOne<CrmUser>(
     `SELECT ${WITH_HASH} ${FROM} WHERE lower(u.username) = lower($1) AND u.active = TRUE`,
     [username],
-  );
+  ));
 }
 
 export async function getUserByEmail(email: string): Promise<CrmUser | null> {
-  return queryOne<CrmUser>(
+  return normalizedUser(await queryOne<CrmUser>(
     `SELECT ${WITH_HASH} ${FROM} WHERE lower(u.email) = lower($1) AND u.active = TRUE`,
     [email],
-  );
+  ));
 }
 
 export async function getUserById(id: string): Promise<CrmUser | null> {
-  return queryOne<CrmUser>(`SELECT ${SAFE} ${FROM} WHERE u.id = $1`, [id]);
+  return normalizedUser(await queryOne<CrmUser>(`SELECT ${SAFE} ${FROM} WHERE u.id = $1`, [id]));
 }
 
 /** Incluye passwordHash; usado al cambiar contraseña. */
 export async function getUserByIdWithHash(id: string): Promise<CrmUser | null> {
-  return queryOne<CrmUser>(`SELECT ${WITH_HASH} ${FROM} WHERE u.id = $1`, [id]);
+  return normalizedUser(await queryOne<CrmUser>(`SELECT ${WITH_HASH} ${FROM} WHERE u.id = $1`, [id]));
 }
 
 export async function listUsers(): Promise<CrmUser[]> {
-  return query<CrmUser>(`SELECT ${SAFE} ${FROM} ORDER BY u.created_at DESC`);
+  return normalizedUsers(await query<CrmUser>(`SELECT ${SAFE} ${FROM} ORDER BY u.created_at DESC`));
 }
 
 /** Lista ligera de usuarios activos (id, displayName, role) ordenada por rol y nombre. */
 export async function listActiveUsersBasic(): Promise<Array<{ _id: string; displayName: string; role: UserRole }>> {
-  return query<{ _id: string; displayName: string; role: UserRole }>(
+  const rows = await query<{ _id: string; displayName: string; role: string }>(
     `SELECT id AS "_id", display_name AS "displayName", role
      FROM crm_user WHERE active = TRUE ORDER BY role ASC, display_name ASC`,
   );
+  return rows.flatMap((user) => {
+    const role = normalizeUserRole(user.role);
+    return role ? [{ ...user, role }] : [];
+  });
 }
 
 export async function listUsersByRole(role: UserRole): Promise<CrmUser[]> {
-  return query<CrmUser>(
-    `SELECT ${SAFE} ${FROM} WHERE u.role = $1::user_role AND u.active = TRUE ORDER BY u.display_name ASC`,
-    [role],
-  );
+  return normalizedUsers(await query<CrmUser>(
+    `SELECT ${SAFE} ${FROM} WHERE u.role::text = ANY($1::text[]) AND u.active = TRUE ORDER BY u.display_name ASC`,
+    [STORED_ROLE_ALIASES[role]],
+  ));
 }
 
 export async function countActiveUsers(): Promise<number> {
@@ -66,8 +89,8 @@ export async function countActiveUsers(): Promise<number> {
 
 export async function countUsersByRole(role: UserRole): Promise<number> {
   const row = await queryOne<{ count: number }>(
-    'SELECT count(*)::int AS count FROM crm_user WHERE role = $1::user_role AND active = TRUE',
-    [role],
+    'SELECT count(*)::int AS count FROM crm_user WHERE role::text = ANY($1::text[]) AND active = TRUE',
+    [STORED_ROLE_ALIASES[role]],
   );
   return row?.count ?? 0;
 }
@@ -102,7 +125,7 @@ export async function createUser(input: CrmUserInput): Promise<CrmUser | null> {
     display_name: input.displayName ?? null,
     phone: input.phone ?? null,
     password_hash: input.passwordHash ?? null,
-    role: input.role ?? 'juridico',
+    role: input.role ?? 'comercial_juridico',
     active: input.active ?? true,
     must_change_password: input.mustChangePassword ?? false,
     avatar_url: input.avatarUrl ?? null,

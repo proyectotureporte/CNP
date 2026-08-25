@@ -13,11 +13,22 @@ const LIST_SELECT = `
   e.fee_currency AS "feeCurrency", e.availability, e.rating, e.total_cases AS "totalCases",
   e.completed_cases AS "completedCases", e.validation_status AS "validationStatus",
   e.validation_notes AS "validationNotes", e.tax_id AS "taxId",
+  coalesce(ac.case_count, 0) AS "associatedCasesCount",
+  ac.sole_case_id AS "soleAssociatedCaseId",
   ${userObj} AS "user",
   ${validatedByObj} AS "validatedBy"
 `;
 
-const JOINS = `LEFT JOIN crm_user u ON u.id = e.user_id LEFT JOIN crm_user vb ON vb.id = e.validated_by_id`;
+const JOINS = `
+  LEFT JOIN crm_user u ON u.id = e.user_id
+  LEFT JOIN crm_user vb ON vb.id = e.validated_by_id
+  LEFT JOIN LATERAL (
+    SELECT count(*)::int AS case_count,
+      CASE WHEN count(*) = 1 THEN min(id) ELSE NULL END AS sole_case_id
+    FROM cases
+    WHERE assigned_expert_id = e.user_id AND status <> 'archivado'
+  ) ac ON TRUE
+`;
 
 export interface ListExpertsParams {
   discipline?: string;
@@ -119,6 +130,7 @@ export async function listAvailableExpertsForDiscipline(discipline: string): Pro
        ${userObj} AS "user"
      FROM expert e LEFT JOIN crm_user u ON u.id = e.user_id
      WHERE e.validation_status = 'activado' AND e.availability = 'disponible'
+       AND u.active = TRUE AND u.role::text = 'perito'
        AND nullif(trim(e.bank_name), '') IS NOT NULL
        AND e.bank_account_type IS NOT NULL
        AND nullif(trim(e.bank_account_number), '') IS NOT NULL
@@ -127,6 +139,66 @@ export async function listAvailableExpertsForDiscipline(discipline: string): Pro
        AND $1 = ANY(e.disciplines)
      ORDER BY e.rating DESC`,
     [discipline],
+  );
+}
+
+/** Misma compuerta que alimenta el selector, aplicada de nuevo al confirmar. */
+export async function isAssignableExpertForDiscipline(
+  userId: string,
+  discipline: string,
+): Promise<boolean> {
+  const row = await queryOne<{ allowed: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1
+       FROM expert e
+       JOIN crm_user u ON u.id = e.user_id
+       WHERE e.user_id = $1
+         AND u.active = TRUE
+         AND u.role::text = 'perito'
+         AND e.validation_status = 'activado'
+         AND e.availability = 'disponible'
+         AND nullif(trim(e.bank_name), '') IS NOT NULL
+         AND e.bank_account_type IS NOT NULL
+         AND nullif(trim(e.bank_account_number), '') IS NOT NULL
+         AND nullif(trim(e.bank_account_holder), '') IS NOT NULL
+         AND nullif(trim(e.bank_holder_document), '') IS NOT NULL
+         AND $2 = ANY(e.disciplines)
+     ) AS allowed`,
+    [userId, discipline],
+  );
+  return row?.allowed ?? false;
+}
+
+export interface ExpertAssignmentReadiness {
+  expertId: string;
+  userId: string | null;
+  disciplines: string[];
+  validationStatus: string;
+  availability: string;
+  userActive: boolean;
+  userRole: string | null;
+  bankComplete: boolean;
+}
+
+/** Estado completo que explica si un perfil puede recibir asignaciones. */
+export async function getExpertAssignmentReadiness(expertId: string): Promise<ExpertAssignmentReadiness | null> {
+  return queryOne<ExpertAssignmentReadiness>(
+    `SELECT e.id AS "expertId", e.user_id AS "userId", e.disciplines,
+       e.validation_status::text AS "validationStatus",
+       e.availability::text AS availability,
+       coalesce(u.active, FALSE) AS "userActive",
+       u.role::text AS "userRole",
+       (
+         nullif(trim(e.bank_name), '') IS NOT NULL
+         AND e.bank_account_type IS NOT NULL
+         AND nullif(trim(e.bank_account_number), '') IS NOT NULL
+         AND nullif(trim(e.bank_account_holder), '') IS NOT NULL
+         AND nullif(trim(e.bank_holder_document), '') IS NOT NULL
+       ) AS "bankComplete"
+     FROM expert e
+     LEFT JOIN crm_user u ON u.id = e.user_id
+     WHERE e.id = $1`,
+    [expertId],
   );
 }
 

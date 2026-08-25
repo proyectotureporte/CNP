@@ -6,15 +6,16 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { Briefcase, LogOut, UserCircle } from 'lucide-react';
+import InterAppScope from '@/components/layout/InterAppScope';
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  if (pathname === '/portal/login' || pathname === '/portal/change-password') {
-    return <>{children}</>;
-  }
+  const content = pathname === '/portal/login' || pathname === '/portal/change-password'
+    ? children
+    : <PortalAuthLayout pathname={pathname}>{children}</PortalAuthLayout>;
 
-  return <PortalAuthLayout pathname={pathname}>{children}</PortalAuthLayout>;
+  return <InterAppScope>{content}</InterAppScope>;
 }
 
 function PortalAuthLayout({ children, pathname }: { children: React.ReactNode; pathname: string }) {

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 
-    const [rawData, total] = role === 'perito'
+    const [rawData, total] = role === 'perito' || role === 'perito_interno'
       ? await Promise.all([
           deliverable.listExpertDeliverables(userId, status, phase, limit, offset),
           deliverable.countExpertDeliverables(userId, status, phase),

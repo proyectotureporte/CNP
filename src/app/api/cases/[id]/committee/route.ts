@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cases, committeeReview } from '@/lib/db';
 import { COMMITTEE_VIABILITIES, COMMITTEE_VIABILITY_LABELS, type CommitteeViability } from '@/lib/types';
 import { guardRole } from '@/lib/auth/guard';
-import { canManageCommittee } from '@/lib/auth/permissions';
+import { canManageCommittee, canReadCommittee } from '@/lib/auth/permissions';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
 import { notifyUsersAndAdmins } from '@/lib/notify';
 import { auditEntityChange } from '@/lib/audit';
 import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
-/** Comité del caso (RF-07): viabilidad, alcance, honorarios, entregables y tiempo. */
+/** Decisión de Junta: viabilidad, motivo y valor. */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -18,7 +18,7 @@ export async function GET(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (!canManageCommittee(access.actor.role)) {
+    if (!canReadCommittee(access.actor.role, access.actor.allRoles)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
     const review = await committeeReview.getCommitteeReviewByCase(id);
@@ -45,24 +45,26 @@ export async function PUT(
     const userId = request.headers.get('x-user-id');
     const userName = request.headers.get('x-user-name');
     const body = await request.json();
-    const { viability, viabilityReason, scope, fees, deliverablesDescription, estimatedDays, notes } = body as {
+    const { viability, viabilityReason, fees } = body as {
       viability?: string;
       viabilityReason?: string;
-      scope?: string;
       fees?: number;
-      deliverablesDescription?: string;
-      estimatedDays?: number;
-      notes?: string;
     };
 
     if (viability && !COMMITTEE_VIABILITIES.includes(viability as CommitteeViability)) {
       return NextResponse.json({ success: false, error: 'Viabilidad no valida' }, { status: 400 });
     }
-    if (viability === 'no_viable' && !viabilityReason?.trim()) {
+    if (!viability) {
+      return NextResponse.json({ success: false, error: 'Debe definir la viabilidad' }, { status: 400 });
+    }
+    if (!viabilityReason?.trim()) {
       return NextResponse.json(
-        { success: false, error: 'Debe justificar por qué el caso no es viable' },
+        { success: false, error: 'Debe registrar el motivo de la decisión' },
         { status: 400 }
       );
+    }
+    if (!Number.isFinite(Number(fees)) || Number(fees) <= 0) {
+      return NextResponse.json({ success: false, error: 'Debe fijar un valor mayor a cero' }, { status: 400 });
     }
 
     const existing = await cases.getCaseById(id);
@@ -75,11 +77,7 @@ export async function PUT(
       caseId: id,
       viability: (viability as CommitteeViability) ?? null,
       viabilityReason: viabilityReason ?? null,
-      scope: scope ?? null,
-      fees: fees ?? null,
-      deliverablesDescription: deliverablesDescription ?? null,
-      estimatedDays: estimatedDays ?? null,
-      notes: notes ?? null,
+      fees: Number(fees),
       decidedById: userId,
     });
 
@@ -88,18 +86,18 @@ export async function PUT(
       logCaseEvent({
         caseId: id,
         eventType: 'committee_decision',
-        description: `Comité: caso dictaminado como "${label}" por ${userName || 'Sistema'}`,
+        description: `Junta: caso dictaminado como "${label}" por ${userName || 'Sistema'}`,
         userId, userName,
       });
 
       notifyUsersAndAdmins({
-        userIds: [existing.commercial?._id, existing.createdBy?._id, existing.technicalAnalyst?._id].filter(
+        userIds: [existing.assignedJuridico?._id, existing.commercial?._id, existing.createdBy?._id].filter(
           (uid) => uid !== userId,
         ),
         type: viability === 'no_viable' ? 'warning' : 'success',
         priority: 'alta',
-        title: `Decisión de Comité: ${existing.caseCode}`,
-        message: `El comité dictaminó el caso "${existing.title}" como "${label}".`,
+        title: `Decisión de Junta: ${existing.caseCode}`,
+        message: `La Junta dictaminó el caso "${existing.title}" como "${label}".`,
         linkUrl: `/crm/cases/${id}`,
         mailbox: 'comite',
       }).catch((err) => console.error('[committee] Error notificando decisión:', err));
@@ -122,20 +120,17 @@ export async function PUT(
           }
         : null,
       after: {
-        viability: viability ?? null,
-        viabilityReason: viabilityReason ?? null,
-        scope: scope ?? null,
-        fees: fees ?? null,
-        deliverablesDescription: deliverablesDescription ?? null,
-        estimatedDays: estimatedDays ?? null,
-        notes: notes ?? null,
+        viability,
+        viabilityReason: viabilityReason.trim(),
+        fees: Number(fees),
       },
     });
 
     triggerEvent('case:updated', { id, committee: true });
 
     return NextResponse.json({ success: true, data: review });
-  } catch {
+  } catch (error) {
+    console.error('[committee] PUT error:', error);
     return NextResponse.json(
       { success: false, error: 'Error guardando la decisión del comité' },
       { status: 500 }

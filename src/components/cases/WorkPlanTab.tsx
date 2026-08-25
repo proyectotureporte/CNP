@@ -110,7 +110,7 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
   const [filter, setFilter] = useState<FilterType>("todas");
 
-  // Observation dialog state (administrativo)
+  // Observation dialog state (Comercial Jurídico)
   const [showObsDialog, setShowObsDialog] = useState(false);
   const [obsActivityId, setObsActivityId] = useState("");
   const [obsType, setObsType] = useState<ObservationType>("observacion");
@@ -123,17 +123,18 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
   const [recalcSaving, setRecalcSaving] = useState(false);
 
   const role = (userRole || user?.role || '') as UserRole;
-  const canEdit = !!user && canEditWorkPlan(role);
+  const canEdit = !!user && canEditWorkPlan(role, user.allRoles);
+  const isExpert = role === "perito" || role === "perito_interno";
   const canEditPlan = canEdit && (!plan || plan.status === "borrador" || plan.status === "rechazado");
   const canEditActivityStructure = canEditPlan && Boolean(plan);
-  const canUpdateActivityStatus = canEdit && (role !== "perito" || plan?.status === "aprobado");
+  const canUpdateActivityStatus = canEdit && (!isExpert || plan?.status === "aprobado");
   const canUploadActivity = canEdit && (
-    role !== "perito"
+    !isExpert
     || plan?.status === "borrador"
     || plan?.status === "rechazado"
     || plan?.status === "aprobado"
   );
-  const isAdministrativo = role === "administrativo";
+  const isCommercial = role === "comercial_juridico";
 
   const progressPercent = counts.total > 0
     ? Math.round((counts.completadas / counts.total) * 100)
@@ -194,11 +195,15 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
       try {
         const res = await fetch("/api/users");
         const data = await res.json();
-        if (data.success) setSystemUsers(data.data || []);
+        if (data.success) {
+          setSystemUsers((data.data || []).filter((item: SystemUser) =>
+            item.role === "perito" || item.role === "perito_interno"
+          ));
+        }
       } catch { /* ignore */ }
     }
-    if (role === "admin" || role === "administrativo") loadUsers();
-  }, [role]);
+    if (isCommercial) loadUsers();
+  }, [isCommercial]);
 
   async function savePlan() {
     setPlanSaving(true);
@@ -540,7 +545,7 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
           )}
         </div>
         <div className="flex items-center gap-2">
-          {isAdministrativo && activities.length > 0 && (
+          {isCommercial && activities.length > 0 && (
             <Button variant="outline" size="sm" onClick={() => { setNewEndDate(""); setShowRecalcDialog(true); }}>
               <RefreshCw className="mr-2 h-3.5 w-3.5" />Recalcular Fechas
             </Button>
@@ -664,7 +669,7 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
                     )}
 
                     {/* Acciones Administrativo - solo lectura + dropdown de observaciones */}
-                    {isAdministrativo && (
+                    {isCommercial && (
                       <div className="flex items-center gap-1 shrink-0">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -762,7 +767,7 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog observacion (administrativo) */}
+      {/* Dialog de observación del Comercial Jurídico */}
       <Dialog open={showObsDialog} onOpenChange={setShowObsDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>

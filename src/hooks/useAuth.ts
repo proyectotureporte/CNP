@@ -7,6 +7,7 @@ interface AuthUser {
   sub: string;
   role: UserRole;
   displayName: string;
+  allRoles?: boolean;
   mustChangePassword?: boolean;
 }
 
@@ -33,7 +34,7 @@ export function useAuth(type: 'crm' | 'admin' = 'crm') {
       }
     }
     fetchUser();
-  }, []);
+  }, [type]);
 
   return { user, loading };
 }

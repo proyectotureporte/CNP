@@ -84,8 +84,8 @@ export default function QuoteList({ caseId, userRole }: QuoteListProps) {
   const [error, setError] = useState("");
 
   const role = (userRole || user?.role || '') as UserRole;
-  const canManageQuotes = !!user && canCreateQuote(role);
-  const canApproveQuotes = !!user && canApproveQuote(role);
+  const canManageQuotes = !!user && canCreateQuote(role, user.allRoles);
+  const canApproveQuotes = !!user && canApproveQuote(role, user.allRoles);
 
   const loadQuotes = useCallback(async () => {
     try {

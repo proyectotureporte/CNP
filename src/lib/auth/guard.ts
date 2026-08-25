@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { UserRole } from '@/lib/types';
+import { requestHasAllRoles } from '@/lib/auth/allRoles';
 
 /**
  * Single source of truth for server-side role enforcement in API routes.
@@ -29,6 +30,7 @@ export function guardRole(
   request: Request,
   allows: (role: UserRole) => boolean
 ): NextResponse | null {
+  if (requestHasAllRoles(request)) return null;
   const role = roleFromRequest(request);
   if (!role || !allows(role)) return denied();
   return null;

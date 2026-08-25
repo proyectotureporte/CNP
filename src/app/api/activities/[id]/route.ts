@@ -17,12 +17,13 @@ export async function PUT(
     if (!context) return NextResponse.json({ success: false, error: 'Actividad no encontrada' }, { status: 404 });
     const access = await requireCaseAccess(request, context.caseId);
     if (access.response) return access.response;
-    if (!canEditWorkPlan(access.actor.role)) return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    if (!canEditWorkPlan(access.actor.role, access.actor.allRoles)) return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     const userId = access.actor.userId;
     const userName = access.actor.displayName;
     const body = await request.json();
 
-    if (access.actor.role === 'perito') {
+    const isExpert = ['perito', 'perito_interno'].includes(access.actor.role);
+    if (isExpert) {
       const changesStructure = ['title', 'description', 'dueDate', 'assignedTo']
         .some((field) => body[field] !== undefined);
       if (changesStructure && !['borrador', 'rechazado'].includes(context.workPlanStatus || '')) {
@@ -68,13 +69,13 @@ export async function PUT(
       }
     }
     if (body.assignedTo !== undefined) {
-      if (access.actor.role !== 'perito' && body.assignedTo) {
+      if (!isExpert && body.assignedTo) {
         const assignee = await crmUser.getUserById(body.assignedTo);
-        if (!assignee || assignee.role === 'cliente') {
-          return NextResponse.json({ success: false, error: 'La actividad no puede asignarse a un cliente final' }, { status: 400 });
+        if (!assignee || !['perito', 'perito_interno'].includes(assignee.role)) {
+          return NextResponse.json({ success: false, error: 'La actividad solo puede asignarse a un perito' }, { status: 400 });
         }
       }
-      patch.assignedToId = access.actor.role === 'perito'
+      patch.assignedToId = isExpert
         ? access.actor.userId
         : (body.assignedTo || null);
     }
@@ -114,8 +115,8 @@ export async function DELETE(
     if (!context) return NextResponse.json({ success: false, error: 'Actividad no encontrada' }, { status: 404 });
     const access = await requireCaseAccess(request, context.caseId);
     if (access.response) return access.response;
-    if (!canEditWorkPlan(access.actor.role)) return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
-    if (access.actor.role === 'perito' && !['borrador', 'rechazado'].includes(context.workPlanStatus || '')) {
+    if (!canEditWorkPlan(access.actor.role, access.actor.allRoles)) return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    if (['perito', 'perito_interno'].includes(access.actor.role) && !['borrador', 'rechazado'].includes(context.workPlanStatus || '')) {
       return NextResponse.json(
         { success: false, error: 'Solo puedes eliminar actividades mientras el plan esté en borrador o devuelto' },
         { status: 409 },

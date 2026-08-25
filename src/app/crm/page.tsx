@@ -2,20 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { usePusher } from "@/hooks/usePusher";
-import { LayoutDashboard } from "lucide-react";
 import DashboardStats from "@/components/crm/DashboardStats";
-import type { CrmClient, DashboardStats as DashboardStatsType } from "@/lib/types";
+import type {
+  CrmClient,
+  DashboardStats as DashboardStatsType,
+  DashboardCaseMetricPoint,
+  DashboardMetricPoint,
+} from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/useAuth";
 
 function DashboardSkeleton() {
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="rounded-xl border border-border/60 bg-white p-6">
-            <Skeleton className="mb-3 h-3 w-24" />
-            <Skeleton className="h-8 w-16" />
-            <Skeleton className="mt-3 h-2 w-32" />
+          <div key={i} className="min-h-64 overflow-hidden rounded-2xl border border-border/60 bg-white p-5">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-8 w-20 rounded-lg" />
+            </div>
+            <Skeleton className="mt-6 h-10 w-20" />
+            <Skeleton className="mt-2 h-3 w-36" />
+            <Skeleton className="mt-5 h-24 w-full rounded-xl" />
           </div>
         ))}
       </div>
@@ -42,22 +51,42 @@ export default function CrmDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const { user, loading: authLoading } = useAuth();
 
-  usePusher(['client:created', 'client:updated'], () => {
+  usePusher(['client:created', 'client:updated', 'case:created', 'case:updated', 'case:status-changed'], () => {
     setRefreshKey((k) => k + 1);
   });
 
   useEffect(() => {
     async function loadData() {
+      if (!user) return;
       try {
-        const clientsRes = await fetch("/api/clients");
-        const clientsData = await clientsRes.json();
+        const canReadClients = user.allRoles || user.role === 'admin' || user.role === 'comercial_juridico';
+        const [summaryRes, clientsRes] = await Promise.all([
+          fetch("/api/dashboard/stats"),
+          canReadClients ? fetch("/api/clients") : Promise.resolve(null),
+        ]);
+        const summaryData = await summaryRes.json();
+        const clientsData = clientsRes ? await clientsRes.json() : { success: true, data: [] };
         const clients: CrmClient[] = clientsData.success ? clientsData.data : [];
 
+        if (!summaryData.success) {
+          throw new Error(summaryData.error || 'No fue posible cargar las métricas');
+        }
+
+        const summary = summaryData.data as {
+          totalClients: number;
+          clientGrowthByMonth: DashboardMetricPoint[];
+          clientRegistrationsByDay: DashboardMetricPoint[];
+          caseRegistrationsByDay: DashboardCaseMetricPoint[];
+        };
+
         setStats({
-          totalClients: clients.length,
-          activeUsers: 0,
+          totalClients: summary.totalClients,
           recentClients: clients.slice(0, 5),
+          clientGrowthByMonth: summary.clientGrowthByMonth,
+          clientRegistrationsByDay: summary.clientRegistrationsByDay,
+          caseRegistrationsByDay: summary.caseRegistrationsByDay,
         });
       } catch {
         setError("Error al cargar los datos del dashboard.");
@@ -66,32 +95,18 @@ export default function CrmDashboardPage() {
       }
     }
     loadData();
-  }, [refreshKey]);
+  }, [refreshKey, user]);
 
   return (
     <div>
-      <div className="mb-8">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2969b0]/10">
-            <LayoutDashboard className="h-5 w-5" style={{ color: '#2969b0' }} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: '#1b5697' }}>Dashboard</h1>
-            <p className="text-sm text-muted-foreground">
-              Resumen general del sistema
-            </p>
-          </div>
-        </div>
-      </div>
-
       {error && (
         <div className="mb-6 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">
           {error}
         </div>
       )}
 
-      {loading && <DashboardSkeleton />}
-      {stats && <DashboardStats stats={stats} />}
+      {(loading || authLoading) && <DashboardSkeleton />}
+      {stats && user && <DashboardStats stats={stats} userRole={user.role} allRoles={user.allRoles} />}
     </div>
   );
 }

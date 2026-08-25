@@ -70,7 +70,7 @@ export default function ExpertDetailPage({
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectNotes, setRejectNotes] = useState("");
 
-  const canManage = !!user && canManageExperts(user.role as UserRole);
+  const canManage = !!user && canManageExperts(user.role as UserRole, user.allRoles);
 
   useEffect(() => {
     async function loadExpert() {
@@ -258,14 +258,25 @@ export default function ExpertDetailPage({
       {/* Pipeline visual */}
       <div className="mb-6 flex items-center gap-2 overflow-x-auto">
         {(["candidato", "en_evaluacion", "activado"] as ExpertValidationStatus[]).map((st, i) => {
-          const reached =
-            (["candidato", "en_evaluacion", "activado"] as string[]).indexOf(expert.validationStatus) >= i ||
-            expert.validationStatus === "activado";
+          const stages: ExpertValidationStatus[] = ["candidato", "en_evaluacion", "activado"];
+          const currentIndex = stages.indexOf(expert.validationStatus);
           const isCurrent = expert.validationStatus === st;
-          const c = EXPERT_VALIDATION_COLORS[st];
+          const completed = i < currentIndex || (st === "activado" && isCurrent);
+          const pending = isCurrent && st !== "activado";
+          const stageStyle = completed
+            ? "border-emerald-300/80 bg-gradient-to-br from-emerald-100/90 via-emerald-50/80 to-emerald-300/75 text-emerald-900 shadow-[0_2px_5px_rgba(5,150,105,0.18),inset_0_1px_0_rgba(255,255,255,0.95),inset_0_-1px_0_rgba(5,150,105,0.18)]"
+            : pending
+              ? "border-amber-300/80 bg-gradient-to-br from-amber-100/95 via-yellow-50/85 to-amber-300/70 text-amber-900 shadow-[0_2px_5px_rgba(217,119,6,0.16),inset_0_1px_0_rgba(255,255,255,0.95),inset_0_-1px_0_rgba(217,119,6,0.16)]"
+              : "border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-200/75 text-slate-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.95)]";
           return (
             <div key={st} className="flex items-center gap-2 whitespace-nowrap">
-              <span className={`rounded-full px-3 py-1 text-xs font-medium ${reached ? `${c.bg} ${c.text}` : "bg-muted text-muted-foreground"} ${isCurrent ? "ring-2 ring-offset-1 ring-current" : ""}`}>
+              <span
+                className={`inline-flex min-h-9 items-center border px-4 py-2 text-xs font-semibold ${stageStyle}`}
+                style={{ clipPath: "polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px)" }}
+                data-expert-stage={st}
+                data-stage-state={completed ? "completed" : pending ? "pending" : "upcoming"}
+                aria-current={isCurrent ? "step" : undefined}
+              >
                 {EXPERT_VALIDATION_LABELS[st]}
               </span>
               {i < 2 && <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />}
@@ -289,7 +300,7 @@ export default function ExpertDetailPage({
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-6 sm:grid-cols-3">
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">Nivel (seniority)</p>
+              <p className="text-xs text-muted-foreground">Nivel</p>
               {senColor ? (
                 <Badge className={`${senColor.bg} ${senColor.text} border-0`}>{EXPERT_SENIORITY_LABELS[expert.seniority!]}</Badge>
               ) : (
@@ -407,7 +418,7 @@ export default function ExpertDetailPage({
               <div className="rounded-lg bg-blue-50 p-4 text-center">
                 <Briefcase className="mx-auto h-5 w-5 text-blue-500 mb-1" />
                 <p className="text-2xl font-bold text-blue-700">{expert.experienceYears || 0}</p>
-                <p className="text-xs text-blue-600">Anos Exp.</p>
+                <p className="text-xs text-blue-600">Años de exp.</p>
               </div>
               <div className="rounded-lg bg-green-50 p-4 text-center">
                 <p className="text-2xl font-bold text-green-700">{expert.completedCases || 0}</p>

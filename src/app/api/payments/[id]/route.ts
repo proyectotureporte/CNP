@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (!caseId) return NextResponse.json({ success: false, error: 'Pago sin caso asociado' }, { status: 409 });
     const access = await requireCaseAccess(request, caseId);
     if (access.response) return access.response;
-    if (access.actor.role === 'perito') return NextResponse.json({ success: false, error: 'Pago no encontrado' }, { status: 404 });
+    if (!access.actor.allRoles && !['junta', 'cliente'].includes(access.actor.role)) return NextResponse.json({ success: false, error: 'Pago no encontrado' }, { status: 404 });
     if (access.actor.role === 'cliente') {
       const paymentAccess = await payment.getPaymentAccessRow(id);
       if (!paymentAccess?.clientVisible) {

@@ -30,6 +30,7 @@ import DocumentUpload from "./DocumentUpload";
 interface DocumentListProps {
   caseId: string;
   userRole?: string;
+  allRoles?: boolean;
 }
 
 function formatFileSize(bytes?: number) {
@@ -48,7 +49,7 @@ function getFileIcon(mimeType?: string) {
   return "📎";
 }
 
-export default function DocumentList({ caseId, userRole = "admin" }: DocumentListProps) {
+export default function DocumentList({ caseId, userRole = "admin", allRoles = false }: DocumentListProps) {
   const [documents, setDocuments] = useState<CaseDocument[]>([]);
   const [requests, setRequests] = useState<DocumentRequest[]>([]);
   const [requestDescription, setRequestDescription] = useState("");
@@ -62,7 +63,8 @@ export default function DocumentList({ caseId, userRole = "admin" }: DocumentLis
   const [uploadTargetId, setUploadTargetId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const canManageChecklist = ["admin", "juridico", "administrativo"].includes(userRole);
+  const canManageChecklist = allRoles || userRole === "comercial_juridico";
+  const isExpert = userRole === "perito" || userRole === "perito_interno";
 
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
@@ -75,7 +77,7 @@ export default function DocumentList({ caseId, userRole = "admin" }: DocumentLis
       if (data.success) {
         setDocuments(data.data);
       }
-      if (userRole === "perito") {
+      if (isExpert) {
         const requestResponse = await fetch(`/api/cases/${caseId}/document-requests`);
         const requestPayload = await requestResponse.json();
         if (requestPayload.success) setRequests(requestPayload.data || []);
@@ -85,7 +87,7 @@ export default function DocumentList({ caseId, userRole = "admin" }: DocumentLis
     } finally {
       setLoading(false);
     }
-  }, [caseId, categoryFilter, userRole]);
+  }, [caseId, categoryFilter, isExpert]);
 
   useEffect(() => {
     fetchDocuments();
@@ -193,21 +195,21 @@ export default function DocumentList({ caseId, userRole = "admin" }: DocumentLis
   return (
     <div className="space-y-6">
       {/* Upload */}
-      {userRole !== "perito" && <DocumentUpload caseId={caseId} onSuccess={fetchDocuments} />}
+      {(allRoles || userRole === "comercial_juridico") && <DocumentUpload caseId={caseId} onSuccess={fetchDocuments} />}
 
-      {userRole === "perito" && (
+      {isExpert && (
         <div className="space-y-4 rounded-lg border border-blue-200 bg-blue-50/50 p-4">
           <div className="flex items-start gap-3">
             <FileQuestion className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" />
             <div>
-              <h3 className="text-sm font-semibold text-blue-950">Solicitar documentación al abogado</h3>
-              <p className="text-xs text-blue-800">La solicitud se envía únicamente al jurídico asignado; nunca se contacta al cliente final.</p>
+              <h3 className="text-sm font-semibold text-blue-950">Solicitar documentación al Comercial Jurídico</h3>
+              <p className="text-xs text-blue-800">La solicitud se envía únicamente al Comercial Jurídico asignado; nunca se contacta al cliente final.</p>
             </div>
           </div>
           <form onSubmit={handleDocumentRequest} className="space-y-3">
             <Textarea value={requestDescription} onChange={(event) => setRequestDescription(event.target.value)} placeholder="Describe los documentos que necesitas para realizar el dictamen..." rows={3} maxLength={2000} />
             {requestError && <p className="text-sm text-red-700">{requestError}</p>}
-            <div className="flex justify-end"><Button type="submit" disabled={requesting || requestDescription.trim().length < 5}><Send className="mr-2 h-4 w-4" />{requesting ? "Enviando..." : "Enviar al abogado"}</Button></div>
+            <div className="flex justify-end"><Button type="submit" disabled={requesting || requestDescription.trim().length < 5}><Send className="mr-2 h-4 w-4" />{requesting ? "Enviando..." : "Enviar solicitud"}</Button></div>
           </form>
           {requests.length > 0 && (
             <div className="space-y-2 border-t border-blue-200 pt-3">

@@ -6,7 +6,8 @@ import { actorFromRequest } from '@/lib/auth/caseAccess';
 export async function GET(request: NextRequest) {
   try {
     const actor = actorFromRequest(request);
-    if (!actor || (actor.role !== 'perito' && !canManageWorkPlanActions(actor.role))) {
+    const isExpert = actor && ['perito', 'perito_interno'].includes(actor.role);
+    if (!actor || (!actor.allRoles && !isExpert && !canManageWorkPlanActions(actor.role))) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const offset = (page - 1) * limit;
 
-    const [data, total] = actor.role === 'perito'
+    const [data, total] = isExpert
       ? await Promise.all([
           workPlan.listExpertWorkPlans(actor.userId, status, limit, offset),
           workPlan.countExpertWorkPlans(actor.userId, status),

@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
       sub: payload.sub,
       role: payload.role,
       displayName: payload.displayName,
+      allRoles: payload.allRoles === true,
       mustChangePassword,
     },
   });

@@ -13,7 +13,7 @@ export async function GET(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (!canManageEvaluations(access.actor.role)) return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    if (!canManageEvaluations(access.actor.role, access.actor.allRoles)) return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     const eval_ = await evaluation.getCaseEvaluation(id);
     return NextResponse.json({ success: true, data: eval_ });
   } catch {

@@ -14,22 +14,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       const limit = parseInt(searchParams.get('limit') || '20');
       const offset = (page - 1) * limit;
       const role = request.headers.get('x-user-role');
-      const userId = request.headers.get('x-user-id') || '';
-      if (role === 'cliente') {
+      if (!role || !canAccessFinances(role as UserRole, request.headers.get('x-user-all-roles') === 'true')) {
         return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
       }
-      if (role !== 'perito' && (!role || !canAccessFinances(role as UserRole))) {
-        return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
-      }
-      const [commissions, total] = role === 'perito'
-        ? await Promise.all([
-            commission.listExpertCommissions(userId, status, limit, offset),
-            commission.countExpertCommissions(userId, status),
-          ])
-        : await Promise.all([
-            commission.listAllCommissions(status, limit, offset),
-            commission.countAllCommissions(status),
-          ]);
+      const [commissions, total] = await Promise.all([
+        commission.listAllCommissions(status, limit, offset),
+        commission.countAllCommissions(status),
+      ]);
       const data = commissions.map((item) => ({
         ...item,
         receiptDownloadUrl: item.receiptFileName ? `/api/commissions/${item._id}/receipt-download` : undefined,
@@ -39,11 +30,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const found = await commission.getCommissionById(id);
     if (!found) return NextResponse.json({ success: false, error: 'Pago no encontrado' }, { status: 404 });
     const role = request.headers.get('x-user-role');
-    const userId = request.headers.get('x-user-id');
-    if (role === 'perito' && found.expert?._id !== userId) {
-      return NextResponse.json({ success: false, error: 'Pago no encontrado' }, { status: 404 });
-    }
-    if (role !== 'perito' && (!role || !canAccessFinances(role as UserRole))) {
+    if (!role || !canAccessFinances(role as UserRole, request.headers.get('x-user-all-roles') === 'true')) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
     return NextResponse.json({

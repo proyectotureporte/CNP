@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 
 interface LoginFormProps {
-  type: 'admin' | 'crm';
+  type: 'admin' | 'crm' | 'perito';
   title: string;
 }
 
@@ -38,7 +38,7 @@ export default function LoginForm({ type, title }: LoginFormProps) {
         return;
       }
 
-      router.push(type === 'crm' ? '/crm' : '/admin');
+      router.push(type === 'admin' ? '/admin' : type === 'perito' ? '/crm/cases' : '/crm');
     } catch {
       setError('Error de conexion. Intente nuevamente.');
     } finally {
@@ -70,7 +70,7 @@ export default function LoginForm({ type, title }: LoginFormProps) {
             style={{ height: '100px', width: 'auto' }}
             priority
           />
-          <p className="text-lg text-white/80 max-w-md leading-relaxed" style={{ fontFamily: 'var(--font-montserrat), Montserrat, sans-serif' }}>
+          <p className="max-w-md text-lg leading-relaxed text-white/80">
             Somos expertos en Derecho Financiero. Dictamenes periciales, acompañamientos y calculos financieros.
           </p>
           <div className="mt-12 flex items-center gap-6 text-white/50 text-sm">
@@ -125,7 +125,7 @@ export default function LoginForm({ type, title }: LoginFormProps) {
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Username field (CRM only) */}
-                {type === 'crm' && (
+                {type !== 'admin' && (
                   <div>
                     <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-gray-700">
                       Email

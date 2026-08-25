@@ -12,19 +12,11 @@ import { CLIENT_TYPES, type ClientType } from '@/lib/types';
 export async function GET(request: NextRequest) {
   try {
     const actor = actorFromRequest(request);
-    if (!actor || !['admin', 'juridico', 'mercadeo', 'financiero'].includes(actor.role)) {
+    if (!actor || !['admin', 'comercial_juridico'].includes(actor.role)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
-    const userRole = actor.role;
-    const userId = actor.userId;
     const search = request.nextUrl.searchParams.get('search') || '';
     const brand = request.nextUrl.searchParams.get('brand') || '';
-
-    // Financiero users can only see clients from their assigned cases
-    if (userRole === 'financiero' && userId) {
-      const clients = await crmClient.listClientsForFinanciero(userId, { search, brand });
-      return NextResponse.json({ success: true, data: clients });
-    }
 
     const clients = await crmClient.listClients({ search, brand });
     return NextResponse.json({ success: true, data: clients });

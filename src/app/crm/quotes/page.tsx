@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { FileText, ChevronLeft, ChevronRight, DollarSign } from "lucide-react";
+import { ChevronLeft, ChevronRight, DollarSign } from "lucide-react";
 import {
   QUOTE_STATUS_LABELS, QUOTE_STATUS_COLORS,
   type Quote, type QuoteStatus,
@@ -64,18 +64,6 @@ export default function QuotesPage() {
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2969b0]/10">
-            <FileText className="h-5 w-5" style={{ color: '#2969b0' }} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: '#1b5697' }}>Cotizaciones</h1>
-            <p className="text-sm text-muted-foreground">Gestiona las cotizaciones del sistema</p>
-          </div>
-        </div>
-      </div>
-
       <div className="mb-4 flex gap-3">
         <Select value={status} onValueChange={(v) => { setStatus(v === "all" ? "" : v); setPage(1); }}>
           <SelectTrigger className="w-[180px]"><SelectValue placeholder="Estado" /></SelectTrigger>

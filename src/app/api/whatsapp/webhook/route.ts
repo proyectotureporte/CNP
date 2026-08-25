@@ -9,7 +9,11 @@ export async function POST(request: NextRequest) {
     const webhookSecret = process.env.WHATSAPP_WEBHOOK_SECRET;
     const authHeader = request.headers.get('x-webhook-secret') || request.headers.get('authorization')?.replace('Bearer ', '');
 
-    if (webhookSecret && authHeader !== webhookSecret) {
+    // Fail closed: un despliegue sin secreto nunca debe aceptar PII pública.
+    if (!webhookSecret) {
+      return NextResponse.json({ success: false, error: 'Webhook no configurado' }, { status: 503 });
+    }
+    if (authHeader !== webhookSecret) {
       return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
     }
 

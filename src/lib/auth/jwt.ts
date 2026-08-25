@@ -1,10 +1,11 @@
 import { SignJWT, jwtVerify } from 'jose';
-import type { UserRole } from '@/lib/types';
+import { normalizeUserRole, type UserRole } from '@/lib/types';
 
 export interface JWTPayload {
   sub: string;
   role: UserRole;
   displayName: string;
+  allRoles?: boolean;
 }
 
 function getSecret() {
@@ -22,7 +23,14 @@ export async function signToken(payload: JWTPayload): Promise<string> {
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret());
-    return payload as unknown as JWTPayload;
+    const role = normalizeUserRole(typeof payload.role === 'string' ? payload.role : null);
+    if (!role || typeof payload.sub !== 'string' || typeof payload.displayName !== 'string') return null;
+    return {
+      sub: payload.sub,
+      role,
+      displayName: payload.displayName,
+      allRoles: payload.allRoles === true,
+    };
   } catch {
     return null;
   }

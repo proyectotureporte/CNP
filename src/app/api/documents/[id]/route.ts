@@ -26,14 +26,18 @@ export async function GET(
     if (!doc) {
       return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
     }
-    if (access.actor.role === 'perito' && doc.category === 'pago') {
+    const isExpert = access.actor.role === 'perito' || access.actor.role === 'perito_interno';
+    if (!access.actor.allRoles && !['comercial_juridico', 'junta', 'perito_interno', 'perito', 'cliente'].includes(access.actor.role)) {
+      return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
+    }
+    if (isExpert && doc.category === 'pago') {
       return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
     }
     if (access.actor.role === 'cliente' && (!doc.isVisibleToClient || doc.category === 'dictamen_final')) {
       return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
     }
     const safe = { ...doc, fileUrl: undefined, downloadUrl: doc.fileName ? `/api/documents/${id}/download` : undefined };
-    if (access.actor.role === 'perito' || access.actor.role === 'cliente') {
+    if (isExpert || access.actor.role === 'cliente') {
       delete safe.uploadedBy;
       delete safe.uploadedByName;
     }
@@ -53,7 +57,7 @@ export async function DELETE(
     if (!caseId) return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
     const access = await requireCaseAccess(request, caseId);
     if (access.response) return access.response;
-    if (!canManageDocumentChecklist(access.actor.role)) {
+    if (!canManageDocumentChecklist(access.actor.role, access.actor.allRoles)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
     const doc = await caseDocument.getCaseDocumentById(id);
@@ -78,7 +82,7 @@ export async function PUT(
     if (!caseId) return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
     const access = await requireCaseAccess(request, caseId);
     if (access.response) return access.response;
-    if (!canManageDocumentChecklist(access.actor.role)) {
+    if (!canManageDocumentChecklist(access.actor.role, access.actor.allRoles)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
     const body = await request.json();

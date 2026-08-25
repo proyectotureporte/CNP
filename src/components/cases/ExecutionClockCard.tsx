@@ -23,7 +23,7 @@ const STATE_LABELS: Record<ClockData["state"], string> = {
   finalizada: "Finalizado",
 };
 
-export default function ExecutionClockCard({ caseId, userRole }: { caseId: string; userRole: string }) {
+export default function ExecutionClockCard({ caseId, userRole, allRoles = false }: { caseId: string; userRole: string; allRoles?: boolean }) {
   const [clock, setClock] = useState<ClockData | null>(null);
   const [loading, setLoading] = useState(true);
   const [changing, setChanging] = useState(false);
@@ -54,7 +54,7 @@ export default function ExecutionClockCard({ caseId, userRole }: { caseId: strin
 
   if (loading) return <Card><CardContent className="flex justify-center p-5"><Loader2 className="h-5 w-5 animate-spin" /></CardContent></Card>;
   if (!clock) return null;
-  const canControl = userRole === "admin" || userRole === "juridico";
+  const canControl = allRoles || userRole === "comercial_juridico";
 
   return (
     <Card className={clock.alert ? "border-red-300 bg-red-50/40" : ""}>

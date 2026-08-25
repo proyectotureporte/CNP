@@ -20,7 +20,7 @@ export async function POST(
     if (!caseId) return NextResponse.json({ success: false, error: 'Plan no encontrado' }, { status: 404 });
     const access = await requireCaseAccess(request, caseId);
     if (access.response) return access.response;
-    if (!canReviewWorkPlan(access.actor.role)) {
+    if (!canReviewWorkPlan(access.actor.role, access.actor.allRoles)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
     const existing = await workPlan.getWorkPlanById(id);
@@ -41,7 +41,7 @@ export async function POST(
       logCaseEvent({
         caseId: wp.case._id,
         eventType: 'other',
-        description: `Plan de trabajo aprobado por el comité`,
+        description: 'Plan de trabajo aprobado por el Comercial Jurídico',
         userId, userName,
       });
       notifyUsersAndAdmins({
@@ -51,7 +51,6 @@ export async function POST(
         title: `Plan de Trabajo Aprobado: ${wp.case.caseCode}`,
         message: `El plan de trabajo del caso "${wp.case.title}" fue aprobado.`,
         linkUrl: `/crm/cases/${wp.case._id}`,
-        mailbox: 'comite',
       }).catch((err) => console.error('[work-plan:approve] Error notificando:', err));
     }
 

@@ -11,6 +11,7 @@ export async function middleware(request: NextRequest) {
     pathname === '/crm/login' ||
     pathname === '/admin/login' ||
     pathname === '/portal/login' ||
+    pathname === '/perito/login' ||
     pathname.startsWith('/api/auth/') ||
     pathname === '/api/admin/init' ||
     pathname === '/api/whatsapp/webhook' ||
@@ -21,6 +22,20 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/site-content/') ||
     pathname === '/api/blog/admin'
   ) {
+    return NextResponse.next();
+  }
+
+  // Portal de acceso del perito externo. La operación reutiliza las vistas
+  // aisladas del CRM, pero este punto de entrada nunca admite roles internos.
+  if (pathname.startsWith('/perito')) {
+    const token = request.cookies.get('crm-token')?.value;
+    if (!token) return NextResponse.redirect(new URL('/perito/login', request.url));
+    const payload = await verifyToken(token);
+    if (!payload || payload.role !== 'perito') {
+      const response = NextResponse.redirect(new URL('/perito/login', request.url));
+      response.cookies.delete('crm-token');
+      return response;
+    }
     return NextResponse.next();
   }
 
@@ -71,7 +86,7 @@ export async function middleware(request: NextRequest) {
 
     // Authenticated, but this role has no access to the requested module:
     // send them to their dashboard instead of logging them out.
-    if (!canAccessRoute(payload.role, pathname)) {
+    if (!canAccessRoute(payload.role, pathname, payload.allRoles === true)) {
       return NextResponse.redirect(new URL(payload.role === 'perito' ? '/crm/cases' : '/crm', request.url));
     }
 
@@ -80,6 +95,7 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set('x-user-id', payload.sub);
     requestHeaders.set('x-user-role', payload.role);
     requestHeaders.set('x-user-name', payload.displayName);
+    requestHeaders.set('x-user-all-roles', String(payload.allRoles === true));
 
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
@@ -98,11 +114,15 @@ export async function middleware(request: NextRequest) {
       response.cookies.delete('admin-token');
       return response;
     }
+    if (!canAccessRoute(payload.role, pathname, payload.allRoles === true)) {
+      return NextResponse.redirect(new URL('/admin', request.url));
+    }
 
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-user-id', payload.sub);
     requestHeaders.set('x-user-role', payload.role);
     requestHeaders.set('x-user-name', payload.displayName);
+    requestHeaders.set('x-user-all-roles', String(payload.allRoles === true));
 
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
@@ -138,6 +158,7 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set('x-user-id', payload.sub);
     requestHeaders.set('x-user-role', payload.role);
     requestHeaders.set('x-user-name', payload.displayName);
+    requestHeaders.set('x-user-all-roles', String(payload.allRoles === true));
 
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
@@ -150,6 +171,7 @@ export const config = {
     '/crm/:path*',
     '/admin/:path*',
     '/portal/:path*',
+    '/perito/:path*',
     '/api/:path*',
   ],
 };

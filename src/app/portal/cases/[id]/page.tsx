@@ -153,6 +153,7 @@ export default function PortalCaseDetailPage({ params }: { params: Promise<{ id:
           <div className="grid gap-4 lg:grid-cols-3">
             <Card className="lg:col-span-2"><CardContent className="space-y-5 p-6">
               {caseData.description && <div><p className="text-sm font-medium text-muted-foreground">Descripción</p><p className="mt-1 whitespace-pre-wrap text-sm">{caseData.description}</p></div>}
+              {caseData.dictamenObject && <div><p className="text-sm font-medium text-muted-foreground">Objeto del dictamen</p><p className="mt-1 whitespace-pre-wrap text-sm">{caseData.dictamenObject}</p></div>}
               <div className="grid gap-4 sm:grid-cols-2">
                 <Info icon={<Scale className="h-4 w-4" />} label="Disciplina" value={DISCIPLINE_LABELS[caseData.discipline as CaseDiscipline]} />
                 <Info icon={<Clock className="h-4 w-4" />} label="Prioridad" value={PRIORITY_LABELS[caseData.priority as CasePriority]} />

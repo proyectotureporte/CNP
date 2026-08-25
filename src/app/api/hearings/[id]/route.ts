@@ -17,7 +17,7 @@ export async function PUT(
     if (!caseId) return NextResponse.json({ success: false, error: 'Audiencia sin caso asociado' }, { status: 409 });
     const access = await requireCaseAccess(request, caseId);
     if (access.response) return access.response;
-    if (!['admin', 'juridico'].includes(access.actor.role)) {
+    if (!access.actor.allRoles && access.actor.role !== 'comercial_juridico') {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 

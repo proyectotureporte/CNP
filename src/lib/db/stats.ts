@@ -22,6 +22,15 @@ export interface DashboardStats {
   }>;
   totalRevenue: number;
   pendingActions: number;
+  clientGrowthByMonth: Array<{ date: string; value: number }>;
+  clientRegistrationsByDay: Array<{ date: string; value: number }>;
+  caseRegistrationsByDay: Array<{
+    date: string;
+    brand: 'CNP' | 'Peritus';
+    total: number;
+    upcoming: number;
+    urgent: number;
+  }>;
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
@@ -78,6 +87,99 @@ export async function getDashboardStats(): Promise<DashboardStats> {
      ) x GROUP BY reason ORDER BY count DESC LIMIT 10`,
   );
 
+  const clientGrowthByMonth = await query<{ date: string; value: number }>(
+    `WITH bounds AS (
+       SELECT
+         COALESCE(
+           date_trunc('month', min(created_at AT TIME ZONE 'America/Bogota')) - interval '1 month',
+           date_trunc('month', now() AT TIME ZONE 'America/Bogota')
+         ) AS first_month,
+         date_trunc('month', now() AT TIME ZONE 'America/Bogota') AS current_month
+       FROM crm_client
+     ), months AS (
+       SELECT generate_series(first_month, current_month, interval '1 month') AS month
+       FROM bounds
+     ), monthly_counts AS (
+       SELECT
+         date_trunc('month', created_at AT TIME ZONE 'America/Bogota') AS month,
+         count(*)::int AS value
+       FROM crm_client
+       GROUP BY 1
+     )
+     SELECT
+       to_char(months.month, 'YYYY-MM') AS date,
+       COALESCE(
+         sum(COALESCE(monthly_counts.value, 0)) OVER (ORDER BY months.month),
+         0
+       )::int AS value
+     FROM months
+     LEFT JOIN monthly_counts ON monthly_counts.month = months.month
+     ORDER BY months.month`,
+  );
+
+  const clientRegistrationsByDay = await query<{ date: string; value: number }>(
+    `WITH days AS (
+       SELECT generate_series(
+         (now() AT TIME ZONE 'America/Bogota')::date - 179,
+         (now() AT TIME ZONE 'America/Bogota')::date,
+         interval '1 day'
+       )::date AS day
+     ), daily_counts AS (
+       SELECT
+         (created_at AT TIME ZONE 'America/Bogota')::date AS day,
+         count(*)::int AS value
+       FROM crm_client
+       WHERE created_at >= now() - interval '180 days'
+       GROUP BY 1
+     )
+     SELECT
+       to_char(days.day, 'YYYY-MM-DD') AS date,
+       COALESCE(daily_counts.value, 0)::int AS value
+     FROM days
+     LEFT JOIN daily_counts ON daily_counts.day = days.day
+     ORDER BY days.day`,
+  );
+
+  const caseRegistrationsByDay = await query<DashboardStats['caseRegistrationsByDay'][number]>(
+    `WITH bounds AS (
+       SELECT
+         COALESCE(
+           min(created_at AT TIME ZONE 'America/Bogota')::date,
+           (now() AT TIME ZONE 'America/Bogota')::date
+         ) AS first_day,
+         (now() AT TIME ZONE 'America/Bogota')::date AS current_day
+       FROM cases
+       WHERE status <> 'archivado'
+     ), days AS (
+       SELECT generate_series(first_day, current_day, interval '1 day')::date AS day
+       FROM bounds
+     ), brands AS (
+       SELECT unnest(ARRAY['CNP', 'Peritus']) AS brand
+     )
+     SELECT
+       to_char(days.day, 'YYYY-MM-DD') AS date,
+       brands.brand AS brand,
+       count(c.id)::int AS total,
+       count(c.id) FILTER (
+         WHERE c.deadline_date IS NOT NULL
+           AND c.deadline_date <= now() + interval '30 days'
+           AND c.status <> 'cancelado'
+       )::int AS upcoming,
+       count(c.id) FILTER (
+         WHERE c.deadline_date IS NOT NULL
+           AND c.deadline_date <= now() + interval '7 days'
+           AND c.status <> 'cancelado'
+       )::int AS urgent
+     FROM days
+     CROSS JOIN brands
+     LEFT JOIN cases c
+       ON (c.created_at AT TIME ZONE 'America/Bogota')::date = days.day
+      AND c.brand::text = brands.brand
+      AND c.status <> 'archivado'
+     GROUP BY days.day, brands.brand
+     ORDER BY days.day, brands.brand`,
+  );
+
   return {
     totalCases: counts?.totalCases ?? 0,
     activeCases: counts?.activeCases ?? 0,
@@ -96,5 +198,76 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     recentCases,
     totalRevenue: counts?.totalRevenue ?? 0,
     pendingActions: counts?.creado ?? 0,
+    clientGrowthByMonth,
+    clientRegistrationsByDay,
+    caseRegistrationsByDay,
+  };
+}
+
+/** Dashboard sin métricas de clientes, cotizaciones ni pagos. */
+export async function getCaseOnlyDashboardStats(assignedFinancieroId = ''): Promise<DashboardStats> {
+  const counts = await queryOne<{
+    totalCases: number; activeCases: number; creado: number; gestionado: number; cancelado: number;
+  }>(
+    `SELECT
+       count(*)::int AS "totalCases",
+       count(*) FILTER (WHERE status = 'gestionado')::int AS "activeCases",
+       count(*) FILTER (WHERE status = 'creado')::int AS creado,
+       count(*) FILTER (WHERE status = 'gestionado')::int AS gestionado,
+       count(*) FILTER (WHERE status = 'cancelado')::int AS cancelado
+     FROM cases
+     WHERE status <> 'archivado' AND ($1 = '' OR assigned_financiero_id = $1)`,
+    [assignedFinancieroId],
+  );
+
+  const recentCases = await query<DashboardStats['recentCases'][number]>(
+    `SELECT id AS "_id", case_code AS "caseCode", title, status, discipline,
+       created_at AS "_createdAt", NULL::jsonb AS client
+     FROM cases
+     WHERE status <> 'archivado' AND ($1 = '' OR assigned_financiero_id = $1)
+     ORDER BY created_at DESC LIMIT 5`,
+    [assignedFinancieroId],
+  );
+
+  const caseRegistrationsByDay = await query<DashboardStats['caseRegistrationsByDay'][number]>(
+    `WITH bounds AS (
+       SELECT COALESCE(min(created_at AT TIME ZONE 'America/Bogota')::date,
+         (now() AT TIME ZONE 'America/Bogota')::date) AS first_day,
+         (now() AT TIME ZONE 'America/Bogota')::date AS current_day
+       FROM cases
+       WHERE status <> 'archivado' AND ($1 = '' OR assigned_financiero_id = $1)
+     ), days AS (
+       SELECT generate_series(first_day, current_day, interval '1 day')::date AS day FROM bounds
+     ), brands AS (
+       SELECT unnest(ARRAY['CNP', 'Peritus']) AS brand
+     )
+     SELECT to_char(days.day, 'YYYY-MM-DD') AS date, brands.brand AS brand,
+       count(c.id)::int AS total,
+       count(c.id) FILTER (WHERE c.deadline_date IS NOT NULL
+         AND c.deadline_date <= now() + interval '30 days' AND c.status <> 'cancelado')::int AS upcoming,
+       count(c.id) FILTER (WHERE c.deadline_date IS NOT NULL
+         AND c.deadline_date <= now() + interval '7 days' AND c.status <> 'cancelado')::int AS urgent
+     FROM days CROSS JOIN brands
+     LEFT JOIN cases c ON (c.created_at AT TIME ZONE 'America/Bogota')::date = days.day
+       AND c.brand::text = brands.brand AND c.status <> 'archivado'
+       AND ($1 = '' OR c.assigned_financiero_id = $1)
+     GROUP BY days.day, brands.brand ORDER BY days.day, brands.brand`,
+    [assignedFinancieroId],
+  );
+
+  return {
+    totalCases: counts?.totalCases ?? 0,
+    activeCases: counts?.activeCases ?? 0,
+    totalClients: 0,
+    totalExperts: 0,
+    pendingPayments: 0,
+    casesByStatus: {
+      creado: counts?.creado ?? 0,
+      gestionado: counts?.gestionado ?? 0,
+      cancelado: counts?.cancelado ?? 0,
+    },
+    casesByChannel: [], commercialPipeline: [], quotesByStatus: [], lossReasons: [],
+    recentCases, totalRevenue: 0, pendingActions: counts?.creado ?? 0,
+    clientGrowthByMonth: [], clientRegistrationsByDay: [], caseRegistrationsByDay,
   };
 }

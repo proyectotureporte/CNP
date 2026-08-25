@@ -63,7 +63,7 @@ export default function CommissionsPage() {
   }
 
   const isExpert = user?.role === "perito";
-  const canUploadReceipt = user?.role === "admin" || user?.role === "financiero";
+  const canUploadReceipt = user?.role === "junta";
 
   const statusColors: Record<string, { bg: string; text: string }> = {
     pendiente: { bg: "bg-amber-50", text: "text-amber-700" },
@@ -73,17 +73,6 @@ export default function CommissionsPage() {
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2969b0]/10">
-            <Wallet className="h-5 w-5" style={{ color: '#2969b0' }} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: '#1b5697' }}>{isExpert ? "Mis pagos" : "Comisiones"}</h1>
-            <p className="text-sm text-muted-foreground">{isExpert ? "Consulta únicamente los pagos y comprobantes de tus servicios" : "Gestiona las comisiones de peritos"}</p>
-          </div>
-        </div>
-      </div>
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       <div className="mb-4">
         <Select value={status} onValueChange={(v) => { setStatus(v === "all" ? "" : v); setPage(1); }}>

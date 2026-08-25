@@ -4,6 +4,7 @@ import { triggerEvent } from '@/lib/realtime/server';
 import { guardRole } from '@/lib/auth/guard';
 import { canManageClients } from '@/lib/auth/permissions';
 import { actorFromRequest } from '@/lib/auth/caseAccess';
+import { comparePassword } from '@/lib/auth/passwords';
 import { CLIENT_TYPES, type ClientType } from '@/lib/types';
 
 export async function GET(
@@ -13,15 +14,8 @@ export async function GET(
   try {
     const { id } = await params;
     const actor = actorFromRequest(request);
-    if (!actor || !['admin', 'juridico', 'mercadeo', 'financiero'].includes(actor.role)) {
+    if (!actor || !['admin', 'comercial_juridico'].includes(actor.role)) {
       return NextResponse.json({ success: false, error: 'Cliente no encontrado' }, { status: 404 });
-    }
-    if (actor.role === 'financiero') {
-      const assigned = await queryOne<{ allowed: boolean }>(
-        'SELECT EXISTS(SELECT 1 FROM cases WHERE client_id = $1 AND assigned_financiero_id = $2) AS allowed',
-        [id, actor.userId],
-      );
-      if (!assigned?.allowed) return NextResponse.json({ success: false, error: 'Cliente no encontrado' }, { status: 404 });
     }
     const clientData = await crmClient.getClientById(id);
 
@@ -52,7 +46,7 @@ export async function PUT(
     if (stop) return stop;
 
     const body = await request.json();
-    const { name, email, phone, company, position, notes, status, clientType } = body as {
+    const { name, email, phone, company, position, notes, status, brand, clientType } = body as {
       name?: string;
       email?: string;
       phone?: string;
@@ -60,16 +54,24 @@ export async function PUT(
       position?: string;
       notes?: string;
       status?: 'activo' | 'inactivo' | 'prospecto';
+      brand?: 'CNP' | 'Peritus';
       clientType?: ClientType;
     };
 
+    if (brand && !['CNP', 'Peritus'].includes(brand)) {
+      return NextResponse.json({ success: false, error: 'Marca no válida' }, { status: 400 });
+    }
     if (clientType && !CLIENT_TYPES.includes(clientType)) {
       return NextResponse.json({ success: false, error: 'Tipo de cliente no válido' }, { status: 400 });
     }
 
     const updated = await crmClient.updateClient(id, {
-      name, email, phone, company, position, notes, status, clientType,
+      name, email, phone, company, position, notes, status, brand, clientType,
     });
+
+    if (!updated) {
+      return NextResponse.json({ success: false, error: 'Cliente no encontrado' }, { status: 404 });
+    }
 
     triggerEvent('client:updated', { id });
 
@@ -91,6 +93,23 @@ export async function DELETE(
 
     const stop = guardRole(request, canManageClients);
     if (stop) return stop;
+
+    const body = await request.json().catch(() => ({})) as { password?: string };
+    const passwordHash = process.env.CLIENT_DELETE_PASSWORD_HASH;
+
+    if (!passwordHash) {
+      return NextResponse.json(
+        { success: false, error: 'La eliminación protegida no está configurada' },
+        { status: 503 },
+      );
+    }
+
+    if (!body.password || !(await comparePassword(body.password, passwordHash))) {
+      return NextResponse.json(
+        { success: false, error: 'Contraseña incorrecta' },
+        { status: 403 },
+      );
+    }
 
     // Block deletion if client has cases
     const row = await queryOne<{ count: number }>(

@@ -1,5 +1,6 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import Image from 'next/image';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import AppSidebar from './AppSidebar';
@@ -46,14 +47,30 @@ export default function AppLayout({ children, variant = 'crm' }: AppLayoutProps)
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      defaultOpen={variant !== 'crm'}
+      persistState={variant !== 'crm'}
+      className={variant === 'crm'
+        ? '[&_[data-slot=sidebar-gap]]:duration-300 [&_[data-slot=sidebar-gap]]:ease-out motion-reduce:[&_[data-slot=sidebar-gap]]:transition-none'
+        : undefined}
+      style={variant === 'crm' ? {
+        '--sidebar-width': '17rem',
+        '--sidebar-width-icon': '4rem',
+      } as CSSProperties : undefined}
+    >
       <AppSidebar
         userRole={user.role as UserRole}
         userName={user.displayName}
+        allRoles={user.allRoles}
         variant={variant}
       />
       <SidebarInset className="min-w-0 overflow-hidden">
-        <AppHeader userName={user.displayName} userRole={user.role as UserRole} />
+        <AppHeader
+          userName={user.displayName}
+          userRole={user.role as UserRole}
+          allRoles={user.allRoles}
+          variant={variant}
+        />
         <main className="flex-1 overflow-auto p-6 bg-gray-50/50 min-w-0">
           {children}
         </main>

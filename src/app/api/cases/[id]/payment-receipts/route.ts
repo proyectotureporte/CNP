@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { payment } from '@/lib/db';
+import { crmUser, payment } from '@/lib/db';
 import { requireCaseAccess } from '@/lib/auth/caseAccess';
 import { uploadFile } from '@/lib/sanity/assets';
-import { notifyUsersAndAdmins } from '@/lib/notify';
+import { notifyUsers } from '@/lib/notify';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
 
@@ -58,13 +58,14 @@ export async function POST(
       status: 'pendiente',
     });
 
-    await notifyUsersAndAdmins({
-      userIds: [access.row.assignedFinancieroId, access.row.assignedJuridicoId],
+    const juntaUsers = await crmUser.listUsersByRole('junta');
+    await notifyUsers({
+      userIds: juntaUsers.map((user) => user._id),
       title: 'Comprobante de pago pendiente de validación',
       message: `El cliente final cargó un comprobante para el pago ${updated?.paymentNumber ?? ''}.`,
       type: 'info',
       priority: 'alta',
-      linkUrl: `/crm/cases/${id}?tab=payments`,
+      linkUrl: '/crm/cartera',
     });
     logCaseEvent({
       caseId: id,

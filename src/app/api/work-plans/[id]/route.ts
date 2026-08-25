@@ -18,7 +18,9 @@ export async function GET(
     if (!caseId) return NextResponse.json({ success: false, error: 'Plan sin caso asociado' }, { status: 409 });
     const access = await requireCaseAccess(request, caseId);
     if (access.response) return access.response;
-    if (access.actor.role === 'cliente') return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    if (!access.actor.allRoles && !['comercial_juridico', 'perito_interno', 'perito'].includes(access.actor.role)) {
+      return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
     return NextResponse.json({ success: true, data: plan });
   } catch {
     return NextResponse.json({ success: false, error: 'Error obteniendo plan' }, { status: 500 });
@@ -39,7 +41,7 @@ export async function PUT(
     if (!caseId) return NextResponse.json({ success: false, error: 'Plan sin caso asociado' }, { status: 409 });
     const access = await requireCaseAccess(request, caseId);
     if (access.response) return access.response;
-    if (!canEditWorkPlan(access.actor.role)) {
+    if (!canEditWorkPlan(access.actor.role, access.actor.allRoles)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
     if (existing.status !== 'borrador' && existing.status !== 'rechazado') {

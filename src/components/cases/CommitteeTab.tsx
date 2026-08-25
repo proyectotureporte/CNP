@@ -1,7 +1,6 @@
 "use client";
 
-// Módulo de comité (RF-07): viabilidad, alcance, honorarios, entregables y
-// tiempo del caso, decididos en una sola pantalla. Editable por admin/juridico.
+// Módulo de comité: una decisión de Junta, su motivo y el valor fijado.
 
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -21,14 +20,16 @@ import {
   type CommitteeReview,
   type CommitteeViability,
 } from "@/lib/types";
+import { canManageCommittee } from "@/lib/auth/permissions";
 
 interface CommitteeTabProps {
   caseId: string;
   userRole: string;
+  allRoles?: boolean;
 }
 
-export default function CommitteeTab({ caseId, userRole }: CommitteeTabProps) {
-  const canEdit = ["admin", "juridico"].includes(userRole);
+export default function CommitteeTab({ caseId, userRole, allRoles = false }: CommitteeTabProps) {
+  const canEdit = canManageCommittee(userRole as Parameters<typeof canManageCommittee>[0], allRoles);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -37,11 +38,7 @@ export default function CommitteeTab({ caseId, userRole }: CommitteeTabProps) {
 
   const [viability, setViability] = useState<string>("");
   const [viabilityReason, setViabilityReason] = useState("");
-  const [scope, setScope] = useState("");
   const [fees, setFees] = useState("");
-  const [deliverablesDescription, setDeliverablesDescription] = useState("");
-  const [estimatedDays, setEstimatedDays] = useState("");
-  const [notes, setNotes] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -52,11 +49,7 @@ export default function CommitteeTab({ caseId, userRole }: CommitteeTabProps) {
         setReview(r);
         setViability(r.viability ?? "");
         setViabilityReason(r.viabilityReason ?? "");
-        setScope(r.scope ?? "");
         setFees(r.fees != null ? String(r.fees) : "");
-        setDeliverablesDescription(r.deliverablesDescription ?? "");
-        setEstimatedDays(r.estimatedDays != null ? String(r.estimatedDays) : "");
-        setNotes(r.notes ?? "");
       }
     } catch {
       /* primera vez: sin decisión aún */
@@ -72,8 +65,16 @@ export default function CommitteeTab({ caseId, userRole }: CommitteeTabProps) {
   async function handleSave() {
     setError("");
     setSuccess("");
-    if (viability === "no_viable" && !viabilityReason.trim()) {
-      setError("Debe justificar por qué el caso no es viable");
+    if (!viability) {
+      setError("Debe definir la viabilidad del caso");
+      return;
+    }
+    if (!viabilityReason.trim()) {
+      setError("Debe registrar el motivo de la decisión");
+      return;
+    }
+    if (!fees || Number(fees) <= 0) {
+      setError("Debe fijar un valor mayor a cero");
       return;
     }
     setSaving(true);
@@ -82,19 +83,15 @@ export default function CommitteeTab({ caseId, userRole }: CommitteeTabProps) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          viability: viability || undefined,
-          viabilityReason: viabilityReason || undefined,
-          scope: scope || undefined,
-          fees: fees ? parseFloat(fees) : undefined,
-          deliverablesDescription: deliverablesDescription || undefined,
-          estimatedDays: estimatedDays ? parseInt(estimatedDays, 10) : undefined,
-          notes: notes || undefined,
+          viability,
+          viabilityReason: viabilityReason.trim(),
+          fees: parseFloat(fees),
         }),
       });
       const json = await res.json();
       if (json.success) {
         setReview(json.data);
-        setSuccess("Decisión del comité guardada");
+        setSuccess("Decisión de la Junta guardada");
       } else {
         setError(json.error || "Error guardando la decisión");
       }
@@ -123,7 +120,7 @@ export default function CommitteeTab({ caseId, userRole }: CommitteeTabProps) {
               {COMMITTEE_VIABILITY_LABELS[review.viability]}
             </Badge>
             <span className="text-sm text-muted-foreground">
-              Decidido por {review.decidedBy?.displayName || "Comité"}
+              Decidido por {review.decidedBy?.displayName || "Junta"}
               {review.decidedAt
                 ? ` el ${new Date(review.decidedAt).toLocaleDateString("es-CO")}`
                 : ""}
@@ -131,7 +128,7 @@ export default function CommitteeTab({ caseId, userRole }: CommitteeTabProps) {
           </>
         ) : (
           <span className="text-sm text-muted-foreground">
-            El comité aún no ha dictaminado este caso
+            La Junta aún no ha dictaminado este caso
           </span>
         )}
       </div>
@@ -164,7 +161,7 @@ export default function CommitteeTab({ caseId, userRole }: CommitteeTabProps) {
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Honorarios estimados (COP)</Label>
+          <Label>Valor fijado por la Junta (COP) *</Label>
           <Input
             type="number"
             min="0"
@@ -179,58 +176,12 @@ export default function CommitteeTab({ caseId, userRole }: CommitteeTabProps) {
       <div className="space-y-2">
         <Label>
           Justificación de viabilidad
-          {viability === "no_viable" && <span className="text-destructive"> *</span>}
+          <span className="text-destructive"> *</span>
         </Label>
         <Textarea
           value={viabilityReason}
           onChange={(e) => setViabilityReason(e.target.value)}
-          placeholder="Por qué el caso es (o no es) viable"
-          rows={2}
-          disabled={!canEdit}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Alcance del peritaje</Label>
-        <Textarea
-          value={scope}
-          onChange={(e) => setScope(e.target.value)}
-          placeholder="Qué cubre (y qué NO cubre) el trabajo pericial"
-          rows={3}
-          disabled={!canEdit}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Entregables</Label>
-          <Textarea
-            value={deliverablesDescription}
-            onChange={(e) => setDeliverablesDescription(e.target.value)}
-            placeholder="Dictamen, anexos, soportes..."
-            rows={2}
-            disabled={!canEdit}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Tiempo estimado (días)</Label>
-          <Input
-            type="number"
-            min="0"
-            value={estimatedDays}
-            onChange={(e) => setEstimatedDays(e.target.value)}
-            placeholder="15"
-            disabled={!canEdit}
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label>Notas del comité</Label>
-        <Textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Observaciones adicionales"
+          placeholder="Motivo jurídico y técnico de la decisión"
           rows={2}
           disabled={!canEdit}
         />
@@ -239,7 +190,7 @@ export default function CommitteeTab({ caseId, userRole }: CommitteeTabProps) {
       {canEdit && (
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Guardando..." : "Guardar decisión del comité"}
+            {saving ? "Guardando..." : "Guardar decisión de Junta"}
           </Button>
         </div>
       )}

@@ -22,7 +22,7 @@ export default function PortalCasesPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch('/api/cases');
+        const res = await fetch('/api/portal/cases');
         const data = await res.json();
         if (data.success) setCases(data.data || []);
       } catch {

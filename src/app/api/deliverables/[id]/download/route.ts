@@ -12,6 +12,9 @@ export async function GET(
   if (!file) return NextResponse.json({ success: false, error: 'Entrega no encontrada' }, { status: 404 });
   const access = await requireCaseAccess(request, file.caseId);
   if (access.response) return access.response;
+  if (!access.actor.allRoles && !['comercial_juridico', 'perito_interno', 'perito', 'cliente'].includes(access.actor.role)) {
+    return NextResponse.json({ success: false, error: 'Entrega no encontrada' }, { status: 404 });
+  }
   if (access.actor.role === 'cliente' && file.status !== 'aprobado') {
     return NextResponse.json({ success: false, error: 'Entrega no encontrada' }, { status: 404 });
   }

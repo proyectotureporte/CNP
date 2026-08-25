@@ -31,10 +31,10 @@ export async function GET(
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
     if (['perito', 'cliente'].includes(access.actor.role) && !access.row.assignedJuridicoId) {
-      return NextResponse.json({ success: false, error: 'El caso aún no tiene un abogado jurídico asignado' }, { status: 409 });
+      return NextResponse.json({ success: false, error: 'El caso aún no tiene un Comercial Jurídico asignado' }, { status: 409 });
     }
-    if (access.actor.role === 'juridico' && access.row.assignedJuridicoId !== access.actor.userId) {
-      return NextResponse.json({ success: false, error: 'Este hilo corresponde al abogado asignado al caso' }, { status: 403 });
+    if (access.actor.role === 'comercial_juridico' && access.row.assignedJuridicoId !== access.actor.userId) {
+      return NextResponse.json({ success: false, error: 'Este hilo corresponde al Comercial Jurídico asignado al caso' }, { status: 403 });
     }
 
     const audience = audienceForRequest(
@@ -69,11 +69,14 @@ export async function POST(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (['perito', 'cliente'].includes(access.actor.role) && !access.row.assignedJuridicoId) {
-      return NextResponse.json({ success: false, error: 'El caso aún no tiene un abogado jurídico asignado' }, { status: 409 });
+    if (access.actor.allRoles) {
+      return NextResponse.json({ success: false, error: 'El acceso total permite supervisar los hilos, no suplantar a sus participantes' }, { status: 403 });
     }
-    if (access.actor.role === 'juridico' && access.row.assignedJuridicoId !== access.actor.userId) {
-      return NextResponse.json({ success: false, error: 'Este hilo corresponde al abogado asignado al caso' }, { status: 403 });
+    if (['perito', 'cliente'].includes(access.actor.role) && !access.row.assignedJuridicoId) {
+      return NextResponse.json({ success: false, error: 'El caso aún no tiene un Comercial Jurídico asignado' }, { status: 409 });
+    }
+    if (access.actor.role === 'comercial_juridico' && access.row.assignedJuridicoId !== access.actor.userId) {
+      return NextResponse.json({ success: false, error: 'Este hilo corresponde al Comercial Jurídico asignado al caso' }, { status: 403 });
     }
 
     const form = await request.formData();
@@ -144,7 +147,7 @@ export async function POST(
     logCaseEvent({
       caseId: id,
       eventType: 'message_sent',
-      description: `Mensaje enviado en el hilo ${audience === 'juridico_perito' ? 'jurídico–perito' : 'jurídico–cliente final'}`,
+      description: `Mensaje enviado en el hilo ${audience === 'juridico_perito' ? 'comercial–perito' : 'comercial–cliente final'}`,
       userId: access.actor.userId,
       userName: access.actor.displayName,
     });
