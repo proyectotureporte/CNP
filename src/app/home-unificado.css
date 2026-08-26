@@ -1,0 +1,1187 @@
+/* ============================================================================
+   Sitio unificado CNP + PERITUS
+   Paleta tomada del código publicado de cnp.com.co y peritus.com.co (20-ago-2026).
+   Los dos sitios ya comparten estos valores: no es una paleta nueva, es la suya.
+   ========================================================================== */
+
+.cnp-home {
+  /* Azules de marca */
+  --navy-900: #07152e;
+  --navy-800: #0a1840;
+  --navy-700: #0a2a6e;
+  --blue-600: #0f3b85;
+  --blue-500: #1a5fb4;
+  --blue-300: #7eb8f7;
+
+  /* Superficies */
+  --mist-100: #e8f0fb;
+  --mist-200: #dce8f5;
+  --paper: #f8fafd;
+  --white: #ffffff;
+
+  /* Acento */
+  --gold: #c9a84c;
+  --gold-light: #e8c96a;
+
+  /* Texto y líneas — neutros con sesgo azul, no grises puros */
+  --ink: #0d1f4e;
+  --ink-muted: #4a5568;
+  --ink-faint: #64748b;
+  --line: #c0d4ec;
+  --line-soft: #dde6f0;
+
+  --sans: var(--font-dm-sans), "Segoe UI", system-ui, -apple-system, sans-serif;
+  --serif: var(--font-source-serif), Georgia, "Times New Roman", serif;
+
+  --wrap: 1140px;
+}
+
+.cnp-home, .cnp-home * {
+  box-sizing: border-box;
+}
+
+.cnp-home {
+  scroll-behavior: smooth;
+}
+
+.cnp-home {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.cnp-home img {
+  max-width: 100%;
+  display: block;
+}
+
+.cnp-home a {
+  color: inherit;
+}
+
+.cnp-home :focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.cnp-home h1,
+.cnp-home h2,
+.cnp-home h3,
+.cnp-home h4 {
+  text-wrap: balance;
+  margin: 0;
+}
+
+.cnp-home .wrap {
+  width: 100%;
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.cnp-home .eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 0 0 14px;
+}
+
+/* Marcador de dato pendiente. No debe quedar ninguno al publicar. */
+.cnp-home .pendiente {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: #fdf1d8;
+  color: #8a6a1c;
+  border: 1px solid #e8d3a0;
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* ─────────────────────────── botones y enlaces ───────────────────────────── */
+
+.cnp-home .btn {
+  display: inline-block;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: var(--sans);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  padding: 11px 22px;
+  border-radius: 4px;
+  background: var(--gold);
+  color: var(--navy-900);
+  transition: background 0.16s ease;
+}
+
+.cnp-home .btn:hover {
+  background: var(--gold-light);
+}
+
+.cnp-home .btn:disabled {
+  cursor: wait !important;
+  opacity: 0.68;
+}
+
+.cnp-home .btn-lg {
+  font-size: 1.0625rem;
+  padding: 15px 30px;
+}
+
+.cnp-home .link-perito {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--blue-300);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(126, 184, 247, 0.4);
+  white-space: nowrap;
+}
+
+.cnp-home .link-perito:hover {
+  color: #fff;
+  border-bottom-color: #fff;
+}
+
+/* ────────────────────────────── encabezado ───────────────────────────────── */
+
+.cnp-home .site-header {
+  background: var(--navy-900);
+}
+
+.cnp-home .site-header .wrap {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.cnp-home .brand img {
+  height: 34px;
+  width: auto;
+}
+
+.cnp-home .site-nav {
+  display: flex;
+  gap: 26px;
+  margin-left: auto;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #cddcf2;
+}
+
+.cnp-home .site-nav a {
+  text-decoration: none;
+  padding: 4px 0;
+  border-bottom: 2px solid transparent;
+}
+
+.cnp-home .site-nav a:hover {
+  color: #fff;
+  border-bottom-color: var(--gold);
+}
+
+.cnp-home .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .cnp-home .site-header .wrap {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .cnp-home .site-nav {
+    order: 3;
+    margin-left: 0;
+    width: 100%;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .cnp-home .header-actions {
+    margin-left: auto;
+  }
+}
+
+/* ───────────────────────────────── hero ──────────────────────────────────── */
+
+/*
+  El fondo va en capas, de arriba hacia abajo:
+    1. velo oscuro que se abre hacia la derecha — deja legible el titular
+       (que vive a la izquierda) y deja ver el martillo y su banda dorada
+    2. la foto
+    3. color de respaldo, por si la foto no carga
+*/
+.cnp-home .hero {
+  background:
+    linear-gradient(
+      100deg,
+      rgba(7, 21, 46, 0.97) 0%,
+      rgba(7, 21, 46, 0.93) 38%,
+      rgba(7, 21, 46, 0.72) 62%,
+      rgba(10, 42, 110, 0.5) 100%
+    ),
+    url("/images/hero-martillo.webp") center right / cover no-repeat,
+    #07152e;
+  color: #fff;
+  padding: 84px 0 68px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Trama fina de líneas: da textura sin competir con el titular. */
+.cnp-home .hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(126, 184, 247, 0.06) 1px, transparent 1px);
+  background-size: 100% 34px;
+  pointer-events: none;
+}
+
+.cnp-home .hero .wrap {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 560px);
+  gap: 48px;
+  align-items: center;
+}
+
+/* ── Lado derecho del hero: foto recortada + tarjeta flotante ─────────────
+   Mismo patrón que restaurar.co. La persona va a la izquierda del bloque y la
+   tarjeta cae al extremo derecho, montada encima. */
+
+.cnp-home .hero-media {
+  position: relative;
+  min-height: 600px;
+}
+
+.cnp-home .hero-foto {
+  height: 600px;
+  width: auto;
+  display: block;
+  /* Corre la foto hacia el centro para que la tarjeta se le monte encima,
+     que es lo que da la sensación de capas. Pegada al borde solo se rozan. */
+  margin-left: 16%;
+  /* Sombra proyectada sobre el recorte: lo despega del fondo. */
+  filter: drop-shadow(0 24px 40px rgba(3, 10, 25, 0.5));
+}
+
+.cnp-home .tarjeta-red {
+  position: absolute;
+  right: 0;
+  bottom: 8px;
+  width: 264px;
+  background: var(--white);
+  border-radius: 14px;
+  padding: 18px 18px 16px;
+  box-shadow: 0 20px 46px rgba(3, 10, 25, 0.45);
+}
+
+.cnp-home .tarjeta-red__titulo {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--navy-700);
+  margin: 0 0 12px;
+}
+
+.cnp-home .tarjeta-red__titulo .acento {
+  color: var(--blue-500);
+}
+
+.cnp-home .tarjeta-red__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.cnp-home .tarjeta-red__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--paper);
+  border: 1px solid var(--line-soft);
+  border-radius: 9px;
+  padding: 7px 10px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--navy-700);
+}
+
+.cnp-home .tarjeta-red__ico {
+  flex: 0 0 auto;
+  width: 25px;
+  height: 25px;
+  border-radius: 7px;
+  background: var(--mist-100);
+  color: var(--blue-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Verde semántico —"cubierto"—, deliberadamente distinto del dorado de marca. */
+.cnp-home .tarjeta-red__check {
+  margin-left: auto;
+  color: #2e9e6b;
+}
+
+.cnp-home .tarjeta-red__pie {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--blue-600);
+  text-decoration: none;
+}
+
+.cnp-home .tarjeta-red__pie:hover {
+  color: var(--navy-700);
+}
+
+@media (max-width: 1040px) {
+  .cnp-home .hero .wrap {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  .cnp-home .hero-media {
+    max-width: 560px;
+  }
+}
+
+/* En teléfono la foto se va y queda la tarjeta, que es la que informa. */
+@media (max-width: 620px) {
+  .cnp-home .hero-media {
+    min-height: 0;
+  }
+  .cnp-home .hero-foto {
+    display: none;
+  }
+  .cnp-home .tarjeta-red {
+    position: static;
+    width: 100%;
+    max-width: 320px;
+  }
+}
+
+.cnp-home .hero .eyebrow {
+  color: var(--gold-light);
+}
+
+.cnp-home .hero h1 {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(2.05rem, 4.3vw, 3.5rem);
+  line-height: 1.13;
+  letter-spacing: -0.01em;
+  max-width: 19ch;
+}
+
+.cnp-home .hero h1 em {
+  font-style: normal;
+  color: var(--gold-light);
+}
+
+.cnp-home .hero .lead {
+  font-size: 1.0625rem;
+  color: #b9cee8;
+  max-width: 56ch;
+  margin: 22px 0 0;
+  line-height: 1.65;
+}
+
+.cnp-home .hero-cta {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  flex-wrap: wrap;
+  margin: 34px 0 0;
+}
+
+.cnp-home .hero-meta {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 40px;
+  flex-wrap: wrap;
+  margin: 20px 0 0;
+  padding: 18px 0 0;
+  border-top: 1px solid rgba(126, 184, 247, 0.22);
+  font-size: 0.875rem;
+  color: #9db6d6;
+}
+
+.cnp-home .hero-meta strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ───────────────────────── riel de clientes ─────────────────────────────── */
+
+.cnp-home .logo-rail {
+  background: var(--white);
+  border-bottom: 1px solid var(--line-soft);
+  padding: 26px 0;
+}
+
+.cnp-home .logo-rail .wrap {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  flex-wrap: wrap;
+}
+
+.cnp-home .logo-rail .label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  flex: 0 0 auto;
+}
+
+.cnp-home .logo-rail ul {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 400px;
+}
+
+/*
+  Los logos vienen con proporciones muy distintas: unos son apaisados
+  (Bancolombia, 1280x301) y otros cuadrados con mucho aire adentro
+  (Valle del Lili, 500x500). Con un alto fijo, los cuadrados quedaban
+  diminutos al lado de los anchos. Con topes en las dos dimensiones cada
+  uno crece hasta donde puede y el riel se lee como un conjunto.
+*/
+.cnp-home .logo-rail img {
+  max-height: 46px;
+  max-width: 124px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  opacity: 0.85;
+  transition: opacity 0.16s ease;
+}
+
+.cnp-home .logo-rail li:hover img {
+  opacity: 1;
+}
+
+/* ───────────────────────────── secciones ─────────────────────────────────── */
+
+.cnp-home section {
+  padding: 76px 0;
+}
+
+.cnp-home .sec-head {
+  max-width: 60ch;
+  margin: 0 0 40px;
+}
+
+.cnp-home .sec-head .eyebrow {
+  color: var(--blue-500);
+}
+
+.cnp-home .sec-head h2 {
+  font-size: clamp(1.55rem, 2.5vw, 2.1rem);
+  font-weight: 600;
+  line-height: 1.22;
+}
+
+.cnp-home .sec-head p {
+  margin: 14px 0 0;
+  color: var(--ink-muted);
+  font-size: 1.0625rem;
+}
+
+/* ────────────────────────── filtro por perfil ───────────────────────────── */
+
+.cnp-home .filtro {
+  background: var(--white);
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.cnp-home .tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-bottom: 2px solid var(--mist-200);
+  margin-bottom: 36px;
+}
+
+.cnp-home .tab {
+  font-family: var(--sans);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  padding: 11px 15px;
+  margin-bottom: -2px;
+  cursor: pointer;
+  color: var(--ink-faint);
+  border-radius: 4px 4px 0 0;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.cnp-home .tab:hover {
+  color: var(--blue-600);
+  background: var(--mist-100);
+}
+
+.cnp-home .tab[aria-selected="true"] {
+  color: var(--blue-600);
+  border-bottom-color: var(--blue-600);
+  background: var(--mist-100);
+}
+
+.cnp-home .panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 52px;
+  align-items: start;
+}
+
+.cnp-home .panel[hidden] {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .cnp-home .panel {
+    grid-template-columns: 1fr;
+    gap: 34px;
+  }
+}
+
+.cnp-home .job {
+  background: var(--mist-100);
+  border-left: 3px solid var(--blue-600);
+  padding: 20px 24px;
+  border-radius: 0 4px 4px 0;
+  margin: 0 0 28px;
+}
+
+.cnp-home .job .eyebrow {
+  color: var(--blue-600);
+  margin-bottom: 8px;
+}
+
+.cnp-home .job q {
+  font-family: var(--serif);
+  font-size: 1.1875rem;
+  line-height: 1.45;
+  color: var(--navy-700);
+  quotes: "\201C" "\201D";
+}
+
+.cnp-home .parrafo {
+  color: var(--ink-muted);
+  line-height: 1.7;
+  margin: 0 0 16px;
+}
+
+.cnp-home .parrafo:last-child {
+  margin-bottom: 0;
+}
+
+.cnp-home .svc {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.cnp-home .svc li {
+  border: 1px solid var(--line-soft);
+  border-radius: 5px;
+  padding: 16px 18px;
+  background: var(--white);
+}
+
+.cnp-home .svc h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--navy-700);
+}
+
+.cnp-home .svc p {
+  margin: 5px 0 0;
+  font-size: 0.9375rem;
+  color: var(--ink-muted);
+  line-height: 1.55;
+}
+
+/*
+  Foto de la pestaña. La caja fija la proporción y `object-fit: cover` recorta:
+  así conviven originales verticales y horizontales sin deformarse.
+*/
+.cnp-home .panel-foto {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 5px;
+  margin: 0 0 26px;
+  background: var(--mist-200);
+}
+
+.cnp-home .panel-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.cnp-home .aside h4 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 12px;
+}
+
+.cnp-home .recibe {
+  list-style: none;
+  margin: 0 0 26px;
+  padding: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.cnp-home .recibe li {
+  position: relative;
+  padding-left: 26px;
+  font-size: 0.9375rem;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+.cnp-home .recibe li::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+.cnp-home .recibe b {
+  color: var(--navy-700);
+  font-weight: 600;
+}
+
+.cnp-home .aside .nota {
+  font-size: 0.9375rem;
+  color: var(--ink-muted);
+  margin: 0 0 18px;
+  line-height: 1.6;
+}
+
+.cnp-home .faq {
+  border-top: 1px solid var(--line-soft);
+  margin: 0;
+}
+
+.cnp-home .faq dt {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--navy-700);
+  padding: 16px 0 0;
+}
+
+.cnp-home .faq dd {
+  margin: 5px 0 0;
+  font-size: 0.9375rem;
+  color: var(--ink-muted);
+  line-height: 1.55;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.cnp-home .pasos {
+  list-style: none;
+  counter-reset: paso;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.cnp-home .pasos li {
+  counter-increment: paso;
+  position: relative;
+  padding-left: 52px;
+}
+
+.cnp-home .pasos li::before {
+  content: counter(paso);
+  position: absolute;
+  left: 0;
+  top: -2px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--navy-700);
+  color: var(--gold-light);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cnp-home .pasos h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--navy-700);
+}
+
+.cnp-home .pasos p {
+  margin: 4px 0 0;
+  font-size: 0.9375rem;
+  color: var(--ink-muted);
+  line-height: 1.55;
+}
+
+/* ─────────────────────────── la red PERITUS ─────────────────────────────── */
+
+.cnp-home .red {
+  background: var(--navy-800);
+  color: #fff;
+}
+
+.cnp-home .red .wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 56px;
+  align-items: center;
+}
+
+@media (max-width: 860px) {
+  .cnp-home .red .wrap {
+    grid-template-columns: 1fr;
+    gap: 34px;
+  }
+}
+
+.cnp-home .red .pmark {
+  height: 44px;
+  width: auto;
+  margin: 0 0 22px;
+}
+
+.cnp-home .red h2 {
+  font-size: clamp(1.4rem, 2.2vw, 1.85rem);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.cnp-home .red p {
+  color: #adc5e2;
+  margin: 14px 0 0;
+  line-height: 1.65;
+}
+
+.cnp-home .disciplinas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(126, 184, 247, 0.22);
+  border: 1px solid rgba(126, 184, 247, 0.22);
+}
+
+@media (max-width: 560px) {
+  .cnp-home .disciplinas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.cnp-home .disciplinas li {
+  background: var(--navy-800);
+  padding: 26px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cnp-home .disciplinas b {
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.cnp-home .disciplinas span {
+  font-size: 0.8125rem;
+  color: #8fa9c9;
+}
+
+/* La disciplina histórica de CNP, destacada dentro de la red. */
+.cnp-home .disciplinas li.principal b {
+  color: var(--gold-light);
+}
+
+/* ─────────────────────────── casos de éxito ─────────────────────────────── */
+
+.cnp-home .casos {
+  background: var(--paper);
+}
+
+.cnp-home .acc {
+  border-top: 1px solid var(--line);
+}
+
+.cnp-home .acc details {
+  border-bottom: 1px solid var(--line);
+}
+
+.cnp-home .acc summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 22px 0;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.cnp-home .acc summary::-webkit-details-marker {
+  display: none;
+}
+
+.cnp-home .acc summary .cliente {
+  flex: 0 0 168px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--blue-500);
+}
+
+.cnp-home .acc summary h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--navy-700);
+  flex: 1 1 auto;
+}
+
+.cnp-home .acc summary .chev {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  color: var(--blue-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.cnp-home .acc details[open] summary .chev {
+  transform: rotate(180deg);
+  background: var(--mist-100);
+}
+
+.cnp-home .acc .cuerpo {
+  padding: 0 0 30px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 32px;
+}
+
+@media (max-width: 760px) {
+  .cnp-home .acc .cuerpo {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+}
+
+@media (max-width: 640px) {
+  .cnp-home .acc summary {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .cnp-home .acc summary .cliente {
+    flex: 1 0 100%;
+  }
+}
+
+.cnp-home .acc .cuerpo h4 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 8px;
+}
+
+.cnp-home .acc .cuerpo p {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--ink-muted);
+  line-height: 1.6;
+}
+
+/* ───────────────────────────── la garantía ──────────────────────────────── */
+
+.cnp-home .garantia {
+  background: linear-gradient(180deg, #0a2a6e 0%, #07152e 100%);
+  color: #fff;
+  text-align: center;
+}
+
+.cnp-home .garantia .wrap {
+  max-width: 760px;
+}
+
+.cnp-home .garantia .rule {
+  width: 52px;
+  height: 3px;
+  background: var(--gold);
+  margin: 0 auto 26px;
+}
+
+.cnp-home .garantia h2 {
+  font-family: var(--serif);
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  font-weight: 500;
+}
+
+.cnp-home .garantia p {
+  color: #bcd2ec;
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  margin: 20px 0 0;
+}
+
+/* ────────────────────────────── contacto ────────────────────────────────── */
+
+.cnp-home .contacto {
+  background: var(--white);
+}
+
+.cnp-home .contacto .wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 60px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .cnp-home .contacto .wrap {
+    grid-template-columns: 1fr;
+    gap: 38px;
+  }
+}
+
+.cnp-home .contacto .sec-head {
+  margin-bottom: 26px;
+}
+
+.cnp-home .form {
+  display: grid;
+  gap: 16px;
+}
+
+.cnp-home .field label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 6px;
+}
+
+.cnp-home .field input,
+.cnp-home .field textarea {
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 1rem;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 12px 14px;
+  background: var(--paper);
+}
+
+.cnp-home .field textarea {
+  min-height: 112px;
+  resize: vertical;
+}
+
+.cnp-home .field input:focus,
+.cnp-home .field textarea:focus {
+  border-color: var(--blue-500);
+  background: #fff;
+}
+
+.cnp-home .form-status {
+  min-height: 1.5rem;
+}
+
+.cnp-home .form-status p {
+  margin: 0;
+  border-radius: 4px;
+  padding: 10px 12px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.cnp-home .form-status svg {
+  flex: 0 0 auto;
+}
+
+.cnp-home .form-status--success {
+  background: #e7f7ef;
+  color: #17633f;
+  border: 1px solid #9dd7bb;
+}
+
+.cnp-home .form-status--error {
+  background: #fff0f0;
+  color: #8e2525;
+  border: 1px solid #efb2b2;
+}
+
+.cnp-home .datos {
+  border-left: 2px solid var(--mist-200);
+  padding-left: 26px;
+  display: grid;
+  gap: 22px;
+}
+
+.cnp-home .datos h4 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 6px;
+}
+
+.cnp-home .datos p {
+  margin: 0;
+  font-size: 1.0625rem;
+  color: var(--navy-700);
+  font-weight: 500;
+}
+
+.cnp-home .datos small {
+  display: block;
+  margin: 5px 0 0;
+  font-size: 0.8125rem;
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+/* ──────────────────────────────── pie ───────────────────────────────────── */
+
+.cnp-home .site-footer {
+  background: var(--navy-900);
+  color: #9db6d6;
+  padding: 52px 0 30px;
+  font-size: 0.9375rem;
+}
+
+.cnp-home .site-footer .top {
+  display: flex;
+  gap: 44px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.cnp-home .site-footer .col {
+  flex: 1 1 200px;
+}
+
+.cnp-home .site-footer .col-marca {
+  flex: 1 1 260px;
+}
+
+.cnp-home .site-footer .col-marca p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.cnp-home .site-footer .fmark {
+  height: 30px;
+  width: auto;
+  margin: 0 0 14px;
+}
+
+.cnp-home .site-footer h5 {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7f9ac0;
+  margin: 0 0 12px;
+}
+
+.cnp-home .site-footer ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.cnp-home .site-footer a {
+  text-decoration: none;
+}
+
+.cnp-home .site-footer a:hover {
+  color: #fff;
+}
+
+.cnp-home .site-footer .bottom {
+  margin-top: 38px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(126, 184, 247, 0.18);
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: #6d88ad;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cnp-home,
+  .cnp-home *,
+  .cnp-home *::before,
+  .cnp-home *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .cnp-home {
+    scroll-behavior: auto;
+  }
+}

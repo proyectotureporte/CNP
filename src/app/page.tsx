@@ -1,68 +1,59 @@
-import Header from "@/components/Header";
-import SmoothScroll from "@/components/SmoothScroll";
-import Hero from "@/components/Hero";
-import Services from "@/components/Services";
-import SolucionesClientes from "@/components/SolucionesClientes";
-import About from "@/components/About";
-import InfoHero from "@/components/InfoHero";
-import CasosExito from "@/components/CasosExito";
-import AudienceCards from "@/components/AudienceCards";
-import Benefits from "@/components/Benefits";
-import TechnicalExcellence from "@/components/TechnicalExcellence";
-import MiniGuarantee from "@/components/MiniGuarantee";
-import ProcessSteps from "@/components/ProcessSteps";
-import EnfoqueMetodologia from "@/components/EnfoqueMetodologia";
-import Values from "@/components/Values";
-import LitigioModerno from "@/components/LitigioModerno";
-import QuoteForm from "@/components/QuoteForm";
-import Clients from "@/components/Clients";
-import NationalOperation from "@/components/NationalOperation";
-import Footer from "@/components/Footer";
-import { mergeContenido } from "@/lib/content/tipos";
-import { DEFAULTS } from "@/lib/content/paginas/home";
-import { siteContent } from "@/lib/db";
+import type { Metadata } from "next";
+import { DM_Sans, Source_Serif_4 } from "next/font/google";
+import { CasosExito } from "@/components/home-unificado/CasosExito";
+import { Contacto } from "@/components/home-unificado/Contacto";
+import { FiltroPerfil } from "@/components/home-unificado/FiltroPerfil";
+import { Garantia } from "@/components/home-unificado/Garantia";
+import { Hero } from "@/components/home-unificado/Hero";
+import { LogoRail } from "@/components/home-unificado/LogoRail";
+import { RedPeritus } from "@/components/home-unificado/RedPeritus";
+import { SiteFooter } from "@/components/home-unificado/SiteFooter";
+import { SiteHeader } from "@/components/home-unificado/SiteHeader";
+import "./home-unificado.css";
 
-// Contenido del hero editable desde el panel /santiago.
-export const dynamic = "force-dynamic";
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  display: "swap",
+});
 
-export default async function Home() {
-  let overrides: Record<string, unknown> | null = null;
-  try {
-    const row = await siteContent.getSiteContent("cnp", "home");
-    overrides = row?.valor ?? null;
-  } catch { /* sin overrides: defaults */ }
-  const c = mergeContenido(DEFAULTS, overrides);
+const sourceSerif = Source_Serif_4({
+  subsets: ["latin"],
+  variable: "--font-source-serif",
+  display: "swap",
+});
 
+export const metadata: Metadata = {
+  metadataBase: new URL("https://cnp.com.co"),
+  alternates: { canonical: "/" },
+  title: "Centro Nacional de Pruebas — Dictámenes periciales para abogados, firmas y empresas",
+  description:
+    "Elaboramos dictámenes periciales financieros, médicos, de ingeniería, informáticos, grafológicos e industriales, con metodología declarada y plazo comprometido.",
+  openGraph: {
+    type: "website",
+    locale: "es_CO",
+    url: "https://cnp.com.co",
+    siteName: "Centro Nacional de Pruebas",
+    title: "Centro Nacional de Pruebas — Dictámenes periciales",
+    description:
+      "Dictámenes periciales para abogados, firmas y empresas. Seis disciplinas en una sola red.",
+  },
+};
+
+export default function Home() {
   return (
-    <>
-      <SmoothScroll />
-      <Header />
-      <main style={{ fontFamily: c.estilos.fuente }}>
-        <Hero contenido={{ ...c.hero, colorBoton: c.estilos.colorBoton }} />
-        <SolucionesClientes />
-        <AudienceCards />
-        <Benefits
-          id="soluciones"
-          eyebrow="No solo elaboramos dictámenes:"
-          heading="fortalecemos la estrategia probatoria del caso"
-          variant="soluciones"
-        />
-        <TechnicalExcellence />
-        <MiniGuarantee />
-        <Services />
+    <div className={`cnp-home ${dmSans.variable} ${sourceSerif.variable}`}>
+      <SiteHeader />
+      <main>
+        <Hero />
+        <LogoRail />
+        <FiltroPerfil />
+        <RedPeritus />
         <CasosExito />
-        <About />
-        <EnfoqueMetodologia />
-        <InfoHero />
-        <Benefits />
-        <Values />
-        <LitigioModerno />
-        <ProcessSteps />
-        <QuoteForm />
-        <Clients />
-        <NationalOperation />
+        <Garantia />
+        <Contacto />
       </main>
-      <Footer />
-    </>
+      <SiteFooter />
+    </div>
   );
 }
