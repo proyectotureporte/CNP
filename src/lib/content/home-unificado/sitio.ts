@@ -6,7 +6,7 @@ export const DOMINIO = 'https://cnp.com.co';
 export const nav: readonly EnlaceNav[] = [
   { texto: 'Servicios', href: '#servicios' },
   { texto: 'Casos', href: '#casos' },
-  { texto: 'Nosotros', href: '#servicios' },
+  { texto: 'Nosotros', href: '#nosotros' },
   { texto: 'Contacto', href: '#contacto' },
 ];
 
@@ -74,10 +74,10 @@ export const columnasPie: readonly ColumnaPie[] = [
   {
     titulo: 'Servicios',
     enlaces: [
-      { texto: 'Para abogados', href: '#servicios' },
-      { texto: 'Para firmas', href: '#servicios' },
-      { texto: 'Para empresas', href: '#servicios' },
-      { texto: 'Para jueces', href: '#servicios' },
+      { texto: 'Para abogados', href: '#abogado' },
+      { texto: 'Para firmas', href: '#firma' },
+      { texto: 'Para empresas', href: '#empresa' },
+      { texto: 'Para jueces', href: '#juez' },
     ],
   },
   {
@@ -91,7 +91,7 @@ export const columnasPie: readonly ColumnaPie[] = [
   {
     titulo: 'Más',
     enlaces: [
-      { texto: 'Quiénes somos', href: '#servicios' },
+      { texto: 'Quiénes somos', href: '#nosotros' },
       { texto: 'Casos de éxito', href: '#casos' },
       // Las MasterClass se publican aquí, no en la web. Ver PDF de rediseño, sección 3.
       { texto: 'LinkedIn', href: 'https://www.linkedin.com/company/cnp-centro-nacional-de-pruebas' },

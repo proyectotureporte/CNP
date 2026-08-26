@@ -35,7 +35,11 @@ export function SiteFooter() {
               <ul>
                 {columna.enlaces.map((enlace) => (
                   <li key={enlace.texto}>
-                    <Link href={enlace.href}>{enlace.texto}</Link>
+                    {enlace.href.startsWith('#') ? (
+                      <a href={enlace.href}>{enlace.texto}</a>
+                    ) : (
+                      <Link href={enlace.href}>{enlace.texto}</Link>
+                    )}
                   </li>
                 ))}
               </ul>

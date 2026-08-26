@@ -23,37 +23,20 @@ export function FiltroPerfil() {
 
   // Permite que "¿Eres perito?" del encabezado y del hero abran directamente
   // la pestaña correspondiente: /#perito, /#empresa, etc.
-  const sincronizarConHash = useCallback((desplazar: boolean) => {
+  const sincronizarConHash = useCallback(() => {
     const hash = window.location.hash.replace('#', '');
     if (!perfiles.some((perfil) => perfil.id === hash)) return;
     setActivo(hash);
-    // El navegador no desplaza solo: ningún elemento tiene ese id, la pestaña
-    // sí. Sin esto, "¿Eres perito?" cambia la pestaña y deja al visitante arriba.
-    if (desplazar) {
-      document.getElementById('servicios')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
   }, []);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => sincronizarConHash(false));
-    const alCambiarHash = () => sincronizarConHash(true);
-    const alPulsarAncla = (evento: MouseEvent) => {
-      const enlace = (evento.target as Element | null)?.closest<HTMLAnchorElement>('a[href^="#"]');
-      const hash = enlace?.getAttribute('href')?.slice(1);
-      if (!hash || !perfiles.some((perfil) => perfil.id === hash)) return;
-
-      setActivo(hash);
-      window.requestAnimationFrame(() => {
-        document.getElementById('servicios')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    };
+    const frame = window.requestAnimationFrame(sincronizarConHash);
+    const alCambiarHash = () => sincronizarConHash();
 
     window.addEventListener('hashchange', alCambiarHash);
-    document.addEventListener('click', alPulsarAncla);
     return () => {
       window.cancelAnimationFrame(frame);
       window.removeEventListener('hashchange', alCambiarHash);
-      document.removeEventListener('click', alPulsarAncla);
     };
   }, [sincronizarConHash]);
 

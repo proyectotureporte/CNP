@@ -30,19 +30,19 @@ export function SiteHeader() {
 
         <nav className="site-nav" aria-label="Principal">
           {nav.map((enlace) => (
-            <Link key={enlace.texto} href={enlace.href}>
+            <a key={enlace.texto} href={enlace.href}>
               {enlace.texto}
-            </Link>
+            </a>
           ))}
         </nav>
 
         <div className="header-actions">
-          <Link className="btn" href={hero.cta.href}>
+          <a className="btn" href={hero.cta.href}>
             {hero.cta.texto}
-          </Link>
-          <Link className="link-perito" href={hero.ctaPerito.href}>
+          </a>
+          <a className="link-perito" href={hero.ctaPerito.href}>
             ¿Eres perito?
-          </Link>
+          </a>
         </div>
       </div>
     </header>

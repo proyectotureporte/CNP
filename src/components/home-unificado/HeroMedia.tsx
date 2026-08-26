@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import Link from 'next/link';
 import { disciplinas } from '@/lib/content/home-unificado/disciplinas';
 import type { IconoDisciplina } from '@/lib/content/home-unificado/types';
 
@@ -55,9 +54,9 @@ export function HeroMedia() {
           ))}
         </ul>
 
-        <Link className="tarjeta-red__pie" href="#servicios">
+        <a className="tarjeta-red__pie" href="#servicios">
           Ver la red PERITUS <span aria-hidden="true">↗</span>
-        </Link>
+        </a>
       </aside>
     </div>
   );

@@ -14,6 +14,7 @@ La portada `/` usa un sistema visual propio y aislado bajo `.cnp-home`. Las dem�
 ## Componentes
 
 - `SiteHeader`: marca, navegación por anclas, CTA principal y acceso de peritos.
+- `AnchorNavigation`: desplazamiento de anclas con duración acotada, alineación exacta y soporte de movimiento reducido, historial y hashes directos.
 - `Hero` + `HeroMedia`: propuesta de valor, prueba cuantitativa y cobertura de seis disciplinas.
 - `LogoRail`: prueba social temprana con logotipos normalizados.
 - `FiltroPerfil`: siete pestañas accesibles con flechas de teclado, hash navegable y paneles por audiencia.
@@ -27,5 +28,6 @@ La portada `/` usa un sistema visual propio y aislado bajo `.cnp-home`. Las dem�
 - En 680 px el hero pasa a una columna y oculta únicamente el retrato decorativo; la tarjeta informativa permanece. En 520 px la cabecera adopta dos filas y compensa la reducción vertical del hero.
 - Los ajustes secundarios de las demás secciones se concentran en 860, 760, 640 y 560 px; la tarjeta del hero se compacta a dos columnas en 400 px.
 - El filtro conserva roles `tablist`, `tab` y `tabpanel`, selección visible y navegación con flechas.
+- Las anclas internas usan enlaces HTML y una animación propia de 300–480 ms; no pasan por el router de Next ni heredan el offset de 80 px de las landings antiguas.
 - Todo control tiene foco visible dorado; los estados del formulario combinan color y texto.
 - Las transiciones respetan `prefers-reduced-motion`; el diseño mantiene su esquema de marca en preferencias clara y oscura.

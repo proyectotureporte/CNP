@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Source_Serif_4 } from "next/font/google";
 import { CasosExito } from "@/components/home-unificado/CasosExito";
+import { AnchorNavigation } from "@/components/home-unificado/AnchorNavigation";
 import { Contacto } from "@/components/home-unificado/Contacto";
 import { FiltroPerfil } from "@/components/home-unificado/FiltroPerfil";
 import { Garantia } from "@/components/home-unificado/Garantia";
@@ -43,6 +44,7 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <div className={`cnp-home ${dmSans.variable} ${sourceSerif.variable}`}>
+      <AnchorNavigation />
       <SiteHeader />
       <main>
         <Hero />

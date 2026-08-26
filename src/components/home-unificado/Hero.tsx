@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { hero } from '@/lib/content/home-unificado/sitio';
 import { HeroMedia } from './HeroMedia';
 
@@ -28,12 +27,12 @@ export function Hero() {
           <p className="lead">{hero.bajada}</p>
 
           <div className="hero-cta">
-            <Link className="btn btn-lg" href={hero.cta.href}>
+            <a className="btn btn-lg" href={hero.cta.href}>
               {hero.cta.texto}
-            </Link>
-            <Link className="link-perito" href={hero.ctaPerito.href}>
+            </a>
+            <a className="link-perito" href={hero.ctaPerito.href}>
               {hero.ctaPerito.texto} →
-            </Link>
+            </a>
           </div>
 
         </div>

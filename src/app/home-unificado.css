@@ -41,7 +41,7 @@
 }
 
 .cnp-home {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 .cnp-home {
@@ -61,6 +61,12 @@
 
 .cnp-home a {
   color: inherit;
+}
+
+/* La portada no usa el encabezado fijo de las landings antiguas. El offset
+   global de 80 px dejaba todas sus anclas visualmente desalineadas. */
+.cnp-home section[id] {
+  scroll-margin-top: 0;
 }
 
 .cnp-home :focus-visible {
