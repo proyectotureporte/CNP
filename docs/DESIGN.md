@@ -23,8 +23,9 @@ La portada `/` usa un sistema visual propio y aislado bajo `.cnp-home`. Las dem�
 
 ## Responsive, interacción y accesibilidad
 
-- Breakpoints principales: 1040, 900, 860, 760, 640, 620 y 560 px.
-- El hero pasa a una columna y oculta únicamente el retrato decorativo en móvil; la tarjeta informativa permanece.
+- La composición del hero escala de forma fluida con `clamp()` y conserva dos columnas hasta 680 px; no cambia de estructura en el rango habitual de zoom de escritorio/tablet.
+- En 680 px el hero pasa a una columna y oculta únicamente el retrato decorativo; la tarjeta informativa permanece. En 520 px la cabecera adopta dos filas y compensa la reducción vertical del hero.
+- Los ajustes secundarios de las demás secciones se concentran en 860, 760, 640 y 560 px; la tarjeta del hero se compacta a dos columnas en 400 px.
 - El filtro conserva roles `tablist`, `tab` y `tabpanel`, selección visible y navegación con flechas.
 - Todo control tiene foco visible dorado; los estados del formulario combinan color y texto.
 - Las transiciones respetan `prefers-reduced-motion`; el diseño mantiene su esquema de marca en preferencias clara y oscura.

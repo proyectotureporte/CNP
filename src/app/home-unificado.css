@@ -194,20 +194,79 @@
   gap: 18px;
 }
 
-@media (max-width: 900px) {
+/* Compacta progresivamente antes de necesitar una segunda fila. De este modo,
+   el zoom del navegador no cambia la altura de la cabecera en anchos de tablet. */
+@media (max-width: 840px) {
   .cnp-home .site-header .wrap {
-    flex-wrap: wrap;
-    gap: 16px;
+    gap: 12px;
   }
+
   .cnp-home .site-nav {
-    order: 3;
+    gap: 14px;
+  }
+
+  .cnp-home .header-actions {
+    gap: 0;
+  }
+
+  .cnp-home .header-actions .link-perito {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .cnp-home .site-header .wrap {
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .cnp-home .brand img {
+    height: 28px;
+  }
+
+  .cnp-home .site-nav {
+    gap: 8px;
+    font-size: 0.8125rem;
+  }
+
+  .cnp-home .header-actions .btn {
+    padding: 9px 12px;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 600px) {
+  .cnp-home .site-nav {
+    gap: 6px;
+    font-size: 0.75rem;
+  }
+
+  .cnp-home .header-actions .btn {
+    padding-inline: 10px;
+  }
+}
+
+@media (max-width: 520px) {
+  .cnp-home .site-header .wrap {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px 14px;
+  }
+
+  .cnp-home .site-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
     margin-left: 0;
     width: 100%;
-    gap: 20px;
-    flex-wrap: wrap;
+    justify-content: space-between;
   }
+
   .cnp-home .header-actions {
-    margin-left: auto;
+    grid-column: 2;
+    grid-row: 1;
+    margin-left: 0;
+    justify-self: end;
   }
 }
 
@@ -250,8 +309,8 @@
 .cnp-home .hero .wrap {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 560px);
-  gap: 48px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 1.1fr);
+  gap: clamp(24px, 3.4vw, 48px);
   align-items: center;
 }
 
@@ -261,25 +320,32 @@
 
 .cnp-home .hero-media {
   position: relative;
-  min-height: 600px;
+  min-height: clamp(430px, 42vw, 600px);
 }
 
 .cnp-home .hero-foto {
-  height: 600px;
+  position: absolute;
+  left: clamp(4%, 8vw, 16%);
+  bottom: 0;
+  height: 100%;
   width: auto;
   display: block;
-  /* Corre la foto hacia el centro para que la tarjeta se le monte encima,
-     que es lo que da la sensación de capas. Pegada al borde solo se rozan. */
-  margin-left: 16%;
   /* Sombra proyectada sobre el recorte: lo despega del fondo. */
   filter: drop-shadow(0 24px 40px rgba(3, 10, 25, 0.5));
+}
+
+/* En el último tramo de tablet, aparta el rostro de la tarjeta superpuesta. */
+@media (min-width: 681px) and (max-width: 760px) {
+  .cnp-home .hero-foto {
+    left: -12%;
+  }
 }
 
 .cnp-home .tarjeta-red {
   position: absolute;
   right: 0;
   bottom: 8px;
-  width: 264px;
+  width: clamp(228px, 21vw, 264px);
   background: var(--white);
   border-radius: 14px;
   padding: 18px 18px 16px;
@@ -351,28 +417,71 @@
   color: var(--navy-700);
 }
 
-@media (max-width: 1040px) {
+@media (max-width: 680px) {
   .cnp-home .hero .wrap {
     grid-template-columns: 1fr;
-    gap: 40px;
+    gap: 28px;
   }
-  .cnp-home .hero-media {
-    max-width: 560px;
-  }
-}
 
-/* En teléfono la foto se va y queda la tarjeta, que es la que informa. */
-@media (max-width: 620px) {
   .cnp-home .hero-media {
     min-height: 0;
+    max-width: none;
   }
+
   .cnp-home .hero-foto {
     display: none;
   }
+
   .cnp-home .tarjeta-red {
     position: static;
     width: 100%;
-    max-width: 320px;
+    max-width: none;
+  }
+
+  .cnp-home .tarjeta-red__lista {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+
+  .cnp-home .tarjeta-red__item {
+    gap: 6px;
+    padding: 6px 7px;
+  }
+
+  .cnp-home .tarjeta-red__ico {
+    width: 23px;
+    height: 23px;
+  }
+
+}
+
+@media (max-width: 520px) {
+  .cnp-home .hero {
+    padding: 58px 0 50px;
+  }
+}
+
+@media (max-width: 400px) {
+  .cnp-home .tarjeta-red {
+    padding: 15px 12px 13px;
+  }
+
+  .cnp-home .tarjeta-red__lista {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cnp-home .tarjeta-red__item {
+    min-width: 0;
+    font-size: 0.75rem;
+    padding: 5px;
+  }
+
+  .cnp-home .tarjeta-red__ico {
+    width: 21px;
+    height: 21px;
+  }
+
+  .cnp-home .tarjeta-red__check {
+    display: none;
   }
 }
 
@@ -412,9 +521,9 @@
 
 .cnp-home .hero-meta {
   grid-column: 1 / -1;
-  display: flex;
-  gap: 40px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(14px, 3vw, 40px);
   margin: 20px 0 0;
   padding: 18px 0 0;
   border-top: 1px solid rgba(126, 184, 247, 0.22);
@@ -423,8 +532,17 @@
 }
 
 .cnp-home .hero-meta strong {
+  display: block;
   color: #fff;
   font-weight: 600;
+}
+
+@media (max-width: 680px) {
+  .cnp-home .hero-meta {
+    gap: 14px;
+    font-size: clamp(0.75rem, 2vw, 0.875rem);
+    line-height: 1.45;
+  }
 }
 
 /* ───────────────────────── riel de clientes ─────────────────────────────── */
