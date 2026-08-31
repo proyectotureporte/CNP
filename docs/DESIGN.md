@@ -2,32 +2,43 @@
 
 ## Alcance
 
-La portada `/` usa un sistema visual propio y aislado bajo `.cnp-home`. Las demás landings públicas conservan su diseño actual y la aplicación operativa mantiene Inter mediante `InterAppScope`.
+La portada `/` usa un sistema editorial propio, aislado bajo `.cnp-home`. Las demás landings públicas conservan su diseño y la aplicación operativa mantiene Inter mediante `InterAppScope`.
+
+Los componentes viven en `src/components/home-unificado/`, el contenido en `src/lib/content/home-unificado/`, los estilos en `src/app/home-unificado.css` y los assets exclusivos en `public/images/home-unificado/`.
 
 ## Identidad
 
-- Tipografía: DM Sans para interfaz y texto; Source Serif 4 para el titular principal y la garantía.
+- Tipografía: DM Sans para interfaz y texto; Source Serif 4 para titulares; JetBrains Mono para folios, pasos y rótulos técnicos.
 - Colores: azul noche `#07152e`, azul CNP `#0a2a6e`, azul de apoyo `#1a5fb4`, dorado `#c9a84c`, papel `#f8fafd` y superficies blancas.
-- Elemento firma: composición en capas del hero —martillo, retrato recortado y tarjeta de disciplinas— acompañada por la retícula técnica horizontal.
-- Materiales: bordes azul grisáceo, radios contenidos de 4–14 px y profundidad reservada a la tarjeta de disciplinas.
+- Elemento firma: lenguaje de expediente pericial —filetes, folios, marcas de registro, rótulos monoespaciados y hojas técnicas— aplicado con contención.
+- Materiales: fondos navy con trama documental, papel claro, bordes azul grisáceo, radios contenidos y profundidad reservada a expedientes, calificador y mapa.
 
-## Componentes
+## Recorrido y componentes
 
-- `SiteHeader`: marca, navegación por anclas, CTA principal y acceso de peritos.
-- `AnchorNavigation`: desplazamiento de anclas con duración acotada, alineación exacta y soporte de movimiento reducido, historial y hashes directos.
-- `Hero` + `HeroMedia`: propuesta de valor, prueba cuantitativa y cobertura de seis disciplinas.
-- `LogoRail`: prueba social temprana con logotipos normalizados.
-- `FiltroPerfil`: siete pestañas accesibles con flechas de teclado, hash navegable y paneles por audiencia.
-- `RedPeritus`, `CasosExito`, `Garantia`: red multidisciplinar, prueba de experiencia y compromiso de independencia.
-- `Contacto`: formulario conectado a `/api/web-form`, con estados de envío, éxito y error anunciados mediante `aria-live`.
-- `SiteFooter`: servicios, accesos, privacidad y datos corporativos.
+- `SiteHeader`: marca, navegación por anclas, WhatsApp, CTA principal y acceso discreto al bloque del perito.
+- `Hero` + `Calificador`: propuesta de valor y solicitud accesible en tres pasos; el envío real termina en `/api/web-form`.
+- `Clientes`: prueba social temprana con nueve marcas y sector declarado.
+- `Trabajos`: cuatro encargos de cliente presentados como pila de expedientes.
+- `Metodologia` + `AnatomiaDictamen`: pilares, anatomía interactiva y proceso de cinco pasos.
+- `RedPeritus`: seis disciplinas, filtro de admisión y puerta de incorporación para peritos.
+- `CasosExito`: registro filtrable por tipo de encargo y copia de radicados.
+- `Nosotros`: manifiesto de independencia y ficha cuantitativa de la firma.
+- `Garantia`, `Contacto` y `SiteFooter`: cierre institucional, formulario conectado al CRM, cobertura nacional y accesos.
+- `AnchorNavigation`: desplazamiento de duración acotada, soporte de historial y movimiento reducido.
 
 ## Responsive, interacción y accesibilidad
 
-- La composición del hero escala de forma fluida con `clamp()` y conserva dos columnas hasta 680 px; no cambia de estructura en el rango habitual de zoom de escritorio/tablet.
-- En 680 px el hero pasa a una columna y oculta únicamente el retrato decorativo; la tarjeta informativa permanece. En 520 px la cabecera adopta dos filas y compensa la reducción vertical del hero.
-- Los ajustes secundarios de las demás secciones se concentran en 860, 760, 640 y 560 px; la tarjeta del hero se compacta a dos columnas en 400 px.
-- El filtro conserva roles `tablist`, `tab` y `tabpanel`, selección visible y navegación con flechas.
-- Las anclas internas usan enlaces HTML y una animación propia de 300–480 ms; no pasan por el router de Next ni heredan el offset de 80 px de las landings antiguas.
-- Todo control tiene foco visible dorado; los estados del formulario combinan color y texto.
-- Las transiciones respetan `prefers-reduced-motion`; el diseño mantiene su esquema de marca en preferencias clara y oscura.
+- El hero usa dos columnas en escritorio y pasa a una composición lineal en móvil; el calificador conserva radios nativos, `fieldset`, `legend`, foco y anuncios `aria-live`.
+- Los expedientes de `Trabajos` usan apilado sticky en pantallas amplias y una lectura lineal en móvil.
+- El registro de casos conserva filtros con `aria-pressed`, radicados seleccionables y feedback de copia.
+- Los dos formularios tienen validación nativa, autocomplete, estado de carga, confirmación y error accionable; nunca muestran éxito antes de una respuesta HTTP correcta.
+- Todo control tiene foco visible dorado; los estados combinan texto, color e icono cuando corresponde.
+- Las transiciones respetan `prefers-reduced-motion`.
+- Los enlaces de ancla son HTML nativo y no pasan por el router de Next; las rutas reales usan `Link`.
+
+## Reglas de aislamiento
+
+- Ningún selector de `home-unificado.css` puede quedar fuera de `.cnp-home`.
+- No importar el CSS del proyecto visual como `globals.css` ni modificar el `RootLayout` compartido.
+- No sobrescribir assets homónimos de otras landings; los recursos propios de esta portada van en `public/images/home-unificado/`.
+- No crear endpoints paralelos para la portada: ambos formularios usan `POST /api/web-form` con `origen: 'landing'`.

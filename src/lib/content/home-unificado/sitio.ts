@@ -1,4 +1,4 @@
-import type { ColumnaPie, DatoContacto, EnlaceNav } from './types';
+import type { ColumnaPie, DatoContacto, EnlaceNav } from '@/lib/content/home-unificado/types';
 
 /** Dominio que sobrevive a la unificación. Ver "Unificacion CNP-PERITUS". */
 export const DOMINIO = 'https://cnp.com.co';
@@ -23,13 +23,13 @@ export const hero = {
   titular: 'Elaboramos dictámenes periciales para',
   titularDestacado: 'abogados, firmas y empresas',
   bajada:
-    'Financieros, médicos, de ingeniería, informáticos, grafológicos e industriales. Con metodología declarada, trazabilidad completa y plazo comprometido por escrito antes de empezar.',
+    'Dos preguntas y le decimos si aplica. Respondemos con el alcance, la metodología y el plazo — el resto de los datos se los pedimos después.',
   cta: { texto: 'Solicitar dictamen', href: '#contacto' },
   ctaPerito: { texto: '¿Eres perito? Trabaja con nosotros', href: '#perito' },
   datos: [
-    { destacado: '+10 años', texto: 'en dictámenes periciales' },
-    { destacado: 'Operación nacional', texto: 'en todo el territorio colombiano' },
-    { destacado: '6 disciplinas', texto: 'en una sola red' },
+    { destacado: '+10', texto: 'años' },
+    { destacado: '6', texto: 'disciplinas' },
+    { destacado: 'Nacional', texto: 'cobertura' },
   ],
 } as const;
 
@@ -37,6 +37,29 @@ export const garantia = {
   titulo: 'Nuestra garantía: 100% hechos',
   texto:
     'Garantizamos total independencia y objetividad. Nuestros expertos se enfocan exclusivamente en los hallazgos técnicos para guiar la decisión judicial sin ambigüedades.',
+} as const;
+
+/**
+ * Contacto directo, en el encabezado.
+ *
+ * Sale de una auditoría de 20 sitios de la competencia colombiana: **12 de 20
+ * tienen teléfono o WhatsApp a la vista y CNP no tenía ninguno de los dos en
+ * toda la home**. En Colombia el canal por defecto de un negocio B2B es
+ * WhatsApp, y un abogado con audiencia la semana entrante no llena un
+ * formulario: escribe.
+ *
+ * El número es el mismo que ya publica la sección de contacto. El 317 102 1253
+ * de PERITUS se desvía a esta línea.
+ *
+ * El texto del mensaje va prellenado a propósito: quien escribe no tiene que
+ * redactar nada y del otro lado se sabe de dónde viene.
+ */
+export const contactoDirecto = {
+  telefono: '316 407 1992',
+  /** Sin espacios ni signos: es lo que exigen los enlaces tel: y wa.me. */
+  telefonoPlano: '573164071992',
+  mensaje: 'Hola, vengo del sitio de CNP y necesito un dictamen pericial.',
+  rotuloWhatsapp: 'WhatsApp',
 } as const;
 
 export const contacto = {
@@ -50,18 +73,17 @@ export const contacto = {
 export const datosContacto: readonly DatoContacto[] = [
   {
     titulo: 'Teléfono',
-    valor: '312 846 2934',
-    nota: 'El 317 102 1253 de PERITUS se desvía a esta línea.',
+    valor: '316 407 1992',
+    nota: 'La misma línea sirve para CNP y para PERITUS.',
   },
   {
     titulo: 'Correo',
     valor: 'contacto@cnp.com.co',
-    nota: 'contacto@peritus.com.co se redirige aquí.',
+    nota: 'El mismo correo sirve para CNP y para PERITUS.',
   },
   {
     titulo: 'Oficina',
     valor: 'Cra 101 #17-36, Cali',
-    nota: 'Los dos sitios ya publican esta misma dirección.',
   },
   {
     titulo: 'Cobertura',
@@ -74,10 +96,10 @@ export const columnasPie: readonly ColumnaPie[] = [
   {
     titulo: 'Servicios',
     enlaces: [
-      { texto: 'Para abogados', href: '#abogado' },
-      { texto: 'Para firmas', href: '#firma' },
-      { texto: 'Para empresas', href: '#empresa' },
-      { texto: 'Para jueces', href: '#juez' },
+      { texto: 'Para abogados', href: '#servicios' },
+      { texto: 'Para firmas', href: '#servicios' },
+      { texto: 'Para empresas', href: '#servicios' },
+      { texto: 'Para jueces', href: '#servicios' },
     ],
   },
   {
@@ -92,7 +114,7 @@ export const columnasPie: readonly ColumnaPie[] = [
     titulo: 'Más',
     enlaces: [
       { texto: 'Quiénes somos', href: '#nosotros' },
-      { texto: 'Casos de éxito', href: '#casos' },
+      { texto: 'Casos', href: '#casos' },
       // Las MasterClass se publican aquí, no en la web. Ver PDF de rediseño, sección 3.
       { texto: 'LinkedIn', href: 'https://www.linkedin.com/company/cnp-centro-nacional-de-pruebas' },
       { texto: 'Política de tratamiento de datos', href: '/privacy' },

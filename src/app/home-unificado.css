@@ -32,6 +32,7 @@
 
   --sans: var(--font-dm-sans), "Segoe UI", system-ui, -apple-system, sans-serif;
   --serif: var(--font-source-serif), Georgia, "Times New Roman", serif;
+  --mono: var(--font-mono), ui-monospace, "Cascadia Mono", Consolas, monospace;
 
   --wrap: 1140px;
 }
@@ -41,7 +42,7 @@
 }
 
 .cnp-home {
-  scroll-behavior: auto;
+  scroll-behavior: smooth;
 }
 
 .cnp-home {
@@ -63,21 +64,22 @@
   color: inherit;
 }
 
-/* La portada no usa el encabezado fijo de las landings antiguas. El offset
-   global de 80 px dejaba todas sus anclas visualmente desalineadas. */
-.cnp-home section[id] {
-  scroll-margin-top: 0;
-}
-
 .cnp-home :focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 3px;
 }
 
+/*
+  El reset llegaba hasta h4. Los h5 heredaban el margen del navegador
+  (1.67em arriba y abajo) y abrían un hueco de 30 px entre cada título y su
+  párrafo — visible en el filtro de admisión y en los pasos del perito.
+*/
 .cnp-home h1,
 .cnp-home h2,
 .cnp-home h3,
-.cnp-home h4 {
+.cnp-home h4,
+.cnp-home h5,
+.cnp-home h6 {
   text-wrap: balance;
   margin: 0;
 }
@@ -129,11 +131,6 @@
 
 .cnp-home .btn:hover {
   background: var(--gold-light);
-}
-
-.cnp-home .btn:disabled {
-  cursor: wait !important;
-  opacity: 0.68;
 }
 
 .cnp-home .btn-lg {
@@ -200,411 +197,886 @@
   gap: 18px;
 }
 
-/* Compacta progresivamente antes de necesitar una segunda fila. De este modo,
-   el zoom del navegador no cambia la altura de la cabecera en anchos de tablet. */
-@media (max-width: 840px) {
-  .cnp-home .site-header .wrap {
-    gap: 12px;
-  }
-
-  .cnp-home .site-nav {
-    gap: 14px;
-  }
-
-  .cnp-home .header-actions {
-    gap: 0;
-  }
-
-  .cnp-home .header-actions .link-perito {
-    display: none;
-  }
+/*
+  El WhatsApp va con el número a la vista, no con un icono suelto: el número es
+  la prueba de que del otro lado hay alguien. Verde sólido de marca —no un
+  contorno— porque es el botón que cualquiera ya reconoce de memoria; intentar
+  que compita en discreción con el dorado solo lo hacía ver a medio hacer.
+*/
+.cnp-home .wa {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 15px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: #25d366;
+  color: #06280f;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.18s ease, transform 0.18s ease;
 }
 
-@media (max-width: 680px) {
-  .cnp-home .site-header .wrap {
-    gap: 10px;
-    padding: 14px 16px;
-  }
+.cnp-home .wa svg { flex: 0 0 auto; color: #06280f; }
 
-  .cnp-home .brand img {
-    height: 28px;
-  }
+.cnp-home .wa:hover { background: #1fb958; }
 
-  .cnp-home .site-nav {
-    gap: 8px;
-    font-size: 0.8125rem;
-  }
+.cnp-home .wa:active { transform: translateY(1px); }
 
-  .cnp-home .header-actions .btn {
-    padding: 9px 12px;
-    font-size: 0.8125rem;
-    white-space: nowrap;
-  }
+.cnp-home .wa:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+/* Bajo 1120 px el número no cabe con el menú: queda el icono, que sigue siendo
+   un blanco de toque de 40 px. */
+@media (max-width: 1120px) {
+  .cnp-home .wa__numero { display: none; }
+  .cnp-home .wa { padding: 10px 12px; }
 }
 
-@media (max-width: 600px) {
-  .cnp-home .site-nav {
-    gap: 6px;
-    font-size: 0.75rem;
-  }
-
-  .cnp-home .header-actions .btn {
-    padding-inline: 10px;
-  }
-}
-
-@media (max-width: 520px) {
+@media (max-width: 900px) {
   .cnp-home .site-header .wrap {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 12px 14px;
+    flex-wrap: wrap;
+    gap: 16px;
   }
-
   .cnp-home .site-nav {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    order: 3;
     margin-left: 0;
     width: 100%;
-    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
   }
-
   .cnp-home .header-actions {
-    grid-column: 2;
-    grid-row: 1;
-    margin-left: 0;
-    justify-self: end;
+    margin-left: auto;
   }
 }
 
 /* ───────────────────────────────── hero ──────────────────────────────────── */
 
-/*
-  El fondo va en capas, de arriba hacia abajo:
-    1. velo oscuro que se abre hacia la derecha — deja legible el titular
-       (que vive a la izquierda) y deja ver el martillo y su banda dorada
-    2. la foto
-    3. color de respaldo, por si la foto no carga
-*/
+.cnp-home .mono { font-family: var(--mono); }
+
+/* Solo para lectores de pantalla. No usar display:none, que los silencia. */
+.cnp-home .sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .cnp-home .hero {
-  background:
-    linear-gradient(
-      100deg,
-      rgba(7, 21, 46, 0.97) 0%,
-      rgba(7, 21, 46, 0.93) 38%,
-      rgba(7, 21, 46, 0.72) 62%,
-      rgba(10, 42, 110, 0.5) 100%
-    ),
-    url("/images/hero-martillo.webp") center right / cover no-repeat,
-    #07152e;
-  color: #fff;
-  padding: 84px 0 68px;
   position: relative;
+  overflow: hidden;
+  background: #050b1a;
+  color: #ffffff;
+  padding: 0 0 122px;
+  min-height: 900px;
+}
+
+.cnp-home .hero__fondo {
+  position: absolute;
+  inset: 0;
+  background: url("/images/home-unificado/hero-archivo.jpg") center / cover no-repeat;
+}
+
+/* El velo se abre hacia la derecha: el titular queda sobre azul sólido y la
+   fuga del archivo sigue leyéndose al fondo. */
+.cnp-home .hero__velo {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    rgba(5, 11, 26, 0.95) 0%,
+    rgba(5, 11, 26, 0.9) 34%,
+    rgba(6, 16, 38, 0.76) 58%,
+    rgba(9, 30, 74, 0.6) 100%
+  );
+}
+
+.cnp-home .hero__luz {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(34% 40% at 99% 0%, rgba(201, 168, 76, 0.16) 0%, rgba(5, 11, 26, 0) 68%);
+}
+
+/* Grano: mata el bandeo del degradado y da textura. */
+.cnp-home .hero__grano {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+}
+
+.cnp-home .hero__vineta {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(130% 105% at 44% 40%, rgba(1, 4, 12, 0) 32%, rgba(1, 4, 12, 0.72) 100%);
+}
+
+/* El calificador sangra al borde derecho: rompe la retícula a propósito. */
+.cnp-home .hero__rejilla {
+  position: relative;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 632px;
+  gap: 64px;
+  align-items: start;
+  padding: 70px 0 0 72px;
+}
+
+.cnp-home .hero__filo {
+  width: 58px;
+  height: 4px;
+  background: var(--gold);
+}
+
+.cnp-home .hero__eyebrow {
+  margin: 18px 0 0;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+
+.cnp-home .hero__titular {
+  margin: 26px 0 0;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(2.6rem, 6vw, 5.375rem);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+}
+
+.cnp-home .hero__titular .oro { color: var(--gold-light); }
+
+.cnp-home .renglon { display: block; overflow: hidden; }
+.cnp-home .rn { display: block; }
+
+.cnp-home .hero__bajada {
+  margin: 32px 0 0;
+  max-width: 40ch;
+  font-size: 1.125rem;
+  line-height: 1.66;
+  color: #b0c7e4;
+}
+
+.cnp-home .compromisos {
+  list-style: none;
+  margin: 40px 0 0;
+  padding: 0;
+  max-width: 500px;
+  border-top: 1px solid rgba(126, 184, 247, 0.18);
+}
+
+.cnp-home .compromisos li {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(126, 184, 247, 0.1);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #c9dbf2;
+}
+
+.cnp-home .compromisos li:last-child { border-bottom: 0; }
+
+.cnp-home .compromisos__num {
+  flex: 0 0 auto;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+/* ── el calificador ───────────────────────────────────────────────────────── */
+
+.cnp-home .calificador {
+  position: relative;
+  border-radius: 18px 0 0 18px;
+  border: 1px solid rgba(126, 184, 247, 0.2);
+  border-right: 0;
+  background: linear-gradient(155deg, rgba(11, 22, 45, 0.92) 0%, rgba(6, 13, 30, 0.88) 62%);
+  backdrop-filter: blur(14px) saturate(115%);
+  -webkit-backdrop-filter: blur(14px) saturate(115%);
+  box-shadow: -34px 40px 90px -34px rgba(0, 3, 12, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   overflow: hidden;
 }
 
-/* Trama fina de líneas: da textura sin competir con el titular. */
-.cnp-home .hero::before {
-  content: "";
+.cnp-home .calificador__filo {
+  height: 3px;
+  background: linear-gradient(to right, var(--gold) 0%, rgba(201, 168, 76, 0.3) 38%, rgba(201, 168, 76, 0) 82%);
+}
+
+/* Marcas de registro, como en una lámina técnica. */
+.cnp-home .calificador__marca {
   position: absolute;
-  inset: 0;
-  background-image: linear-gradient(rgba(126, 184, 247, 0.06) 1px, transparent 1px);
-  background-size: 100% 34px;
-  pointer-events: none;
+  width: 10px;
+  height: 10px;
+}
+.cnp-home .calificador__marca--ti {
+  left: 16px;
+  top: 19px;
+  border-left: 1px solid rgba(201, 168, 76, 0.55);
+  border-top: 1px solid rgba(201, 168, 76, 0.55);
+}
+.cnp-home .calificador__marca--bi {
+  left: 16px;
+  bottom: 16px;
+  border-left: 1px solid rgba(201, 168, 76, 0.55);
+  border-bottom: 1px solid rgba(201, 168, 76, 0.55);
 }
 
-.cnp-home .hero .wrap {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 1.1fr);
-  gap: clamp(24px, 3.4vw, 48px);
-  align-items: center;
+.cnp-home .calificador__cuerpo {
+  padding: 30px 56px 34px 38px;
+  min-height: 420px;
 }
 
-/* ── Lado derecho del hero: foto recortada + tarjeta flotante ─────────────
-   Mismo patrón que restaurar.co. La persona va a la izquierda del bloque y la
-   tarjeta cae al extremo derecho, montada encima. */
-
-.cnp-home .hero-media {
-  position: relative;
-  min-height: clamp(430px, 42vw, 600px);
-}
-
-.cnp-home .hero-foto {
-  position: absolute;
-  left: clamp(4%, 8vw, 16%);
-  bottom: 0;
-  height: 100%;
-  width: auto;
-  display: block;
-  /* Sombra proyectada sobre el recorte: lo despega del fondo. */
-  filter: drop-shadow(0 24px 40px rgba(3, 10, 25, 0.5));
-}
-
-/* En el último tramo de tablet, aparta el rostro de la tarjeta superpuesta. */
-@media (min-width: 681px) and (max-width: 760px) {
-  .cnp-home .hero-foto {
-    left: -12%;
-  }
-}
-
-.cnp-home .tarjeta-red {
-  position: absolute;
-  right: 0;
-  bottom: 8px;
-  width: clamp(228px, 21vw, 264px);
-  background: var(--white);
-  border-radius: 14px;
-  padding: 18px 18px 16px;
-  box-shadow: 0 20px 46px rgba(3, 10, 25, 0.45);
-}
-
-.cnp-home .tarjeta-red__titulo {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--navy-700);
-  margin: 0 0 12px;
-}
-
-.cnp-home .tarjeta-red__titulo .acento {
-  color: var(--blue-500);
-}
-
-.cnp-home .tarjeta-red__lista {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 7px;
-}
-
-.cnp-home .tarjeta-red__item {
+.cnp-home .calificador__encabezado {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: var(--paper);
-  border: 1px solid var(--line-soft);
-  border-radius: 9px;
-  padding: 7px 10px;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--navy-700);
+  justify-content: space-between;
+  margin: 0 0 24px;
 }
 
-.cnp-home .tarjeta-red__ico {
+.cnp-home .etiqueta-tenue {
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: #8aa4c6;
+  margin: 0;
+}
+
+.cnp-home .etiqueta-paso {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+
+.cnp-home .calificador fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+
+.cnp-home .calificador__pregunta {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin: 0 0 16px;
+  padding: 0;
+  font-size: 1.1875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+}
+
+.cnp-home .calificador__num {
   flex: 0 0 auto;
-  width: 25px;
-  height: 25px;
-  border-radius: 7px;
-  background: var(--mist-100);
-  color: var(--blue-600);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.cnp-home .calificador__sep {
+  height: 1px;
+  margin: 22px 0;
+  background: linear-gradient(to right, rgba(126, 184, 247, 0.32), rgba(126, 184, 247, 0.04));
+}
+
+.cnp-home .calificador__sep--oro {
+  margin: 22px 0 18px;
+  background: linear-gradient(to right, rgba(201, 168, 76, 0.5), rgba(201, 168, 76, 0.04));
+}
+
+.cnp-home .opciones { display: grid; gap: 9px; }
+.cnp-home .opciones--rejilla { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+/*
+  El radio nativo se oculta pero sigue siendo el que manda: foco, flechas,
+  agrupación y envío salen de él. La tarjeta es su <label>. Volver a div +
+  onClick deja esto inoperable con teclado y mudo para un lector de pantalla.
+*/
+.cnp-home .op { position: relative; }
+.cnp-home .op.op--ancha { grid-column: 1 / -1; }
+
+.cnp-home .op input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+}
+
+.cnp-home .op label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  border: 1px solid rgba(126, 184, 247, 0.2);
+  background: rgba(255, 255, 255, 0.055);
+  border-radius: 10px;
+  padding: 13px 15px;
+  cursor: pointer;
+  color: #ffffff;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.cnp-home .op label:hover { border-color: rgba(201, 168, 76, 0.55); transform: translateY(-1px); }
+.cnp-home .op label:active { transform: translateY(0); }
+.cnp-home .op input:focus-visible + label { outline: 2px solid var(--gold-light); outline-offset: 3px; }
+
+.cnp-home .op input:checked + label {
+  border-color: var(--gold);
+  background: rgba(201, 168, 76, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 3px rgba(201, 168, 76, 0.12);
+}
+
+.cnp-home .op__ico {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(126, 184, 247, 0.09);
+  border: 1px solid rgba(126, 184, 247, 0.14);
+  color: var(--blue-300);
 }
 
-/* Verde semántico —"cubierto"—, deliberadamente distinto del dorado de marca. */
-.cnp-home .tarjeta-red__check {
-  margin-left: auto;
-  color: #2e9e6b;
-}
-
-.cnp-home .tarjeta-red__pie {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 14px 0 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--blue-600);
-  text-decoration: none;
-}
-
-.cnp-home .tarjeta-red__pie:hover {
-  color: var(--navy-700);
-}
-
-@media (max-width: 680px) {
-  .cnp-home .hero .wrap {
-    grid-template-columns: 1fr;
-    gap: 28px;
-  }
-
-  .cnp-home .hero-media {
-    min-height: 0;
-    max-width: none;
-  }
-
-  .cnp-home .hero-foto {
-    display: none;
-  }
-
-  .cnp-home .tarjeta-red {
-    position: static;
-    width: 100%;
-    max-width: none;
-  }
-
-  .cnp-home .tarjeta-red__lista {
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  }
-
-  .cnp-home .tarjeta-red__item {
-    gap: 6px;
-    padding: 6px 7px;
-  }
-
-  .cnp-home .tarjeta-red__ico {
-    width: 23px;
-    height: 23px;
-  }
-
-}
-
-@media (max-width: 520px) {
-  .cnp-home .hero {
-    padding: 58px 0 50px;
-  }
-}
-
-@media (max-width: 400px) {
-  .cnp-home .tarjeta-red {
-    padding: 15px 12px 13px;
-  }
-
-  .cnp-home .tarjeta-red__lista {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .cnp-home .tarjeta-red__item {
-    min-width: 0;
-    font-size: 0.75rem;
-    padding: 5px;
-  }
-
-  .cnp-home .tarjeta-red__ico {
-    width: 21px;
-    height: 21px;
-  }
-
-  .cnp-home .tarjeta-red__check {
-    display: none;
-  }
-}
-
-.cnp-home .hero .eyebrow {
+.cnp-home .op input:checked + label .op__ico {
+  background: rgba(201, 168, 76, 0.22);
+  border-color: rgba(201, 168, 76, 0.45);
   color: var(--gold-light);
 }
 
-.cnp-home .hero h1 {
-  font-family: var(--serif);
-  font-weight: 500;
-  font-size: clamp(2.05rem, 4.3vw, 3.5rem);
-  line-height: 1.13;
-  letter-spacing: -0.01em;
-  max-width: 19ch;
-}
+/* La selección no puede indicarse solo con color: entra también un chulo. */
+.cnp-home .op__tick { margin-left: auto; opacity: 0; color: var(--gold-light); transition: opacity 0.18s ease; }
+.cnp-home .op input:checked + label .op__tick { opacity: 1; }
 
-.cnp-home .hero h1 em {
-  font-style: normal;
-  color: var(--gold-light);
-}
-
-.cnp-home .hero .lead {
-  font-size: 1.0625rem;
-  color: #b9cee8;
-  max-width: 56ch;
-  margin: 22px 0 0;
-  line-height: 1.65;
-}
-
-.cnp-home .hero-cta {
-  display: flex;
-  align-items: center;
-  gap: 26px;
-  flex-wrap: wrap;
-  margin: 34px 0 0;
-}
-
-.cnp-home .hero-meta {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(14px, 3vw, 40px);
-  margin: 20px 0 0;
-  padding: 18px 0 0;
-  border-top: 1px solid rgba(126, 184, 247, 0.22);
-  font-size: 0.875rem;
-  color: #9db6d6;
-}
-
-.cnp-home .hero-meta strong {
-  display: block;
-  color: #fff;
-  font-weight: 600;
-}
-
-@media (max-width: 680px) {
-  .cnp-home .hero-meta {
-    gap: 14px;
-    font-size: clamp(0.75rem, 2vw, 0.875rem);
-    line-height: 1.45;
-  }
-}
-
-/* ───────────────────────── riel de clientes ─────────────────────────────── */
-
-.cnp-home .logo-rail {
-  background: var(--white);
-  border-bottom: 1px solid var(--line-soft);
-  padding: 26px 0;
-}
-
-.cnp-home .logo-rail .wrap {
-  display: flex;
-  align-items: center;
-  gap: 34px;
-  flex-wrap: wrap;
-}
-
-.cnp-home .logo-rail .label {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
+.cnp-home .op__punto {
   flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(126, 184, 247, 0.4);
 }
+.cnp-home .op input:checked + label .op__punto { border: 5px solid var(--gold); }
 
-.cnp-home .logo-rail ul {
-  list-style: none;
+.cnp-home .resuelto {
   display: flex;
   align-items: center;
-  gap: 34px;
-  flex-wrap: wrap;
-  margin: 0;
-  padding: 0;
-  flex: 1 1 400px;
+  gap: 13px;
+  border-left: 3px solid var(--gold);
+  border-radius: 0 8px 8px 0;
+  padding: 13px 16px;
+  background: rgba(201, 168, 76, 0.1);
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.cnp-home .resuelto--segundo { margin: 10px 0 0; }
+
+.cnp-home .cambiar {
+  margin-left: auto;
+  background: none;
+  border: 0;
+  padding: 10px 6px;
+  margin-right: -6px;
+  cursor: pointer;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--blue-300);
+}
+.cnp-home .cambiar:hover { color: #ffffff; }
+.cnp-home .cambiar:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 2px; border-radius: 4px; }
+
+.cnp-home .fecha-fila {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 14px 0 0;
+  font-size: 0.875rem;
+  color: #b0c7e4;
+}
+.cnp-home .fecha-fila .tenue { color: #8aa4c6; }
+
+.cnp-home .fecha {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(126, 184, 247, 0.24);
+  border-radius: 8px;
+  padding: 11px 13px;
+  color: #ffffff;
+  font: 0.875rem var(--sans);
+  color-scheme: dark;
+}
+.cnp-home .fecha:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 2px; }
+
+.cnp-home .calificador__resumen {
+  margin: 0 0 22px;
+  font-family: var(--serif);
+  font-size: 1.625rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.cnp-home .calificador__cierre { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+
+.cnp-home .calificador__nota {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #9db6d6;
+  max-width: 26ch;
+}
+
+.cnp-home .btn-oro {
+  background: var(--gold);
+  color: var(--navy-900);
+  font-family: var(--sans);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 17px 34px;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 14px 30px -12px rgba(201, 168, 76, 0.7);
+  transition: filter 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+.cnp-home .btn-oro:hover { filter: brightness(1.07); transform: translateY(-2px); box-shadow: 0 18px 34px -12px rgba(201, 168, 76, 0.75); }
+.cnp-home .btn-oro:focus-visible { outline: 2px solid #ffffff; outline-offset: 3px; }
+
+
+/* ── paso 3: los datos de contacto ───────────────────────────────────────── */
+
+.cnp-home .datos-contacto { border: 0; margin: 0; padding: 0; }
+
+.cnp-home .datos-contacto .calificador__cierre { gap: 18px; }
+.cnp-home .datos-contacto .btn-oro { padding: 14px 28px; }
+
+.cnp-home .campos { display: grid; gap: 11px; margin: 14px 0 14px; }
+
+.cnp-home .campo label,
+.cnp-home .permiso label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #a9c2e0;
+  margin: 0 0 5px;
+}
+
+.cnp-home .campo--par { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+.cnp-home .campo input,
+.cnp-home .campo textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(6, 16, 38, 0.6);
+  border: 1px solid rgba(126, 184, 247, 0.26);
+  border-radius: 6px;
+  padding: 10px 13px;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: #ffffff;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.cnp-home .campo textarea { resize: vertical; min-height: 52px; line-height: 1.5; }
+
+.cnp-home .campo input::placeholder,
+.cnp-home .campo textarea::placeholder { color: #6d86a8; }
+
+.cnp-home .campo input:hover,
+.cnp-home .campo textarea:hover { border-color: rgba(126, 184, 247, 0.42); }
+
+.cnp-home .campo input:focus,
+.cnp-home .campo textarea:focus {
+  outline: 0;
+  border-color: var(--gold);
+  background: rgba(6, 16, 38, 0.85);
+  box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.18);
 }
 
 /*
-  Los logos vienen con proporciones muy distintas: unos son apaisados
-  (Bancolombia, 1280x301) y otros cuadrados con mucho aire adentro
-  (Valle del Lili, 500x500). Con un alto fijo, los cuadrados quedaban
-  diminutos al lado de los anchos. Con topes en las dos dimensiones cada
-  uno crece hasta donde puede y el riel se lee como un conjunto.
+  El navegador marca en rojo el campo inválido SOLO después de intentar enviar
+  (`:user-invalid`), no mientras se escribe. Con `:invalid` a secas, un correo
+  a medio teclear ya sale en rojo y el formulario regaña antes de tiempo.
 */
-.cnp-home .logo-rail img {
-  max-height: 46px;
-  max-width: 124px;
-  width: auto;
-  height: auto;
-  object-fit: contain;
-  opacity: 0.85;
-  transition: opacity 0.16s ease;
+.cnp-home .campo input:user-invalid { border-color: #e08a8a; }
+
+/* ── la autorización de datos ── */
+
+.cnp-home .permiso {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 4px 0 0;
 }
 
-.cnp-home .logo-rail li:hover img {
-  opacity: 1;
+.cnp-home .permiso input {
+  width: 17px;
+  height: 17px;
+  margin: 1px 0 0;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+
+.cnp-home .porque {
+  margin: 2px 0 0;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: #8aa4c6;
+}
+
+.cnp-home .permiso label { margin: 0; font-size: 0.75rem; line-height: 1.5; cursor: pointer; }
+.cnp-home .permiso a { color: #bcd4f2; text-decoration: underline; text-underline-offset: 2px; }
+.cnp-home .permiso a:hover { color: var(--gold-light); }
+
+/* ── el fallo de envío ──
+   Va en rojo y con borde: es lo único del panel que interrumpe, porque el
+   visitante ya cree que envió. Sale la salida —correo y teléfono— en el mismo
+   bloque: si el formulario no sirve, tiene que quedar otra puerta abierta. */
+
+.cnp-home .fallo {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 16px;
+  padding: 13px 15px;
+  border: 1px solid rgba(224, 138, 138, 0.45);
+  border-left: 3px solid #e08a8a;
+  border-radius: 6px;
+  background: rgba(120, 40, 40, 0.22);
+}
+
+.cnp-home .fallo b { font-size: 0.875rem; font-weight: 600; color: #ffd9d9; }
+.cnp-home .fallo span { font-size: 0.8125rem; line-height: 1.5; color: #f0c9c9; }
+.cnp-home .fallo a { color: #ffffff; text-decoration: underline; text-underline-offset: 2px; }
+
+/* La fecha ya respondida se guarda pero deja de pedir atención en el paso 3. */
+.cnp-home .fecha-fila--guardada { opacity: 0.5; }
+
+/* ── el cierre: solicitud recibida ── */
+
+.cnp-home .calificador--cierre .calificador__cuerpo { padding-bottom: 34px; }
+
+.cnp-home .sello {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin: 24px 0 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--gold);
+  background: rgba(201, 168, 76, 0.16);
+  color: var(--gold-light);
+}
+
+.cnp-home .sello svg { width: 22px; height: 22px; }
+
+.cnp-home .sello__titulo {
+  font-family: var(--serif);
+  font-size: 1.625rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.cnp-home .sello__texto {
+  margin: 12px 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: #c3d6ef;
+  max-width: 42ch;
+}
+
+.cnp-home .sello__pasos {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 9px;
+  counter-reset: paso;
+}
+
+.cnp-home .sello__pasos li {
+  position: relative;
+  padding-left: 26px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #c3d6ef;
+  counter-increment: paso;
+}
+
+.cnp-home .sello__pasos li::before {
+  content: counter(paso, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.cnp-home .sello__urgente {
+  margin: 20px 0 0;
+  padding: 13px 15px;
+  border-radius: 6px;
+  background: rgba(126, 184, 247, 0.09);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: #a9c2e0;
+}
+
+.cnp-home .sello__demo { margin: 14px 0 0; }
+
+.cnp-home .sello__urgente b { color: #dfe9f8; font-weight: 600; }
+.cnp-home .sello__urgente a { color: var(--gold-light); font-weight: 600; text-decoration: none; }
+.cnp-home .sello__urgente a:hover { text-decoration: underline; }
+
+.cnp-home .btn-oro:disabled { opacity: 0.6; cursor: progress; transform: none; box-shadow: none; }
+
+@media (max-width: 620px) {
+  .cnp-home .campo--par { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cnp-home .campo input, .cnp-home .campo textarea { transition: none; }
+}
+
+/* ── franja de prueba al pie del hero ─────────────────────────────────────── */
+
+.cnp-home .hero__pie {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 72px 30px;
+}
+
+.cnp-home .hero__pie-filo {
+  height: 1px;
+  margin: 0 0 22px;
+  background: linear-gradient(to right, rgba(126, 184, 247, 0.04), rgba(126, 184, 247, 0.24) 24%, rgba(126, 184, 247, 0.24) 76%, rgba(126, 184, 247, 0.04));
+}
+
+.cnp-home .hero__pie-fila { display: flex; align-items: center; gap: 40px; flex-wrap: wrap; }
+
+.cnp-home .cifra { display: flex; align-items: baseline; gap: 8px; }
+
+.cnp-home .cifra__valor {
+  font-family: var(--serif);
+  font-size: 1.875rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+}
+
+.cnp-home .cifra__rotulo {
+  font-size: 0.625rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8aa4c6;
+}
+
+@media (max-width: 1180px) {
+  .cnp-home .hero { padding-bottom: 150px; }
+  .cnp-home .hero__rejilla { grid-template-columns: 1fr; gap: 40px; padding: 56px 24px 0; }
+  .cnp-home .calificador { border-radius: 16px; border-right: 1px solid rgba(126, 184, 247, 0.2); max-width: 620px; }
+  .cnp-home .calificador__cuerpo { padding: 26px 26px 30px; }
+  .cnp-home .hero__pie { padding: 0 24px 26px; }
+}
+
+/* En 390 px la rejilla de dos columnas parte "Grafológico" e "Informático". */
+@media (max-width: 620px) {
+  .cnp-home .hero { min-height: 0; padding-bottom: 170px; }
+  .cnp-home .hero__fondo { opacity: 0.5; }
+  .cnp-home .hero__velo { background: linear-gradient(180deg, rgba(5, 11, 26, 0.9) 0%, rgba(5, 11, 26, 0.94) 45%, rgba(5, 11, 26, 0.99) 100%); }
+  .cnp-home .hero__bajada { font-size: 0.9375rem; }
+  .cnp-home .opciones--rejilla { grid-template-columns: 1fr; }
+  .cnp-home .op label { min-height: 56px; font-size: 1rem; }
+  .cnp-home .compromisos { margin-top: 28px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cnp-home .op label, .cnp-home .btn-oro { transition: none; }
+}
+
+/* ─────────────── prueba social: quiénes ya nos contrataron ──────────────── */
+
+/*
+  Banda clara metida entre dos secciones oscuras. El corte de valor genera la
+  jerarquía sin pedir más alto, y permite dejar los logos en su color: casi
+  todos son marcas pensadas para fondo blanco, y aplanarlas a silueta blanca
+  les quita justo lo que las hace reconocibles de un vistazo.
+
+  La composición es la retícula con filetes: filete, rótulo de sector en
+  monoespaciada, logo. El filete da orden documental. Una marquesina en
+  movimiento —el otro patrón habitual— habría leído como banner publicitario
+  y, con ocho marcas, delataría además que la lista todavía es corta.
+*/
+/* Blanco, no crema: al subir "A quién le servimos" justo debajo, dos bandas
+   claras seguidas del mismo tono se leían como una sola sección larguísima. */
+.cnp-home .clientes {
+  background: var(--white);
+  border-bottom: 1px solid var(--line);
+  padding: 74px 0 64px;
+}
+
+.cnp-home .clientes__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 52px;
+  align-items: end;
+  margin: 0 0 46px;
+}
+
+.cnp-home .clientes__eyebrow {
+  margin: 0 0 16px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--blue-500);
+}
+
+.cnp-home .clientes__titulo {
+  font-family: var(--serif);
+  font-size: clamp(1.625rem, 3vw, 2.5rem);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  color: var(--navy-900);
+  text-wrap: balance;
+}
+
+.cnp-home .clientes__titulo em { font-style: normal; color: var(--blue-500); }
+
+.cnp-home .clientes__nota {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--ink-muted);
+  max-width: 48ch;
+}
+
+.cnp-home .clientes__enlace {
+  display: inline-block;
+  margin-left: 7px;
+  font-weight: 600;
+  color: var(--navy-900);
+  text-decoration: none;
+  border-bottom: 1px solid var(--gold);
+  padding-bottom: 1px;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.cnp-home .clientes__enlace:hover { color: var(--blue-500); border-bottom-color: var(--blue-500); }
+.cnp-home .clientes__enlace:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+.cnp-home .marcas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 36px;
+  border-top: 2px solid var(--navy-900);
+}
+
+.cnp-home .marca {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0 26px;
+  border-bottom: 1px solid var(--line);
+}
+
+.cnp-home .marca__sector {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  transition: color 0.3s ease;
+}
+
+.cnp-home .marca:hover .marca__sector { color: var(--blue-500); }
+
+.cnp-home .marca__caja {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 76px;
+}
+
+/*
+  Tope en ALTO Y ANCHO, no una altura fija. Cinco de estos ocho archivos son
+  cuadrados de 500x500 con aire adentro y tres son apaisados: con una altura
+  fija los cuadrados salen diminutos al lado de Bancolombia.
+*/
+/*
+  El gris se sube de contraste y la opacidad de reposo con él. Con
+  `grayscale(1)` y 0.72, el verde lima de Banco Popular quedaba casi invisible:
+  el filtro asume logos con peso tonal y ese no lo tiene.
+*/
+.cnp-home .marca__caja img {
+  width: auto;
+  height: auto;
+  max-height: 68px;
+  max-width: 156px;
+  filter: grayscale(1) contrast(1.18) brightness(0.92);
+  opacity: 0.82;
+  transition: filter 0.35s ease, opacity 0.35s ease;
+}
+
+.cnp-home .marca:hover .marca__caja img { filter: grayscale(0) contrast(1) brightness(1); opacity: 1; }
+
+@media (max-width: 1040px) {
+  .cnp-home .marcas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+
+
+@media (max-width: 860px) {
+  .cnp-home .clientes__head { grid-template-columns: 1fr; gap: 26px; align-items: start; margin-bottom: 34px; }
+  .cnp-home .clientes { padding: 56px 0 48px; }
+}
+
+@media (max-width: 620px) {
+  .cnp-home .marcas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
+  .cnp-home .marca__caja { height: 64px; }
+  .cnp-home .marca__caja img { max-height: 56px; max-width: 130px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cnp-home .marca__caja img, .cnp-home .marca__sector, .cnp-home .clientes__enlace { transition: none; }
 }
 
 /* ───────────────────────────── secciones ─────────────────────────────────── */
@@ -634,437 +1106,1517 @@
   font-size: 1.0625rem;
 }
 
-/* ────────────────────────── filtro por perfil ───────────────────────────── */
+/* ─────────────────── cómo se sostiene (antes: filtro) ────────────────────── */
 
-.cnp-home .filtro {
+.cnp-home .metodo {
   background: var(--white);
   border-top: 1px solid var(--line-soft);
   border-bottom: 1px solid var(--line-soft);
 }
 
-.cnp-home .tabs {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  border-bottom: 2px solid var(--mist-200);
-  margin-bottom: 36px;
-}
+.cnp-home .metodo__head { max-width: 62ch; margin: 0 0 48px; }
 
-.cnp-home .tab {
-  font-family: var(--sans);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  background: none;
-  border: 0;
-  border-bottom: 3px solid transparent;
-  padding: 11px 15px;
-  margin-bottom: -2px;
-  cursor: pointer;
-  color: var(--ink-faint);
-  border-radius: 4px 4px 0 0;
-  transition: color 0.15s ease, background 0.15s ease;
-}
-
-.cnp-home .tab:hover {
-  color: var(--blue-600);
-  background: var(--mist-100);
-}
-
-.cnp-home .tab[aria-selected="true"] {
-  color: var(--blue-600);
-  border-bottom-color: var(--blue-600);
-  background: var(--mist-100);
-}
-
-.cnp-home .panel {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  gap: 52px;
-  align-items: start;
-}
-
-.cnp-home .panel[hidden] {
-  display: none;
-}
-
-@media (max-width: 860px) {
-  .cnp-home .panel {
-    grid-template-columns: 1fr;
-    gap: 34px;
-  }
-}
-
-.cnp-home .job {
-  background: var(--mist-100);
-  border-left: 3px solid var(--blue-600);
-  padding: 20px 24px;
-  border-radius: 0 4px 4px 0;
-  margin: 0 0 28px;
-}
-
-.cnp-home .job .eyebrow {
-  color: var(--blue-600);
-  margin-bottom: 8px;
-}
-
-.cnp-home .job q {
-  font-family: var(--serif);
-  font-size: 1.1875rem;
-  line-height: 1.45;
-  color: var(--navy-700);
-  quotes: "\201C" "\201D";
-}
-
-.cnp-home .parrafo {
-  color: var(--ink-muted);
-  line-height: 1.7;
+.cnp-home .metodo__eyebrow {
   margin: 0 0 16px;
-}
-
-.cnp-home .parrafo:last-child {
-  margin-bottom: 0;
-}
-
-.cnp-home .svc {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 14px;
-}
-
-.cnp-home .svc li {
-  border: 1px solid var(--line-soft);
-  border-radius: 5px;
-  padding: 16px 18px;
-  background: var(--white);
-}
-
-.cnp-home .svc h4 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--navy-700);
-}
-
-.cnp-home .svc p {
-  margin: 5px 0 0;
-  font-size: 0.9375rem;
-  color: var(--ink-muted);
-  line-height: 1.55;
-}
-
-/*
-  Foto de la pestaña. La caja fija la proporción y `object-fit: cover` recorta:
-  así conviven originales verticales y horizontales sin deformarse.
-*/
-.cnp-home .panel-foto {
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  border-radius: 5px;
-  margin: 0 0 26px;
-  background: var(--mist-200);
-}
-
-.cnp-home .panel-foto img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-}
-
-.cnp-home .aside h4 {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  margin: 0 0 12px;
-}
-
-.cnp-home .recibe {
-  list-style: none;
-  margin: 0 0 26px;
-  padding: 0;
-  display: grid;
-  gap: 9px;
-}
-
-.cnp-home .recibe li {
-  position: relative;
-  padding-left: 26px;
-  font-size: 0.9375rem;
-  color: var(--ink-muted);
-  line-height: 1.5;
-}
-
-.cnp-home .recibe li::before {
-  content: "";
-  position: absolute;
-  left: 6px;
-  top: 9px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--gold);
-}
-
-.cnp-home .recibe b {
-  color: var(--navy-700);
-  font-weight: 600;
-}
-
-.cnp-home .aside .nota {
-  font-size: 0.9375rem;
-  color: var(--ink-muted);
-  margin: 0 0 18px;
-  line-height: 1.6;
-}
-
-.cnp-home .faq {
-  border-top: 1px solid var(--line-soft);
-  margin: 0;
-}
-
-.cnp-home .faq dt {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--navy-700);
-  padding: 16px 0 0;
-}
-
-.cnp-home .faq dd {
-  margin: 5px 0 0;
-  font-size: 0.9375rem;
-  color: var(--ink-muted);
-  line-height: 1.55;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.cnp-home .pasos {
-  list-style: none;
-  counter-reset: paso;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 18px;
-}
-
-.cnp-home .pasos li {
-  counter-increment: paso;
-  position: relative;
-  padding-left: 52px;
-}
-
-.cnp-home .pasos li::before {
-  content: counter(paso);
-  position: absolute;
-  left: 0;
-  top: -2px;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--navy-700);
-  color: var(--gold-light);
-  font-size: 0.9375rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cnp-home .pasos h4 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--navy-700);
-}
-
-.cnp-home .pasos p {
-  margin: 4px 0 0;
-  font-size: 0.9375rem;
-  color: var(--ink-muted);
-  line-height: 1.55;
-}
-
-/* ─────────────────────────── la red PERITUS ─────────────────────────────── */
-
-.cnp-home .red {
-  background: var(--navy-800);
-  color: #fff;
-}
-
-.cnp-home .red .wrap {
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-  gap: 56px;
-  align-items: center;
-}
-
-@media (max-width: 860px) {
-  .cnp-home .red .wrap {
-    grid-template-columns: 1fr;
-    gap: 34px;
-  }
-}
-
-.cnp-home .red .pmark {
-  height: 44px;
-  width: auto;
-  margin: 0 0 22px;
-}
-
-.cnp-home .red h2 {
-  font-size: clamp(1.4rem, 2.2vw, 1.85rem);
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-.cnp-home .red p {
-  color: #adc5e2;
-  margin: 14px 0 0;
-  line-height: 1.65;
-}
-
-.cnp-home .disciplinas {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1px;
-  background: rgba(126, 184, 247, 0.22);
-  border: 1px solid rgba(126, 184, 247, 0.22);
-}
-
-@media (max-width: 560px) {
-  .cnp-home .disciplinas {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.cnp-home .disciplinas li {
-  background: var(--navy-800);
-  padding: 26px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.cnp-home .disciplinas b {
-  font-size: 1.0625rem;
-  font-weight: 600;
-}
-
-.cnp-home .disciplinas span {
-  font-size: 0.8125rem;
-  color: #8fa9c9;
-}
-
-/* La disciplina histórica de CNP, destacada dentro de la red. */
-.cnp-home .disciplinas li.principal b {
-  color: var(--gold-light);
-}
-
-/* ─────────────────────────── casos de éxito ─────────────────────────────── */
-
-.cnp-home .casos {
-  background: var(--paper);
-}
-
-.cnp-home .acc {
-  border-top: 1px solid var(--line);
-}
-
-.cnp-home .acc details {
-  border-bottom: 1px solid var(--line);
-}
-
-.cnp-home .acc summary {
-  list-style: none;
-  cursor: pointer;
-  padding: 22px 0;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-}
-
-.cnp-home .acc summary::-webkit-details-marker {
-  display: none;
-}
-
-.cnp-home .acc summary .cliente {
-  flex: 0 0 168px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.26em;
   text-transform: uppercase;
   color: var(--blue-500);
 }
 
-.cnp-home .acc summary h3 {
+.cnp-home .metodo__head h2 {
+  font-family: var(--serif);
+  font-size: clamp(1.75rem, 3.2vw, 2.75rem);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  color: var(--navy-900);
+}
+
+.cnp-home .metodo__lead {
+  margin: 20px 0 0;
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--ink-muted);
+}
+
+/* ── los cuatro pilares, en fila ── */
+
+.cnp-home .pilares {
+  list-style: none;
+  margin: 0 0 64px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 34px;
+}
+
+.cnp-home .pilares li { border-top: 2px solid var(--navy-900); padding: 18px 0 0; }
+
+.cnp-home .pilares__num {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--gold);
+  margin: 0 0 12px;
+}
+
+.cnp-home .pilares h3 {
+  font-family: var(--serif);
   font-size: 1.125rem;
   font-weight: 600;
+  line-height: 1.28;
+  letter-spacing: -0.015em;
   color: var(--navy-700);
-  flex: 1 1 auto;
 }
 
-.cnp-home .acc summary .chev {
+.cnp-home .pilares p {
+  margin: 10px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--ink-muted);
+}
+
+/* ── anatomía interactiva ──
+   La lista de la izquierda manda; la hoja de la derecha es un esquema que se
+   enciende. No es un dictamen de muestra: no promete contenido técnico que
+   ningún perito escribió. */
+
+.cnp-home .anat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 460px);
+  gap: 56px;
+  align-items: start;
+  padding: 40px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.cnp-home .anat__rotulo {
+  margin: 0 0 10px;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.cnp-home .anat__titulo {
+  font-family: var(--serif);
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--navy-900);
+}
+
+.cnp-home .anat__lead {
+  margin: 12px 0 26px;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--ink-muted);
+}
+
+.cnp-home .anat__lista { list-style: none; margin: 0; padding: 0; }
+
+.cnp-home .anat__boton {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--line-soft);
+  padding: 15px 12px 15px 0;
+  cursor: pointer;
+  font: inherit;
+  transition: background 0.16s ease, padding-left 0.16s ease;
+}
+
+.cnp-home .anat__lista li:last-child .anat__boton { border-bottom: 1px solid var(--line-soft); }
+.cnp-home .anat__boton:hover,
+.cnp-home .anat__boton[aria-pressed='true'] { background: var(--mist-100); padding-left: 12px; }
+.cnp-home .anat__boton:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+
+.cnp-home .anat__num {
   flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--gold);
+  padding-top: 4px;
+}
+
+.cnp-home .anat__texto { display: block; }
+
+.cnp-home .anat__parte {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--navy-700);
+}
+
+.cnp-home .anat__detalle {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+/* ── la hoja ── */
+
+.cnp-home .hoja { position: sticky; top: 32px; }
+
+.cnp-home .hoja__papel {
+  background: #fdfdfb;
   border: 1px solid var(--line);
-  color: var(--blue-600);
+  border-radius: 4px;
+  padding: 26px 28px 30px;
+  box-shadow: 0 24px 50px -30px rgba(10, 42, 110, 0.45), 0 2px 0 rgba(255, 255, 255, 0.9) inset;
+}
+
+.cnp-home .hoja__membrete {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 0.875rem;
-  transition: transform 0.18s ease, background 0.18s ease;
+  justify-content: space-between;
+  padding: 0 0 12px;
+  border-bottom: 2px solid var(--navy-900);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--navy-900);
 }
 
-.cnp-home .acc details[open] summary .chev {
-  transform: rotate(180deg);
-  background: var(--mist-100);
+.cnp-home .hoja__folio { color: var(--ink-faint); font-weight: 500; }
+
+.cnp-home .zona {
+  position: relative;
+  padding: 13px 12px 13px 14px;
+  margin: 0 -12px;
+  border-left: 3px solid transparent;
+  border-radius: 0 4px 4px 0;
+  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
 }
 
-.cnp-home .acc .cuerpo {
-  padding: 0 0 30px;
+/* Cuando hay una zona encendida, las demás se apagan: el foco se ve solo. */
+.cnp-home .hoja--enfocando .zona { opacity: 0.32; }
+.cnp-home .hoja--enfocando .zona--on { opacity: 1; }
+
+.cnp-home .zona--on { background: rgba(201, 168, 76, 0.1); border-left-color: var(--gold); }
+
+.cnp-home .zona__num {
+  position: absolute;
+  right: 12px;
+  top: 13px;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  color: var(--gold);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.cnp-home .zona--on .zona__num { opacity: 1; }
+
+.cnp-home .zona__titulo {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--navy-700);
+  margin: 0 0 8px;
+}
+
+.cnp-home .zona__cuerpo { display: grid; gap: 6px; }
+
+/* Renglones fingidos: es un esquema, no texto falso. */
+.cnp-home .ln { display: block; height: 6px; border-radius: 3px; background: var(--line); }
+.cnp-home .ln--50 { width: 50%; }
+.cnp-home .ln--60 { width: 60%; }
+.cnp-home .ln--70 { width: 70%; }
+.cnp-home .ln--75 { width: 75%; }
+.cnp-home .ln--80 { width: 80%; }
+.cnp-home .ln--85 { width: 85%; }
+.cnp-home .ln--90 { width: 90%; }
+.cnp-home .ln--fuerte { background: var(--navy-700); height: 7px; }
+
+.cnp-home .hoja__filas { display: grid; gap: 5px; }
+.cnp-home .hoja__filas .fila { display: block; height: 5px; border-radius: 2px; background: var(--line); }
+.cnp-home .hoja__filas .fila:nth-child(2) { width: 88%; }
+.cnp-home .hoja__filas .fila:nth-child(3) { width: 94%; }
+.cnp-home .hoja__filas .fila:nth-child(4) { width: 72%; }
+
+.cnp-home .hoja__barras {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  height: 52px;
+}
+.cnp-home .hoja__barras i { flex: 1; background: var(--blue-300); border-radius: 2px 2px 0 0; }
+.cnp-home .zona--on .hoja__barras i { background: var(--blue-500); }
+.cnp-home .hoja__barras i:nth-child(6) { background: var(--gold); }
+
+.cnp-home .hoja__firma { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+
+.cnp-home .hoja__rubrica {
+  flex: 1;
+  height: 26px;
+  border-bottom: 1px solid var(--navy-700);
+  background:
+    radial-gradient(6px 12px at 24% 70%, rgba(13, 31, 78, 0.35) 40%, transparent 41%),
+    radial-gradient(10px 8px at 44% 55%, rgba(13, 31, 78, 0.3) 40%, transparent 41%),
+    radial-gradient(7px 13px at 63% 68%, rgba(13, 31, 78, 0.32) 40%, transparent 41%);
+}
+
+.cnp-home .hoja__sello {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--gold);
+  background: rgba(201, 168, 76, 0.14);
+}
+
+/* ── el proceso, ya sin pestañas ── */
+
+.cnp-home .proceso { margin: 64px 0 0; padding: 34px 0 0; border-top: 1px solid var(--line); }
+
+.cnp-home .proceso__rotulo {
+  margin: 0 0 24px;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.cnp-home .proceso__pasos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 32px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-@media (max-width: 760px) {
-  .cnp-home .acc .cuerpo {
-    grid-template-columns: 1fr;
-    gap: 22px;
-  }
+.cnp-home .proceso__pasos li { background: var(--white); padding: 20px 18px 22px; }
+
+.cnp-home .proceso__num {
+  display: block;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--gold);
+  margin: 0 0 10px;
 }
 
-@media (max-width: 640px) {
-  .cnp-home .acc summary {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .cnp-home .acc summary .cliente {
-    flex: 1 0 100%;
-  }
-}
-
-.cnp-home .acc .cuerpo h4 {
-  font-size: 0.75rem;
+.cnp-home .proceso__pasos h4 {
+  font-size: 0.9375rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  line-height: 1.35;
+  color: var(--navy-700);
+}
+
+.cnp-home .proceso__pasos p {
+  margin: 7px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--ink-faint);
+}
+
+@media (max-width: 1080px) {
+  .cnp-home .pilares { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 34px; }
+  .cnp-home .anat { grid-template-columns: 1fr; gap: 40px; }
+  .cnp-home .hoja { position: static; max-width: 460px; }
+  .cnp-home .proceso__pasos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 620px) {
+  .cnp-home .pilares { grid-template-columns: 1fr; margin-bottom: 44px; }
+  .cnp-home .proceso__pasos { grid-template-columns: 1fr; }
+  .cnp-home .metodo__head { margin-bottom: 36px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cnp-home .anat__boton, .cnp-home .zona, .cnp-home .zona__num { transition: none; }
+}
+
+/* ───────────── a quién le servimos: la pila de fichas (antes: lista) ─────── */
+
+.cnp-home .trabajos { background: var(--paper); border-bottom: 1px solid var(--line-soft); }
+
+.cnp-home .trabajos__head { max-width: 60ch; margin: 0 0 44px; }
+
+.cnp-home .trabajos__eyebrow {
+  margin: 0 0 16px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--blue-500);
+}
+
+.cnp-home .trabajos__head h2 {
+  font-family: var(--serif);
+  font-size: clamp(1.75rem, 3.2vw, 2.75rem);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  color: var(--navy-900);
+}
+
+.cnp-home .trabajos__lead {
+  margin: 20px 0 0;
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--ink-muted);
+}
+
+/*
+  La pila.
+
+  Las cuatro fichas son hermanas y todas son `sticky`, con un `top` que crece
+  14 px por ficha. Cada una se queda fija al llegar arriba y la siguiente sube y
+  se le monta encima, dejando ver el filo de las anteriores como las pestañas de
+  un archivador. No hay flechas, ni puntos, ni estado: lo que pasa las fichas es
+  el scroll de la página, así que nada queda oculto y nada hay que pulsar.
+
+  El apilado por sí solo no acorta la página —el scroll sigue siendo la suma de
+  los altos—; lo que la acorta es la ficha, que pasó de dos columnas anchas a
+  tres angostas y le sacó la foto del flujo.
+*/
+.cnp-home .pila { position: relative; padding-bottom: 8px; }
+
+.cnp-home .ficha {
+  position: sticky;
+  top: calc(24px + var(--i) * 14px);
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  min-height: 430px;
+  margin: 0 0 22px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  /*
+    La sombra de ARRIBA es la que hace legible el apilado: cuando la ficha que
+    entra tapa a la anterior, el corte tiene que leerse como una ficha encima de
+    otra y no como texto recortado. Sin ella el apilado parece un error.
+  */
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 -14px 26px -16px rgba(10, 42, 110, 0.3),
+    0 26px 48px -34px rgba(10, 42, 110, 0.55);
+}
+
+/* La última no lleva margen: la sección cierra pegada a ella. */
+.cnp-home .ficha:last-child { margin-bottom: 0; }
+
+/* ── el canto: la foto como filo del expediente ── */
+
+.cnp-home .ficha__canto { position: relative; overflow: hidden; background: var(--mist-200); }
+
+.cnp-home .ficha__canto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.05);
+  opacity: 0.85;
+  transition: filter 0.45s ease, opacity 0.45s ease;
+}
+
+.cnp-home .ficha:hover .ficha__canto img,
+.cnp-home .ficha:focus-within .ficha__canto img { filter: grayscale(0) contrast(1); opacity: 1; }
+
+/* Velo azul: la foto acompaña, no compite con la cita. */
+.cnp-home .ficha__canto::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(15, 59, 133, 0.28) 0%, rgba(7, 21, 46, 0.42) 100%);
+  pointer-events: none;
+}
+
+.cnp-home .ficha__cuerpo { padding: 26px 32px 30px; display: flex; flex-direction: column; }
+
+/* ── la barra de la ficha ── */
+
+.cnp-home .ficha__barra {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.cnp-home .ficha__folio {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--navy-900);
+}
+
+.cnp-home .ficha__de { color: var(--ink-faint); font-weight: 500; }
+
+.cnp-home .ficha__quien {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* Cuatro pastillas: dicen en qué ficha va sin repetir los cuatro rótulos. */
+.cnp-home .ficha__pastillas { display: flex; gap: 5px; margin-left: auto; }
+
+.cnp-home .ficha__pastillas i {
+  display: block;
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.cnp-home .ficha__pastillas i.on { background: var(--gold); width: 26px; }
+
+/* ── la cita ── */
+
+.cnp-home .ficha__cita { margin: 20px 0 22px; padding: 0 0 0 18px; border-left: 3px solid var(--navy-900); }
+
+.cnp-home .ficha__cita p {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(1.125rem, 1.9vw, 1.5rem);
+  font-weight: 500;
+  line-height: 1.32;
+  letter-spacing: -0.015em;
+  color: var(--navy-900);
+  text-wrap: pretty;
+}
+
+.cnp-home .ficha__cita p::before { content: '“'; }
+.cnp-home .ficha__cita p::after { content: '”'; }
+
+/* ── las tres columnas ── */
+
+.cnp-home .ficha__cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px;
+  padding: 20px 0 0;
+  border-top: 1px solid var(--line-soft);
+  margin-top: auto;
+}
+
+.cnp-home .ficha__rotulo {
+  margin: 0 0 13px;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.cnp-home .ficha__servicios { list-style: none; margin: 0; padding: 0; display: grid; gap: 11px; }
+
+.cnp-home .ficha__servicios b { display: block; font-size: 0.875rem; font-weight: 600; color: var(--navy-700); }
+
+.cnp-home .ficha__servicios span {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.cnp-home .ficha__recibe { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+
+.cnp-home .ficha__recibe li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.cnp-home .ficha__recibe li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+.cnp-home .ficha__recibe b { color: var(--navy-700); font-weight: 600; }
+
+.cnp-home .ficha__faq { margin: 0; display: grid; gap: 13px; }
+
+.cnp-home .ficha__faq dt { font-size: 0.8125rem; font-weight: 600; line-height: 1.4; color: var(--navy-700); }
+
+.cnp-home .ficha__faq dd {
+  margin: 3px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+@media (max-width: 1080px) {
+  .cnp-home .ficha__cols { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px 30px; }
+  .cnp-home .ficha { min-height: 0; }
+}
+
+/*
+  En pantalla angosta se desarma la pila: fijar cuatro tarjetas altas en un alto
+  de viewport corto deja al lector encerrado, sin poder salir de la sección.
+*/
+@media (max-width: 860px) {
+  .cnp-home .ficha { position: static; grid-template-columns: 64px minmax(0, 1fr); }
+  .cnp-home .ficha__cuerpo { padding: 22px 22px 26px; }
+}
+
+@media (max-width: 620px) {
+  .cnp-home .ficha__cols { grid-template-columns: 1fr; gap: 24px; }
+  .cnp-home .ficha__barra { flex-wrap: wrap; gap: 10px 14px; }
+  .cnp-home .ficha__pastillas { margin-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cnp-home .ficha__canto img { transition: none; }
+}
+
+/* ── quiénes somos ──
+   Tres recursos de composición, ninguno con imagen: la asimetría de Public
+   Digital (el cuerpo corrido a la derecha sobre un canal vacío), el rótulo
+   adherido de Manual, y el riel numérico de 37signals. */
+
+.cnp-home .quienes { background: var(--white); border-bottom: 1px solid var(--line-soft); }
+
+.cnp-home .quienes__wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 9fr);
+  gap: 40px;
+}
+
+/* El canal izquierdo va casi vacío a propósito: ese vacío es lo que hace que
+   la sección no se lea como un bloque más. */
+.cnp-home .quienes__canal { position: relative; }
+
+.cnp-home .quienes__eyebrow {
+  position: sticky;
+  top: 40px;
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--blue-500);
+}
+
+.cnp-home .quienes__cuerpo { max-width: 78ch; }
+
+.cnp-home .quienes__titular {
+  font-family: var(--serif);
+  font-size: clamp(1.875rem, 3.6vw, 3.125rem);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: var(--navy-900);
+  text-wrap: balance;
+}
+
+.cnp-home .quienes__titular em { font-style: normal; color: var(--blue-500); }
+
+/*
+  La entrada va en la serif de titulares y a tamaño de subtítulo: es el único
+  párrafo del sitio compuesto así, y eso solo ya separa la sección del resto sin
+  agregarle un elemento.
+*/
+.cnp-home .quienes__entrada {
+  margin: 26px 0 0;
+  font-family: var(--serif);
+  font-size: clamp(1.0625rem, 1.6vw, 1.3125rem);
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: -0.012em;
+  color: var(--ink-muted);
+  max-width: 56ch;
+}
+
+.cnp-home .quienes__rotulo {
+  margin: 54px 0 20px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ── el riel numérico ── */
+
+.cnp-home .principios {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.cnp-home .principios > li {
+  display: grid;
+  /*
+    El canal del número es fijo y se mide en CARACTERES, no en píxeles: con
+    `tnum` todas las cifras ocupan lo mismo, así que los cinco números quedan
+    alineados en un riel perfecto sin tocar nada más.
+  */
+  grid-template-columns: 4.2ch minmax(0, 1fr);
+  gap: 0 18px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.cnp-home .principio__num {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-feature-settings: 'tnum';
+  font-variant-numeric: tabular-nums;
+  color: var(--gold);
+  padding-top: 5px;
+}
+
+.cnp-home .principios h4 {
+  font-family: var(--serif);
+  font-size: clamp(1.125rem, 1.9vw, 1.4375rem);
+  font-weight: 600;
+  line-height: 1.24;
+  letter-spacing: -0.018em;
+  color: var(--navy-900);
+  text-wrap: pretty;
+}
+
+.cnp-home .principios p {
+  margin: 9px 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.68;
+  color: var(--ink-muted);
+  max-width: 62ch;
+}
+
+/* ── la ficha ── */
+
+.cnp-home .firma .quienes__rotulo { margin-top: 0; }
+
+.cnp-home .firma {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 44px;
+  align-items: end;
+  margin: 48px 0 0;
+  padding: 32px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.cnp-home .firma__descripcion {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--ink-muted);
+  max-width: 52ch;
+}
+
+.cnp-home .firma__datos { display: flex; gap: 40px; margin: 0; }
+
+.cnp-home .firma__valor {
+  font-family: var(--serif);
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--gold);
+}
+
+.cnp-home .firma__etiqueta {
+  margin: 7px 0 0;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  max-width: 14ch;
+  line-height: 1.5;
+}
+
+@media (max-width: 980px) {
+  .cnp-home .quienes__wrap { grid-template-columns: 1fr; gap: 24px; }
+  .cnp-home .quienes__eyebrow { position: static; }
+  .cnp-home .firma { grid-template-columns: 1fr; gap: 28px; align-items: start; }
+}
+
+@media (max-width: 620px) {
+  .cnp-home .principios > li { grid-template-columns: 1fr; gap: 6px; }
+  .cnp-home .principio__num { padding-top: 0; }
+  .cnp-home .firma__datos { flex-wrap: wrap; gap: 24px 32px; }
+}
+
+/* ──────────── la red PERITUS y la puerta del perito (fusionadas) ─────────── */
+
+/*
+  Antes esto eran DOS secciones seguidas: la banda de disciplinas y una pantalla
+  entera de "Trabaja con nosotros". Juntas pasaban de dos scrolls para sostener
+  un solo argumento. Ahora es una sección de tres franjas —el qué, las seis
+  disciplinas, y cómo se entra— en algo más de una pantalla.
+*/
+.cnp-home .red { background: var(--navy-800); color: #ffffff; }
+
+.cnp-home .red__intro {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 52px;
+  align-items: end;
+  margin: 0 0 40px;
+}
+
+.cnp-home .red .pmark { height: 40px; width: auto; margin: 0 0 20px; display: block; }
+
+.cnp-home .red__titulo {
+  font-family: var(--serif);
+  font-size: clamp(1.625rem, 2.8vw, 2.375rem);
+  font-weight: 600;
+  line-height: 1.14;
+  letter-spacing: -0.022em;
+  color: #ffffff;
+}
+
+.cnp-home .red__texto {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.72;
+  color: #adc5e2;
+  max-width: 58ch;
+}
+
+/* ── las seis disciplinas, en una banda de rótulos ──
+   La rejilla de seis tarjetas decía lo mismo ocupando el triple. Los filetes
+   verticales bastan para separar; las cajas sobraban. */
+
+.cnp-home .disciplinas {
+  list-style: none;
+  margin: 0 0 44px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  border-top: 1px solid rgba(126, 184, 247, 0.26);
+  border-bottom: 1px solid rgba(126, 184, 247, 0.26);
+}
+
+.cnp-home .disc {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 20px 16px 22px 0;
+}
+
+.cnp-home .disc + .disc { padding-left: 16px; }
+
+.cnp-home .disc + .disc::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20px;
+  bottom: 20px;
+  width: 1px;
+  background: rgba(126, 184, 247, 0.2);
+}
+
+.cnp-home .disc__icono { display: block; height: 17px; color: var(--blue-300); }
+.cnp-home .disc--principal .disc__icono { color: var(--gold); }
+
+.cnp-home .disc__nombre { font-size: 0.9375rem; font-weight: 600; color: #ffffff; }
+.cnp-home .disc--principal .disc__nombre { color: var(--gold-light); }
+
+.cnp-home .disc__alcance { font-size: 0.75rem; line-height: 1.45; color: #8fa9c9; }
+
+.cnp-home .disc__sello {
+  margin-top: 3px;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+
+/* ── el filtro de admisión ──
+   Los mismos cuatro requisitos de antes, pero contados como lo que se verifica
+   antes de que alguien firme. Al abogado le dice quién sustenta su dictamen; al
+   perito, que pertenecer significa algo. */
+
+.cnp-home .filtro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 390px);
+  gap: 56px;
+  align-items: start;
+}
+
+.cnp-home .filtro__eyebrow {
+  margin: 0 0 14px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+
+.cnp-home .filtro__titulo {
+  font-family: var(--serif);
+  font-size: clamp(1.375rem, 2.4vw, 2rem);
+  font-weight: 600;
+  line-height: 1.16;
+  letter-spacing: -0.022em;
+  color: #ffffff;
+  text-wrap: balance;
+}
+
+.cnp-home .filtro__titulo em { font-style: normal; color: var(--gold-light); }
+
+.cnp-home .filtro__texto {
+  margin: 16px 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: #adc5e2;
+  max-width: 56ch;
+}
+
+.cnp-home .filtro__rotulo {
+  margin: 34px 0 6px;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #7d97ba;
+}
+
+.cnp-home .filtro__lista { list-style: none; margin: 0; padding: 0; }
+
+.cnp-home .filtro__lista li {
+  display: grid;
+  grid-template-columns: 3.4ch minmax(0, 1fr) auto;
+  gap: 0 16px;
+  align-items: start;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(126, 184, 247, 0.14);
+}
+
+.cnp-home .filtro__num {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold);
+  padding-top: 3px;
+}
+
+.cnp-home .filtro__lista h5 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #ffffff;
+}
+
+.cnp-home .filtro__lista p {
+  margin: 5px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: #9db6d6;
+}
+
+/* El chulo es lo que convierte la lista de requisitos en un acta de revisión. */
+.cnp-home .filtro__chulo {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(201, 168, 76, 0.5);
+  background: rgba(201, 168, 76, 0.14);
+  color: var(--gold-light);
+}
+
+/* ── el esquema de verificación ──
+   Es un ESQUEMA, no una credencial: renglones tapados en vez de datos
+   inventados. Prometer un carné que la red no emite sería justo el tipo de
+   mentira que a una firma pericial le cuesta el caso. */
+
+.cnp-home .verifica { position: sticky; top: 32px; }
+
+.cnp-home .verifica__hoja {
+  background: linear-gradient(170deg, #fdfdfb 0%, #f2f5fa 100%);
+  border-radius: 6px;
+  padding: 24px 26px 22px;
+  box-shadow: 0 30px 60px -34px rgba(3, 10, 26, 0.9), 0 2px 0 rgba(255, 255, 255, 0.9) inset;
+}
+
+.cnp-home .verifica__membrete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 12px;
+  border-bottom: 2px solid var(--navy-900);
+  font-family: var(--mono);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--navy-900);
+}
+
+.cnp-home .verifica__folio { color: var(--gold); }
+
+.cnp-home .verifica__campo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 14px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.cnp-home .verifica__rotulo {
+  grid-column: 1 / -1;
+  font-family: var(--mono);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-faint);
   margin: 0 0 8px;
 }
 
-.cnp-home .acc .cuerpo p {
+.cnp-home .verifica__barras { display: grid; gap: 6px; }
+
+.cnp-home .verifica__ok {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy-900);
+}
+
+.cnp-home .verifica__pie {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 0 0;
+}
+
+.cnp-home .verifica__rubrica {
+  flex: 1;
+  height: 26px;
+  border-bottom: 1px solid var(--navy-700);
+  background:
+    radial-gradient(6px 12px at 24% 70%, rgba(13, 31, 78, 0.35) 40%, transparent 41%),
+    radial-gradient(10px 8px at 46% 55%, rgba(13, 31, 78, 0.3) 40%, transparent 41%),
+    radial-gradient(7px 13px at 66% 68%, rgba(13, 31, 78, 0.32) 40%, transparent 41%);
+}
+
+.cnp-home .verifica__sello {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: 1.5px solid var(--gold);
+  background: rgba(201, 168, 76, 0.12);
+  transform: rotate(-8deg);
+}
+
+.cnp-home .verifica__sello b {
+  font-family: var(--mono);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8a6f22;
+}
+
+.cnp-home .verifica__sello small {
+  font-family: var(--mono);
+  font-size: 0.4375rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #a08736;
+}
+
+/* ── la puerta del perito, ya como franja ── */
+
+.cnp-home .puerta {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: 52px;
+  align-items: start;
+  margin: 40px 0 0;
+  padding: 36px 0 0;
+  border-top: 1px solid rgba(126, 184, 247, 0.26);
+}
+
+.cnp-home .puerta__decir { max-width: 40ch; }
+
+.cnp-home .puerta__pasos h5 { font-size: 0.875rem; font-weight: 600; line-height: 1.35; color: #ffffff; }
+
+@media (max-width: 1040px) {
+  .cnp-home .filtro { grid-template-columns: 1fr; gap: 40px; }
+  .cnp-home .verifica { position: static; max-width: 390px; }
+}
+
+@media (max-width: 620px) {
+  .cnp-home .puerta__pasos { grid-template-columns: 1fr; }
+  .cnp-home .puerta__pasos > li:nth-last-child(-n + 2) { border-bottom: 0; }
+  .cnp-home .puerta__pasos > li:last-child { border-bottom: 1px solid rgba(126, 184, 247, 0.16); }
+}
+
+
+.cnp-home .puerta__eyebrow {
+  margin: 0 0 16px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+
+.cnp-home .puerta__cita { margin: 0 0 24px; padding: 0 0 0 18px; border-left: 3px solid var(--gold); }
+
+.cnp-home .puerta__cita p {
   margin: 0;
-  font-size: 0.9375rem;
+  font-family: var(--serif);
+  font-size: clamp(1.0625rem, 1.7vw, 1.375rem);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.018em;
+  color: #ffffff;
+  text-wrap: pretty;
+}
+
+.cnp-home .puerta__cita p::before { content: '“'; }
+.cnp-home .puerta__cita p::after { content: '”'; }
+
+.cnp-home .puerta__rotulo {
+  margin: 0 0 12px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #8aa4c6;
+}
+
+.cnp-home .puerta__cta { display: inline-block; text-decoration: none; }
+
+.cnp-home .puerta__pasos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 28px;
+}
+
+.cnp-home .puerta__pasos > li {
+  display: flex;
+  gap: 14px;
+  padding: 13px 0;
+  border-top: 1px solid rgba(126, 184, 247, 0.16);
+}
+
+/* Con dos columnas, el filete de cierre va bajo los DOS últimos. */
+.cnp-home .puerta__pasos > li:nth-last-child(-n + 2) { border-bottom: 1px solid rgba(126, 184, 247, 0.16); }
+
+.cnp-home .puerta__num { flex: 0 0 auto; font-size: 0.625rem; font-weight: 700; color: var(--gold); padding-top: 4px; }
+
+.cnp-home .puerta__pasos h4 { font-size: 0.9375rem; font-weight: 600; line-height: 1.35; color: #ffffff; }
+
+.cnp-home .puerta__pasos p { margin: 5px 0 0; font-size: 0.8125rem; line-height: 1.55; color: #a9c2e0; }
+
+.cnp-home .puerta__nota { margin: 16px 0 0; font-size: 0.75rem; line-height: 1.65; color: #8fa9c9; }
+
+@media (max-width: 1040px) {
+  .cnp-home .disciplinas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cnp-home .disc { border-top: 1px solid rgba(126, 184, 247, 0.16); }
+  .cnp-home .disc:nth-child(-n + 3) { border-top: 0; }
+  .cnp-home .disc:nth-child(3n + 1) { padding-left: 0; }
+  .cnp-home .disc:nth-child(3n + 1)::before { display: none; }
+}
+
+@media (max-width: 860px) {
+  .cnp-home .red__intro { grid-template-columns: 1fr; gap: 22px; align-items: start; margin-bottom: 32px; }
+  .cnp-home .puerta { grid-template-columns: 1fr; gap: 40px; }
+}
+
+@media (max-width: 620px) {
+  .cnp-home .disciplinas { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 40px; }
+  .cnp-home .disc:nth-child(-n + 3) { border-top: 1px solid rgba(126, 184, 247, 0.16); }
+  .cnp-home .disc:nth-child(-n + 2) { border-top: 0; }
+  .cnp-home .disc:nth-child(3n + 1) { padding-left: 16px; }
+  .cnp-home .disc:nth-child(3n + 1)::before { display: block; }
+  .cnp-home .disc:nth-child(odd) { padding-left: 0; }
+  .cnp-home .disc:nth-child(odd)::before { display: none; }
+}
+
+/* ─────────────────────── los casos, como registro de expediente ──────────── */
+
+.cnp-home .casos { background: var(--paper); }
+
+.cnp-home .casos__head { max-width: 66ch; margin: 0 0 28px; }
+
+.cnp-home .casos__eyebrow {
+  margin: 0 0 16px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--blue-500);
+}
+
+.cnp-home .casos__head h2 {
+  font-family: var(--serif);
+  font-size: clamp(1.75rem, 3.2vw, 2.75rem);
+  font-weight: 600;
+  line-height: 1.14;
+  letter-spacing: -0.025em;
+  color: var(--navy-900);
+}
+
+.cnp-home .casos__bajada {
+  margin: 20px 0 0;
+  font-size: 1.0625rem;
+  line-height: 1.7;
   color: var(--ink-muted);
+}
+
+/* ── los filtros: reales, no decorativos ── */
+
+.cnp-home .casos__filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 28px;
+}
+
+.cnp-home .chip-tipo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--white);
+  font-family: var(--sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--navy-700);
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease, transform 0.1s ease;
+}
+
+.cnp-home .chip-tipo:hover { border-color: var(--blue-300); transform: translateY(-1px); }
+.cnp-home .chip-tipo:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.cnp-home .chip-tipo__num {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--mist-200);
+  color: var(--ink-faint);
+}
+
+.cnp-home .chip-tipo--activo { background: var(--navy-900); border-color: var(--navy-900); color: #ffffff; }
+.cnp-home .chip-tipo--activo .chip-tipo__num { background: rgba(255, 255, 255, 0.18); color: #ffffff; }
+
+.cnp-home .chip-tipo--contradiccion.chip-tipo--activo { background: #8a6f22; border-color: #8a6f22; }
+.cnp-home .chip-tipo--verificacion.chip-tipo--activo { background: var(--blue-500); border-color: var(--blue-500); }
+.cnp-home .chip-tipo--cuantificacion.chip-tipo--activo { background: var(--navy-700); border-color: var(--navy-700); }
+
+/* ── el registro: una fila densa por caso, no una tarjeta ──
+   Esta es la tercera forma de la sección. La primera (acordeón plegado) se
+   veía plana; la segunda (tarjetas siempre abiertas) se veía rica pero
+   pesaba casi 2.700px para nueve casos. Esta pesa una fracción de eso: el
+   mismo dato -partes, juzgado, objeto, radicado- en el formato de tabla que
+   cualquier abogado ya reconoce de su propio sistema de gestión. */
+
+.cnp-home .registro {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 2px solid var(--navy-900);
+}
+
+.cnp-home .fila-caso {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  gap: 4px 18px;
+  align-items: start;
+  padding: 16px 4px;
+  border-bottom: 1px solid var(--line);
+  border-left: 3px solid transparent;
+  transition: background 0.14s ease, border-left-color 0.14s ease;
+}
+
+.cnp-home .fila-caso:hover { background: var(--white); }
+
+/* El filete lateral da el tipo de un vistazo, sin gastar el ancho de una
+   pastilla en cada fila -ya está la palabra al lado, el color es el atajo. */
+.cnp-home .fila-caso--contradiccion { border-left-color: var(--gold); }
+.cnp-home .fila-caso--verificacion { border-left-color: var(--blue-300); }
+.cnp-home .fila-caso--cuantificacion { border-left-color: var(--line); }
+
+.cnp-home .fila-caso__tipo {
+  padding-top: 2px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cnp-home .fila-caso--contradiccion .fila-caso__tipo { color: #8a6f22; }
+.cnp-home .fila-caso--verificacion .fila-caso__tipo { color: var(--blue-500); }
+.cnp-home .fila-caso--cuantificacion .fila-caso__tipo { color: var(--ink-faint); }
+
+.cnp-home .fila-caso__cuerpo { min-width: 0; }
+
+.cnp-home .fila-caso__partesFila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 9px;
+}
+
+.cnp-home .fila-caso__partes {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--serif);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.32;
+  letter-spacing: -0.008em;
+  color: var(--navy-900);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cnp-home .fila-caso__insignia {
+  display: inline-block;
+  flex: 0 0 auto;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(201, 168, 76, 0.16);
+  font-family: var(--sans);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #8a6f22;
+  vertical-align: middle;
+}
+
+.cnp-home .fila-caso__linea2 {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cnp-home .fila-caso__despacho {
+  font-weight: 600;
+  color: var(--blue-500);
+}
+
+.cnp-home .fila-caso__despacho::after { content: '\2014'; margin: 0 6px; color: var(--line); font-weight: 400; }
+
+/* Es lo único que se trunca de verdad -Kirkland trunca por altura, no
+   esconde: dos líneas bastan para saber de qué se trata sin desplegar nada. */
+.cnp-home .fila-caso__objeto {}
+
+.cnp-home .fila-caso__resultado {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 0;
+  padding: 7px 11px;
+  border-radius: 5px;
+  background: var(--mist-100);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--navy-700);
+}
+
+.cnp-home .fila-caso__resultado-rotulo {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--blue-500);
+}
+
+/* La instancia más alta que alcanzó el proceso -apelación, casación, recurso
+   de anulación-: es la prueba de que se litigó a fondo, y el registro
+   compacto no le puede seguir restando el espacio de una línea. */
+.cnp-home .fila-caso__instancia {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+/* ── el radicado, en versión compacta ── */
+
+.cnp-home .fila-caso__radicadoCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+/* Cuando el radicado es de una actuación posterior -un recurso de anulación,
+   no el proceso mismo-, la aclaración va pegada debajo: sin ella alguien
+   podría buscar el radicado esperando encontrar otra cosa. */
+.cnp-home .fila-caso__radicadoNota {
+  margin: 0;
+  max-width: 26ch;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: var(--ink-faint);
+  text-align: right;
+}
+
+.cnp-home .radicado {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  background: var(--navy-900);
+  white-space: nowrap;
+}
+
+.cnp-home .radicado__rotulo {
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+
+.cnp-home .radicado__num {
+  font-size: 0.6875rem;
+  letter-spacing: 0.01em;
+  color: #dfe9f8;
+}
+
+.cnp-home .radicado__copiar {
+  padding: 2px 8px;
+  border: 1px solid rgba(126, 184, 247, 0.4);
+  border-radius: 4px;
+  background: transparent;
+  color: #cddcf2;
+  font-family: var(--mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.cnp-home .radicado__copiar:hover { background: rgba(126, 184, 247, 0.14); border-color: var(--gold); color: #ffffff; }
+.cnp-home .radicado__copiar:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.cnp-home .fila-caso__sinradicado {
+  padding-top: 3px;
+  font-size: 0.6875rem;
+  font-style: italic;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+/* ── el pie de la sección ── */
+
+.cnp-home .casos__pie {
+  margin: 32px 0 0;
+  padding: 24px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.cnp-home .casos__nota {
+  margin: 0;
+  font-size: 0.8125rem;
   line-height: 1.6;
+  color: var(--ink-faint);
+  max-width: 78ch;
+}
+
+.cnp-home .casos__cta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 18px 0 0;
+  text-decoration: none;
+  font-size: 0.9375rem;
+  color: var(--navy-900);
+}
+
+.cnp-home .casos__cta-enlace {
+  font-weight: 700;
+  color: var(--blue-500);
+  border-bottom: 1px solid var(--gold);
+  padding-bottom: 1px;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+
+.cnp-home .casos__cta:hover .casos__cta-enlace { color: var(--navy-900); border-color: var(--navy-900); }
+
+@media (max-width: 980px) {
+  .cnp-home .fila-caso { grid-template-columns: 84px minmax(0, 1fr); }
+  .cnp-home .fila-caso__radicadoCol, .cnp-home .radicado {
+    grid-column: 1 / -1;
+    margin-top: 6px;
+    margin-left: calc(84px + 18px);
+    align-items: flex-start;
+  }
+  .cnp-home .fila-caso__radicadoNota { text-align: left; }
+  .cnp-home .fila-caso__sinradicado { grid-column: 1 / -1; margin-top: 4px; margin-left: calc(84px + 18px); }
+}
+
+@media (max-width: 640px) {
+  .cnp-home .fila-caso {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    padding: 14px 4px 14px 12px;
+  }
+  .cnp-home .fila-caso__tipo { padding-top: 0; }
+  .cnp-home .fila-caso__radicadoCol, .cnp-home .radicado, .cnp-home .fila-caso__sinradicado { margin-left: 0; margin-top: 8px; }
+  .cnp-home .radicado { flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cnp-home .chip-tipo, .cnp-home .fila-caso, .cnp-home .casos__cta-enlace, .cnp-home .radicado__copiar { transition: none; }
 }
 
 /* ───────────────────────────── la garantía ──────────────────────────────── */
@@ -1162,65 +2714,229 @@
 }
 
 .cnp-home .form-status {
-  min-height: 1.5rem;
+  min-height: 0;
 }
 
 .cnp-home .form-status p {
-  margin: 0;
-  border-radius: 4px;
-  padding: 10px 12px;
-  font-size: 0.9375rem;
-  font-weight: 600;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 9px;
+  margin: 0;
+  padding: 11px 13px;
+  border: 1px solid;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .cnp-home .form-status svg {
   flex: 0 0 auto;
+  margin-top: 1px;
 }
 
 .cnp-home .form-status--success {
-  background: #e7f7ef;
-  color: #17633f;
-  border: 1px solid #9dd7bb;
+  border-color: #9bd3b6 !important;
+  background: #effaf4;
+  color: #146c43;
 }
 
 .cnp-home .form-status--error {
-  background: #fff0f0;
-  color: #8e2525;
-  border: 1px solid #efb2b2;
+  border-color: #e8aaa5 !important;
+  background: #fff3f2;
+  color: #9a2c25;
 }
 
-.cnp-home .datos {
-  border-left: 2px solid var(--mist-200);
-  padding-left: 26px;
+.cnp-home .btn:disabled,
+.cnp-home .btn-oro:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.cnp-home section[id] {
+  scroll-margin-top: 0;
+}
+
+
+/* ── el panel del mapa ─────────────────────────────────────────────────────
+   Reemplaza la lista suelta de datos de contacto. El mapa no es adorno: dice
+   el argumento —una sede, alcance nacional— que la lista decía en letra
+   pequeña y nadie leía. */
+
+.cnp-home .panel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  padding: 32px 32px 28px;
   display: grid;
-  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) 172px;
+  gap: 30px 26px;
+  align-items: start;
+  background:
+    radial-gradient(120% 90% at 78% 12%, rgba(20, 58, 128, 0.95) 0%, rgba(8, 24, 58, 0.98) 62%),
+    var(--navy-900);
+  color: #ffffff;
 }
 
-.cnp-home .datos h4 {
-  font-size: 0.75rem;
+.cnp-home .panel__mapa { margin: 0; }
+
+.cnp-home .mapa__pie {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  font-family: var(--mono);
+  font-size: 0.5625rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--ink-faint);
-  margin: 0 0 6px;
+  color: #a9c2e0;
 }
 
-.cnp-home .datos p {
-  margin: 0;
-  font-size: 1.0625rem;
-  color: var(--navy-700);
-  font-weight: 500;
+.cnp-home .mapa__marca {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.22);
 }
 
-.cnp-home .datos small {
+.cnp-home .mapa { display: block; width: 100%; height: auto; overflow: visible; }
+
+.cnp-home .mapa__relleno { fill: rgba(126, 184, 247, 0.09); }
+.cnp-home .mapa__trama { color: #7eb8f7; opacity: 0.42; }
+
+.cnp-home .mapa__borde {
+  fill: none;
+  stroke: rgba(126, 184, 247, 0.5);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.cnp-home .mapa__punto { fill: var(--gold); }
+
+.cnp-home .mapa__pulso {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 2.5;
+  transform-origin: 146.6px 536.9px;
+  animation: latido 3.4s ease-out infinite;
+}
+
+.cnp-home .mapa__pulso--dos { animation-delay: 1.7s; }
+
+@keyframes latido {
+  0% { transform: scale(0.55); opacity: 0.85; }
+  70% { opacity: 0; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+.cnp-home .mapa__guia { stroke: var(--gold); stroke-width: 1.6; opacity: 0.7; }
+
+.cnp-home .mapa__rotulo {
+  fill: var(--gold-light);
+  font-family: var(--mono);
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 4px;
+}
+
+.cnp-home .mapa__sub {
+  fill: #8aa4c6;
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 3px;
+}
+
+/* ── lo que dice el panel ── */
+
+.cnp-home .panel__decir { position: relative; max-width: 34ch; }
+
+.cnp-home .panel__eyebrow {
+  margin: 0 0 14px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+
+.cnp-home .panel__titulo {
+  font-family: var(--serif);
+  font-size: clamp(1.375rem, 2.1vw, 1.75rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.cnp-home .panel__titulo em { font-style: normal; color: #a9c2e0; }
+
+.cnp-home .panel__texto {
+  margin: 14px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: #a9c2e0;
+}
+
+/* ── los datos ── */
+
+.cnp-home .panel__datos {
+  position: relative;
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  padding: 24px 0 0;
+  border-top: 1px solid rgba(126, 184, 247, 0.22);
+  display: grid;
+  gap: 16px;
+}
+
+.cnp-home .panel__datos > div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 16px;
+  align-items: baseline;
+}
+
+.cnp-home .panel__datos dt {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #7d97ba;
+}
+
+.cnp-home .panel__datos dd { margin: 0; }
+
+.cnp-home .panel__valor {
   display: block;
-  margin: 5px 0 0;
-  font-size: 0.8125rem;
-  color: var(--ink-faint);
-  font-weight: 400;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.cnp-home .panel__datos small {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #8aa4c6;
+}
+
+@media (max-width: 1080px) {
+  .cnp-home .panel { grid-template-columns: minmax(0, 1fr) 140px; gap: 24px 20px; }
+}
+
+@media (max-width: 620px) {
+  /* En pantalla angosta el mapa pasa debajo del texto y se centra. */
+  .cnp-home .panel { grid-template-columns: 1fr; padding: 26px 24px 24px; gap: 22px; }
+  .cnp-home .panel__mapa { max-width: 150px; }
+  .cnp-home .panel__datos > div { grid-template-columns: 1fr; gap: 3px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cnp-home .mapa__pulso { animation: none; opacity: 0.5; transform: scale(1); }
 }
 
 /* ──────────────────────────────── pie ───────────────────────────────────── */

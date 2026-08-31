@@ -1,6 +1,6 @@
 # PROJECT-MAP — CNP | Peritus
 
-Actualizado: 2026-08-26 · Rama de producción: `main` · (home unificada CNP | PERITUS + RBAC definitivo — migraciones 007..012)
+Actualizado: 2026-08-31 · Rama de producción: `main` · (home editorial CNP | PERITUS + RBAC definitivo — migraciones 007..012)
 
 ## Identidad y stack
 CRM de peritajes judiciales para CNP (Colombia) + marca Peritus. Producción real en `https://cnp.com.co`, autoalojado en VPS `restaurar` (82.223.109.156): PM2 (`cnp`, fork ×1) + Nginx (TLS, proxy a :3000 con upgrade WS en `/ws`) + PostgreSQL 16 local (BD `cnp`, user `cnp_user`).
@@ -17,7 +17,7 @@ CRM de peritajes judiciales para CNP (Colombia) + marca Peritus. Producción rea
 ## Mapa de rutas (páginas)
 | Ruta | Auth | Qué muestra |
 |---|---|---|
-| `/` | pública | Home unificada CNP + red PERITUS: hero, cobertura de seis disciplinas, filtro por siete perfiles, casos, garantía y formulario conectado a POST `/api/web-form` |
+| `/` | pública | Home editorial CNP + red PERITUS: hero con calificador de solicitud, prueba social, cuatro trabajos, metodología, seis disciplinas, registro de casos, principios, garantía y dos formularios conectados a POST `/api/web-form` |
 | `/abogados`, `/empresas`, `/jueces`, `/privacy` | pública | Landings por audiencia y política de tratamiento de datos |
 | `/crm/login` | pública | Login CRM (email+password, type:'crm') |
 | `/perito/login` | pública | Acceso exclusivo del perito externo (type:'perito'); entra a sus casos aislados en `/crm/cases` |
@@ -97,15 +97,15 @@ IDs `TEXT` (UUID nuevos, `_id` Sanity heredados), triggers `updated_at` e índic
 - **Máquina de estados**: fuente única en `src/lib/cases/stateMachine.ts` (VALID_TRANSITIONS + COMMERCIAL_TRANSITIONS) — importada por API y UI; `archivado` ya mapeado (gestionado→archivado→gestionado)
 
 ## Dependencias compartidas (alto impacto)
-`src/components/layout/InterAppScope.tsx` + `inter-app-scope.module.css` (Inter en toda la aplicación operativa y portales Radix) · `src/app/crm/layout.tsx` + `layout.module.css` (botones exclusivos del CRM) · home pública aislada en `src/components/home-unificado/`, `src/lib/content/home-unificado/` y `src/app/home-unificado.css` (tokens y estilos siempre bajo `.cnp-home`) · `src/middleware.ts` · `src/lib/db/pool.ts` · `src/lib/types.ts` (roles/enums/interfaces, `ROLE_PERMISSIONS`, `ROLE_CASE_TABS`) · `src/lib/auth/*` (`permissions.ts`, `guard.ts`, `caseAccess.ts`) · `src/lib/files/proxyStoredAsset.ts` · `server.js` (¡los headers de seguridad y el hub WS viven aquí!) · `src/components/layout/` · `src/hooks/useAuth.ts`, `useNotifications.ts`, `usePusher` · `src/lib/email.ts`
+`src/components/layout/InterAppScope.tsx` + `inter-app-scope.module.css` (Inter en toda la aplicación operativa y portales Radix) · `src/app/crm/layout.tsx` + `layout.module.css` (botones exclusivos del CRM) · home pública aislada en `src/components/home-unificado/`, `src/lib/content/home-unificado/`, `src/app/home-unificado.css` y `public/images/home-unificado/` (tokens y estilos siempre bajo `.cnp-home`; assets visuales propios para no alterar otras landings) · `src/middleware.ts` · `src/lib/db/pool.ts` · `src/lib/types.ts` (roles/enums/interfaces, `ROLE_PERMISSIONS`, `ROLE_CASE_TABS`) · `src/lib/auth/*` (`permissions.ts`, `guard.ts`, `caseAccess.ts`) · `src/lib/files/proxyStoredAsset.ts` · `server.js` (¡los headers de seguridad y el hub WS viven aquí!) · `src/components/layout/` · `src/hooks/useAuth.ts`, `useNotifications.ts`, `usePusher` · `src/lib/email.ts`
 
 ## Variables de entorno
 `DATABASE_URL` (PG) · `JWT_SECRET` · `CLIENT_DELETE_PASSWORD_HASH` (bcrypt, eliminación de clientes) · `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO` · `SANITY_API_TOKEN` + `NEXT_PUBLIC_SANITY_*` (solo assets) · `EVOLUTION_API_URL/KEY/INSTANCE`, `WHATSAPP_WEBHOOK_SECRET` · `CRON_SECRET` · `NEXT_PUBLIC_APP_URL` · (huérfanas en VPS: `PUSHER_*`, `NEXT_PUBLIC_SANITY_ORGANIZATION_ID` — limpiar en Fase 9)
 
 ## Lecciones y gotchas (vivo)
+- 2026-08-31 · La home editorial aportada como proyecto Next independiente se integra dentro de la app existente, no reemplaza `layout.tsx`, configuración ni APIs. Sus selectores genéricos deben prefijarse con `.cnp-home`, sus imágenes viven en `public/images/home-unificado/` y los dos formularios (calificador del hero y contacto final) envían al contrato real `POST /api/web-form`; no crear `/api/solicitud` ni `/api/contacto`. Las anclas siguen pasando por `AnchorNavigation`, y los accesos reales son `/perito/login` y `/privacy`.
 - 2026-08-26 · Las anclas de la home unificada no deben usar `next/link` ni el smooth scroll global: el primero introduce navegación innecesaria para hashes y el segundo tarda según la distancia; además, `globals.css` reserva 80 px para el header fijo de las landings antiguas, que esta portada no usa. `AnchorNavigation.tsx` limita el recorrido a 300–480 ms, respeta movimiento reducido, mantiene historial/hash y alinea cada sección a 0 px; `.cnp-home section[id]` neutraliza solo en esta portada el margen global.
-- 2026-08-26 · El hero público no debe recuperar cortes estructurales en 1040/900 px: al cambiar el zoom esos breakpoints hacían saltar retrato, tarjeta y cabecera. La geometría fluida vive en `home-unificado.css`; el único cambio a una columna queda en 680 px, con el retrato decorativo oculto y la tarjeta informativa conservada.
-- 2026-08-26 · La home unificada vive aislada bajo `.cnp-home` para que sus clases genéricas (`.btn`, `.panel`, `.wrap`) no alteren CRM, portales ni otras landings. El formulario visual debe seguir enviando JSON a `/api/web-form` con `origen: 'landing'`; los campos `pendiente` del contenido son notas internas y nunca se renderizan en producción.
+- 2026-08-26 · La home unificada vive aislada bajo `.cnp-home` para que sus clases genéricas (`.btn`, `.panel`, `.wrap`) no alteren CRM, portales ni otras landings. Los formularios visuales deben seguir enviando JSON a `/api/web-form` con `origen: 'landing'`; los campos `pendiente` del contenido son notas internas y nunca se renderizan en producción.
 - 2026-08-24 · Los menús, selectores, diálogos, sheets, popovers y tooltips de Radix se montan bajo `<body>` mediante portales y quedan fuera del wrapper de `/crm`. La tipografía exclusiva del CRM debe activarse también en `body` durante la vida del layout y retirarse al desmontarlo; limitarla al contenedor deja esos overlays con la fuente global pública.
 - 2026-08-25 · Los filtros de asociación de `/crm/cases` llegan por URL. No debe dispararse la consulta general hasta que el efecto inicial haya leído `clientId`/`expertId`; de lo contrario, las respuestas general y filtrada compiten y la más lenta puede reemplazar la vista correcta.
 - 2026-05-29 · `headers()` de next.config NO corre con servidor custom → headers de seguridad en `server.js`

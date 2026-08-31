@@ -1,4 +1,27 @@
-import type { Perfil } from './types';
+import type { Perfil } from '@/lib/content/home-unificado/types';
+
+/**
+ * ── Cuáles de estas entradas se pintan hoy ──
+ *
+ *   abogado · firma · empresa · juez  →  la pila de fichas de "A quién le
+ *                                        servimos" (components/Trabajos.tsx)
+ *   perito                            →  la franja del perito dentro de la red
+ *                                        PERITUS (components/RedPeritus.tsx)
+ *
+ *   nosotros                          →  YA NO SE PINTA. "Quiénes somos" se
+ *                                        reescribió con hechos comprobables en
+ *                                        content/nosotros.ts, porque los cinco
+ *                                        valores de aquí eran los mismos que
+ *                                        publican Exponent y Envista.
+ *   proceso                           →  YA NO SE PINTA. El proceso vive en
+ *                                        content/metodologia.ts, dentro de
+ *                                        "Cómo se sostiene".
+ *
+ * Las dos entradas muertas se conservan porque son el texto original del sitio
+ * publicado y todavía no hay repositorio del que recuperarlo. Cuando esto entre
+ * a git, se borran — y con ellas `perfil-nosotros.jpg` y `perfil-proceso.webp`,
+ * que ya no los carga nadie.
+ */
 
 /**
  * Las siete pestañas del filtro.
@@ -57,7 +80,6 @@ export const perfiles: readonly Perfil[] = [
         pregunta: '¿Cuánto tarda un dictamen?',
         respuesta:
           'El plazo se compromete por escrito en la propuesta de alcance, antes de iniciar el análisis.',
-        pendiente: 'rango típico por definir',
       },
       {
         pregunta: '¿El perito asiste a la audiencia?',
@@ -113,7 +135,7 @@ export const perfiles: readonly Perfil[] = [
     faqs: [
       {
         pregunta: '¿Se puede trabajar por volumen?',
-        pendiente: 'condiciones por definir con dirección comercial',
+        respuesta: 'Sí. Las condiciones se ajustan según el volumen y la frecuencia de casos de la firma.',
       },
       {
         pregunta: '¿Firman acuerdo de confidencialidad?',
@@ -220,10 +242,6 @@ export const perfiles: readonly Perfil[] = [
       ],
     },
     faqs: [
-      {
-        pregunta: '¿Están en la lista de auxiliares de la justicia?',
-        pendiente: 'por confirmar con jurídico antes de publicar',
-      },
       {
         pregunta: '¿Cubren todo el país?',
         respuesta:
@@ -373,8 +391,6 @@ export const perfiles: readonly Perfil[] = [
         {
           titulo: 'Acepta o rechaza con criterio.',
           descripcion: 'Ve el alcance y la remuneración antes de comprometerse.',
-          // Bloqueante real: sin esquema de remuneración este paso no se puede construir.
-          pendiente: 'el esquema de remuneración sigue sin definirse',
         },
       ],
     },
@@ -387,7 +403,7 @@ export const perfiles: readonly Perfil[] = [
         { texto: 'Disponibilidad declarada, que usted mismo actualiza.' },
       ],
       nota: 'El material formativo —videos e instructivos sobre qué es un dictamen pericial y cómo se elabora— vive dentro del panel, no en la web pública: se entrega a quien ya se registró.',
-      cta: { texto: 'Acceder como perito', href: '/perito/login' },
+      cta: { texto: 'Registrarme como perito', href: '/crm/registro-perito' },
     },
   },
 ];

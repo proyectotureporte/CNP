@@ -88,22 +88,91 @@ export interface Perfil {
 export interface Cliente {
   /** Nombre real. Va al `alt`: nunca "LOGON", que es lo que hay publicado hoy. */
   readonly nombre: string;
+  /**
+   * Ramo del cliente, no el litigio. Se muestra sobre el logo para que el
+   * visitante se reconozca en el sector; decir en qué proceso se trabajó para
+   * un cliente con nombre propio sería un problema de confidencialidad.
+   */
+  readonly sector: string;
   /** Ruta bajo /public. */
   readonly logo: string;
   readonly ancho: number;
   readonly alto: number;
 }
 
+/**
+ * Qué clase de encargo fue. Es unión cerrada a propósito: agregar un caso con
+ * un tipo que no existe no compila, y el conteo del titular se deriva de aquí.
+ */
+export type TipoCaso = 'contradiccion' | 'verificacion' | 'cuantificacion';
+
 export interface Caso {
-  readonly cliente: string;
-  readonly titulo: string;
-  readonly problema: string;
-  readonly hicimos: string;
+  /**
+   * Número en el brochure de la casa (04-12). Ya NO se muestra en pantalla
+   * ("CNP-04" leía como una referencia interna, no algo para el cliente) —
+   * solo sirve de key estable en el listado. La numeración salteada sigue
+   * siendo la prueba, para nosotros, de que esto es una muestra y no el
+   * inventario completo; solo dejó de ser una prueba que el lector ve.
+   */
+  readonly folio: string;
+  /** Las partes tal como van en el proceso. Es registro público. */
+  readonly partes: string;
+  readonly tipo: TipoCaso;
+  /** El objeto del dictamen: qué le pidieron a la casa. */
+  readonly objeto: string;
+  readonly fecha?: string;
+  /** El despacho. Es la prueba más fuerte de la ficha y es registro público. */
+  readonly despacho?: string;
+  /**
+   * El número de radicación de 23 dígitos, VERIFICADO uno por uno contra la
+   * API pública de la Rama Judicial (NombreRazonSocial cruzado con las partes,
+   * el despacho y la fecha del brochure) — no viene del material de la casa.
+   * Solo se puso cuando el cruce fue seguro; donde no hubo match confiable, se
+   * dejó sin radicado en vez de forzar uno.
+   */
+  readonly radicado?: string;
+  /**
+   * Cuando el radicado no es del proceso descrito sino de una actuación
+   * posterior ligada a él (ej.: el arbitraje es privado y no tiene radicado
+   * propio, pero el recurso de anulación del laudo sí lo tiene, ante un
+   * tribunal público). Sin esto, mostrar el radicado solo sería confuso —
+   * alguien podría buscarlo esperando encontrar el arbitraje mismo.
+   */
+  readonly radicadoNota?: string;
+  /**
+   * La instancia más alta que alcanzó el proceso, cuando se verificó una
+   * segunda instancia o casación ligada al mismo radicado. Es la prueba de que
+   * el caso se litigó a fondo.
+   */
+  readonly instancia?: string;
+  /**
+   * Un dato corto que distingue al caso, cuando lo hay: que tuvo resultado
+   * declarado, que el perito fue designado por el tribunal y no por una
+   * parte, etc. Se muestra junto al nombre de las partes.
+   */
+  readonly insignia?: string;
+  /**
+   * Quien remitió el caso. El tratamiento viaja con el dato porque hay
+   * abogados y abogadas: fijarlo en el componente escribe mal un nombre real.
+   *
+   * PENDIENTE de permiso: un brochure va a un destinatario concreto, una web
+   * pública va a cualquiera.
+   */
+  readonly abogado?: { readonly titulo: string; readonly nombre: string };
+  /** De qué lado actuó la casa, cuando está declarado. */
+  readonly lado?: string;
+  /** Quién contrató, cuando no coincide con las partes del proceso. */
+  readonly cliente?: string;
+  /**
+   * Solo cuando está declarado. Hoy hay UNO en todo el material de la casa, y
+   * no dice que se ganó: dice que se concilió. No se inventa ninguno más — sin
+   * el denominador (cuántos dictámenes fueron acogidos y cuántos rebatidos) no
+   * se puede afirmar nada sobre resultados.
+   */
   readonly resultado?: string;
-  /** Se usa cuando el resultado todavía no está redactado. */
-  readonly pendienteResultado?: string;
-  readonly abiertoPorDefecto?: boolean;
 }
+
+
 
 /**
  * Clave del ícono. Es una unión cerrada a propósito: si se agrega una
