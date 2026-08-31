@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Upload, X, FileIcon } from 'lucide-react';
+import {
+  CASE_DOCUMENT_MAX_SIZE_BYTES,
+  CASE_DOCUMENT_MAX_SIZE_MB,
+} from '@/lib/files/uploadLimits';
 
 interface PortalDocumentUploadProps {
   caseId: string;
   onUploadComplete: () => void;
 }
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -29,8 +31,8 @@ export default function PortalDocumentUpload({ caseId, onUploadComplete }: Porta
 
   const handleFile = useCallback((f: File) => {
     setError('');
-    if (f.size > MAX_FILE_SIZE) {
-      setError('El archivo excede el limite de 10MB');
+    if (f.size > CASE_DOCUMENT_MAX_SIZE_BYTES) {
+      setError(`El archivo excede el limite de ${CASE_DOCUMENT_MAX_SIZE_MB}MB`);
       return;
     }
     setFile(f);
@@ -134,7 +136,7 @@ export default function PortalDocumentUpload({ caseId, onUploadComplete }: Porta
                 selecciona
               </button>
             </p>
-            <p className="text-xs text-muted-foreground mt-1">Maximo 10MB</p>
+            <p className="text-xs text-muted-foreground mt-1">Maximo {CASE_DOCUMENT_MAX_SIZE_MB}MB</p>
           </>
         )}
         <input

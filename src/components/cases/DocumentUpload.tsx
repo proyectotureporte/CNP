@@ -16,6 +16,10 @@ import {
   DOCUMENT_CATEGORIES,
   DOCUMENT_CATEGORY_LABELS,
 } from "@/lib/types";
+import {
+  CASE_DOCUMENT_MAX_SIZE_BYTES,
+  CASE_DOCUMENT_MAX_SIZE_MB,
+} from "@/lib/files/uploadLimits";
 
 interface DocumentUploadProps {
   caseId: string;
@@ -46,8 +50,8 @@ export default function DocumentUpload({ caseId, onSuccess }: DocumentUploadProp
     setDragOver(false);
     const dropped = e.dataTransfer.files[0];
     if (dropped) {
-      if (dropped.size > 10 * 1024 * 1024) {
-        setError("El archivo excede el limite de 10MB");
+      if (dropped.size > CASE_DOCUMENT_MAX_SIZE_BYTES) {
+        setError(`El archivo excede el limite de ${CASE_DOCUMENT_MAX_SIZE_MB}MB`);
         return;
       }
       setFile(dropped);
@@ -58,8 +62,8 @@ export default function DocumentUpload({ caseId, onSuccess }: DocumentUploadProp
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
     if (selected) {
-      if (selected.size > 10 * 1024 * 1024) {
-        setError("El archivo excede el limite de 10MB");
+      if (selected.size > CASE_DOCUMENT_MAX_SIZE_BYTES) {
+        setError(`El archivo excede el limite de ${CASE_DOCUMENT_MAX_SIZE_MB}MB`);
         return;
       }
       setFile(selected);
@@ -147,7 +151,7 @@ export default function DocumentUpload({ caseId, onSuccess }: DocumentUploadProp
             <p className="mt-2 text-sm text-muted-foreground">
               Arrastra un archivo o haz clic para seleccionar
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Maximo 10MB</p>
+            <p className="mt-1 text-xs text-muted-foreground">Maximo {CASE_DOCUMENT_MAX_SIZE_MB}MB</p>
           </>
         )}
       </div>

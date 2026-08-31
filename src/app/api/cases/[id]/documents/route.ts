@@ -6,6 +6,10 @@ import { DOCUMENT_CATEGORIES, DOCUMENT_CATEGORY_LABELS, type CaseDocument, type 
 import { canManageDocumentChecklist } from '@/lib/auth/permissions';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
+import {
+  CASE_DOCUMENT_MAX_SIZE_BYTES,
+  CASE_DOCUMENT_MAX_SIZE_MB,
+} from '@/lib/files/uploadLimits';
 
 function safeDocument(item: CaseDocument, hideUploader: boolean): CaseDocument {
   const safe = { ...item };
@@ -147,8 +151,11 @@ export async function POST(
     if (!DOCUMENT_CATEGORIES.includes(category)) {
       return NextResponse.json({ success: false, error: 'Categoría no válida' }, { status: 400 });
     }
-    if (file.size > 15 * 1024 * 1024) {
-      return NextResponse.json({ success: false, error: 'El archivo excede 15 MB' }, { status: 400 });
+    if (file.size > CASE_DOCUMENT_MAX_SIZE_BYTES) {
+      return NextResponse.json(
+        { success: false, error: `El archivo excede ${CASE_DOCUMENT_MAX_SIZE_MB} MB` },
+        { status: 400 },
+      );
     }
     if (targetDocumentId) {
       const targetDocument = await caseDocument.getCaseDocumentById(targetDocumentId);

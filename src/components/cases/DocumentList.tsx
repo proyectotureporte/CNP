@@ -65,6 +65,7 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
 
   const canManageChecklist = allRoles || userRole === "comercial_juridico";
   const isExpert = userRole === "perito" || userRole === "perito_interno";
+  const canViewDocumentRequests = isExpert || canManageChecklist;
 
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
@@ -77,7 +78,7 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
       if (data.success) {
         setDocuments(data.data);
       }
-      if (isExpert) {
+      if (canViewDocumentRequests) {
         const requestResponse = await fetch(`/api/cases/${caseId}/document-requests`);
         const requestPayload = await requestResponse.json();
         if (requestPayload.success) setRequests(requestPayload.data || []);
@@ -87,7 +88,7 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
     } finally {
       setLoading(false);
     }
-  }, [caseId, categoryFilter, isExpert]);
+  }, [canViewDocumentRequests, caseId, categoryFilter]);
 
   useEffect(() => {
     fetchDocuments();
@@ -197,31 +198,46 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
       {/* Upload */}
       {(allRoles || userRole === "comercial_juridico") && <DocumentUpload caseId={caseId} onSuccess={fetchDocuments} />}
 
-      {isExpert && (
+      {canViewDocumentRequests && (
         <div className="space-y-4 rounded-lg border border-blue-200 bg-blue-50/50 p-4">
           <div className="flex items-start gap-3">
             <FileQuestion className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" />
             <div>
-              <h3 className="text-sm font-semibold text-blue-950">Solicitar documentación al Comercial Jurídico</h3>
-              <p className="text-xs text-blue-800">La solicitud se envía únicamente al Comercial Jurídico asignado; nunca se contacta al cliente final.</p>
+              <h3 className="text-sm font-semibold text-blue-950">
+                {isExpert ? "Solicitar documentación al Comercial Jurídico" : "Solicitudes de documentación del perito"}
+              </h3>
+              <p className="text-xs text-blue-800">
+                {isExpert
+                  ? "La solicitud se envía únicamente al Comercial Jurídico asignado; nunca se contacta al cliente final."
+                  : "Solicitudes enviadas por los peritos asignados a este caso."}
+              </p>
             </div>
           </div>
-          <form onSubmit={handleDocumentRequest} className="space-y-3">
-            <Textarea value={requestDescription} onChange={(event) => setRequestDescription(event.target.value)} placeholder="Describe los documentos que necesitas para realizar el dictamen..." rows={3} maxLength={2000} />
-            {requestError && <p className="text-sm text-red-700">{requestError}</p>}
-            <div className="flex justify-end"><Button type="submit" disabled={requesting || requestDescription.trim().length < 5}><Send className="mr-2 h-4 w-4" />{requesting ? "Enviando..." : "Enviar solicitud"}</Button></div>
-          </form>
-          {requests.length > 0 && (
-            <div className="space-y-2 border-t border-blue-200 pt-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-blue-900">Solicitudes realizadas</p>
-              {requests.map((request) => (
+          {isExpert && (
+            <form onSubmit={handleDocumentRequest} className="space-y-3">
+              <Textarea value={requestDescription} onChange={(event) => setRequestDescription(event.target.value)} placeholder="Describe los documentos que necesitas para realizar el dictamen..." rows={3} maxLength={2000} />
+              {requestError && <p className="text-sm text-red-700">{requestError}</p>}
+              <div className="flex justify-end"><Button type="submit" disabled={requesting || requestDescription.trim().length < 5}><Send className="mr-2 h-4 w-4" />{requesting ? "Enviando..." : "Enviar solicitud"}</Button></div>
+            </form>
+          )}
+          <div className={`space-y-2 ${isExpert ? "border-t border-blue-200 pt-3" : ""}`}>
+            <p className="text-xs font-medium uppercase tracking-wide text-blue-900">
+              {isExpert ? "Solicitudes realizadas" : "Solicitudes recibidas"}
+            </p>
+            {requests.length > 0 ? (
+              requests.map((request) => (
                 <div key={request._id} className="rounded-md bg-white p-3 text-sm">
                   <p>{request.description}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{new Date(request._createdAt).toLocaleString("es-CO")} · {request.status}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {request.requestedBy?.displayName ? `${request.requestedBy.displayName} · ` : ""}
+                    {new Date(request._createdAt).toLocaleString("es-CO")} · {request.status}
+                  </p>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            ) : (
+              <p className="rounded-md bg-white p-3 text-sm text-muted-foreground">No hay solicitudes de documentación.</p>
+            )}
+          </div>
         </div>
       )}
 
