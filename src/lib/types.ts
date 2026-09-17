@@ -385,6 +385,8 @@ export const CASE_EVENT_LABELS: Record<CaseEventType, string> = {
 export interface CaseEvent {
   _id: string;
   _createdAt: string;
+  /** Solo difiere de `_createdAt` cuando el registro fue editado posteriormente. */
+  _updatedAt?: string;
   eventType: CaseEventType;
   description?: string;
   createdByName?: string;

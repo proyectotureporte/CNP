@@ -145,6 +145,11 @@ export function canAddCaseTimelineNote(role: UserRole, allRoles = false): boolea
   return allRoles || role === 'comercial_juridico';
 }
 
+// Corrección posterior de registros del timeline (descripción) sin borrar ni duplicar.
+export function canEditCaseTimelineEvent(role: UserRole, allRoles = false): boolean {
+  return allRoles || role === 'comercial_juridico';
+}
+
 export function canUseWhatsappInbox(role: UserRole, allRoles = false): boolean {
   return allRoles || role === 'comercial_juridico';
 }

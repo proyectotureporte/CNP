@@ -3,17 +3,44 @@ import type { CaseEvent } from '@/lib/types';
 
 const createdByObj = nestedObj('u', { _id: 'u.id', displayName: 'u.display_name' });
 
-export async function listCaseEvents(caseId: string): Promise<CaseEvent[]> {
-  return query<CaseEvent>(
-    `SELECT e.id AS "_id", e.created_at AS "_createdAt", e.event_type AS "eventType",
+const EVENT_SELECT = `SELECT e.id AS "_id", e.created_at AS "_createdAt", e.updated_at AS "_updatedAt",
+       e.event_type AS "eventType",
        e.description, e.created_by_name AS "createdByName", u.role AS "createdByRole",
        ${createdByObj} AS "createdBy"
      FROM case_event e
-     LEFT JOIN crm_user u ON u.id = e.created_by_id
+     LEFT JOIN crm_user u ON u.id = e.created_by_id`;
+
+export async function listCaseEvents(caseId: string): Promise<CaseEvent[]> {
+  return query<CaseEvent>(
+    `${EVENT_SELECT}
      WHERE e.case_id = $1
      ORDER BY e.created_at DESC`,
     [caseId],
   );
+}
+
+export async function getCaseEventById(caseId: string, eventId: string): Promise<CaseEvent | null> {
+  return queryOne<CaseEvent>(
+    `${EVENT_SELECT}
+     WHERE e.case_id = $1 AND e.id = $2`,
+    [caseId, eventId],
+  );
+}
+
+/**
+ * Edición posterior de un registro del timeline. Solo cambia la descripción;
+ * el trigger `set_updated_at` deja constancia en `updated_at`.
+ */
+export async function updateCaseEventDescription(
+  caseId: string,
+  eventId: string,
+  description: string,
+): Promise<CaseEvent | null> {
+  await query(
+    'UPDATE case_event SET description = $1 WHERE id = $2 AND case_id = $3',
+    [description, eventId, caseId],
+  );
+  return getCaseEventById(caseId, eventId);
 }
 
 export async function countCaseEvents(caseId: string): Promise<number> {
