@@ -100,7 +100,7 @@ export default function CasePaymentsTab({ caseId, userRole, allRoles = false }: 
                     {payment.receiptDownloadUrl && (
                       <Button variant="outline" size="sm" asChild><a href={payment.receiptDownloadUrl} target="_blank" rel="noopener noreferrer"><Download className="mr-2 h-4 w-4" />Ver comprobante</a></Button>
                     )}
-                    {userRole === "cliente" && payment.status !== "validado" && (
+                    {(userRole === "cliente" || allRoles) && payment.status !== "validado" && (
                       <>
                         <input
                           ref={(element) => { fileRefs.current[payment._id] = element; }}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { crmUser, payment } from '@/lib/db';
-import { requireCaseAccess } from '@/lib/auth/caseAccess';
+import { requireCaseAccess, actorUserReference } from '@/lib/auth/caseAccess';
 import { uploadFile } from '@/lib/sanity/assets';
 import { notifyUsers } from '@/lib/notify';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
@@ -14,7 +14,8 @@ export async function POST(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (access.actor.role !== 'cliente') {
+    // El acceso total (admin) puede cargarlo en nombre del cliente.
+    if (access.actor.role !== 'cliente' && !access.actor.allRoles) {
       return NextResponse.json({ success: false, error: 'Esta acción corresponde al cliente final' }, { status: 403 });
     }
 
@@ -53,7 +54,7 @@ export async function POST(
       fileName: asset.originalFilename || file.name,
       mimeType: asset.mimeType,
       fileSize: asset.size,
-      receiptUploadedById: access.actor.userId,
+      receiptUploadedById: actorUserReference(access.actor),
       paymentDate: new Date().toISOString(),
       status: 'pendiente',
     });
@@ -62,7 +63,7 @@ export async function POST(
     await notifyUsers({
       userIds: juntaUsers.map((user) => user._id),
       title: 'Comprobante de pago pendiente de validación',
-      message: `El cliente final cargó un comprobante para el pago ${updated?.paymentNumber ?? ''}.`,
+      message: `${access.actor.allRoles ? access.actor.displayName : 'El cliente final'} cargó un comprobante para el pago ${updated?.paymentNumber ?? ''}.`,
       type: 'info',
       priority: 'alta',
       linkUrl: '/crm/cartera',
@@ -70,9 +71,9 @@ export async function POST(
     logCaseEvent({
       caseId: id,
       eventType: 'payment_receipt_uploaded',
-      description: `Cliente final cargó comprobante del pago ${updated?.paymentNumber ?? ''}; queda pendiente de validación`,
+      description: `${access.actor.allRoles ? access.actor.displayName : 'Cliente final'} cargó comprobante del pago ${updated?.paymentNumber ?? ''}; queda pendiente de validación`,
       userId: access.actor.userId,
-      userName: 'Cliente final',
+      userName: access.actor.allRoles ? access.actor.displayName : 'Cliente final',
     });
     triggerEvent('payment:receipt', { id: paymentId, caseId: id, status: 'pendiente' });
     return NextResponse.json({

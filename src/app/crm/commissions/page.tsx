@@ -63,7 +63,7 @@ export default function CommissionsPage() {
   }
 
   const isExpert = user?.role === "perito";
-  const canUploadReceipt = user?.role === "junta";
+  const canUploadReceipt = user?.role === "junta" || !!user?.allRoles;
 
   const statusColors: Record<string, { bg: string; text: string }> = {
     pendiente: { bg: "bg-amber-50", text: "text-amber-700" },

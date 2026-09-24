@@ -69,13 +69,10 @@ export async function POST(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (access.actor.allRoles) {
-      return NextResponse.json({ success: false, error: 'El acceso total permite supervisar los hilos, no suplantar a sus participantes' }, { status: 403 });
-    }
     if (['perito', 'cliente'].includes(access.actor.role) && !access.row.assignedJuridicoId) {
       return NextResponse.json({ success: false, error: 'El caso aún no tiene un Comercial Jurídico asignado' }, { status: 409 });
     }
-    if (access.actor.role === 'comercial_juridico' && access.row.assignedJuridicoId !== access.actor.userId) {
+    if (!access.actor.allRoles && access.actor.role === 'comercial_juridico' && access.row.assignedJuridicoId !== access.actor.userId) {
       return NextResponse.json({ success: false, error: 'Este hilo corresponde al Comercial Jurídico asignado al caso' }, { status: 403 });
     }
 

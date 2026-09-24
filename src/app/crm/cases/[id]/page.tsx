@@ -769,7 +769,7 @@ export default function CrmCaseDetailPage({
         </TabsContent>
 
         <TabsContent value="messages" className="mt-6">
-          <CaseMessages caseId={id} userRole={userRole} readOnly={user?.allRoles} />
+          <CaseMessages caseId={id} userRole={userRole} />
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-6">

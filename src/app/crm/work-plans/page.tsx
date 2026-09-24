@@ -135,7 +135,7 @@ export default function WorkPlansPage() {
     }
   }
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || !!user?.allRoles;
 
   return (
     <>

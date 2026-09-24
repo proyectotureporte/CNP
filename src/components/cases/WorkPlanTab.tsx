@@ -134,7 +134,7 @@ export default function WorkPlanTab({ caseId, userRole }: WorkPlanTabProps) {
     || plan?.status === "rechazado"
     || plan?.status === "aprobado"
   );
-  const isCommercial = role === "comercial_juridico";
+  const isCommercial = role === "comercial_juridico" || !!user?.allRoles;
 
   const progressPercent = counts.total > 0
     ? Math.round((counts.completadas / counts.total) * 100)
