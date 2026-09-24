@@ -1,5 +1,5 @@
 import { query, queryOne, buildInsert, buildUpdate, newId, pruneUndefined, nestedObj } from './pool';
-import type { Expert, ExpertAvailability, ExpertValidationStatus, ExpertSeniority, ExpertCategory } from '@/lib/types';
+import type { Expert, ExpertDocument, ExpertDocumentType, ExpertAvailability, ExpertValidationStatus, ExpertSeniority, ExpertCategory } from '@/lib/types';
 
 const userObj = nestedObj('u', { _id: 'u.id', displayName: 'u.display_name', email: 'u.email', phone: 'u.phone' });
 const validatedByObj = nestedObj('vb', { _id: 'vb.id', displayName: 'vb.display_name' });
@@ -96,8 +96,7 @@ export async function getExpertById(id: string): Promise<Expert | null> {
        e.bank_account_number AS "bankAccountNumber",
        e.bank_account_holder AS "bankAccountHolder",
        e.bank_holder_document AS "bankHolderDocument",
-       e.cv_file_url AS "cvFileUrl",
-       ARRAY(SELECT file_url FROM expert_certification_file WHERE expert_id = e.id ORDER BY sort_order) AS "certificationUrls"
+       e.cv_file_url AS "cvFileUrl", e.cv_file_name AS "cvFileName"
      FROM expert e ${JOINS} WHERE e.id = $1`,
     [id],
   );
@@ -326,33 +325,91 @@ export async function deleteExpert(id: string): Promise<void> {
   await query('DELETE FROM expert WHERE id = $1', [id]);
 }
 
-// --- archivos de certificación ----------------------------------------------
-export interface CertificationFileInput {
+// --- documentos del perito (cédula, certificaciones, soportes, otros) ---------
+export interface ExpertDocumentInput {
   expertId: string;
-  fileUrl?: string | null;
-  fileAssetId?: string | null;
-  fileName?: string | null;
+  docType: ExpertDocumentType;
+  fileUrl: string;
+  fileAssetId: string;
+  fileName: string;
   mimeType?: string | null;
   fileSize?: number | null;
-  sortOrder?: number;
+  uploadedById?: string | null;
 }
 
-export async function addCertificationFile(input: CertificationFileInput): Promise<string> {
+const DOCUMENT_SELECT = `
+  d.id AS "_id", d.created_at AS "_createdAt", d.expert_id AS "expertId",
+  d.doc_type AS "docType", d.file_name AS "fileName", d.mime_type AS "mimeType",
+  d.file_size AS "fileSize", ub.display_name AS "uploadedByName"`;
+
+export async function listExpertDocuments(expertId: string): Promise<ExpertDocument[]> {
+  return query<ExpertDocument>(
+    `SELECT ${DOCUMENT_SELECT}
+     FROM expert_certification_file d
+     LEFT JOIN crm_user ub ON ub.id = d.uploaded_by_id
+     WHERE d.expert_id = $1
+     ORDER BY d.doc_type, d.created_at`,
+    [expertId],
+  );
+}
+
+/** Fila con la URL persistente: solo para descargas/borrados en el servidor. */
+export async function getExpertDocumentAsset(id: string): Promise<{
+  _id: string;
+  expertId: string;
+  fileUrl: string | null;
+  fileAssetId: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+} | null> {
+  return queryOne(
+    `SELECT id AS "_id", expert_id AS "expertId", file_url AS "fileUrl",
+       file_asset_id AS "fileAssetId", file_name AS "fileName", mime_type AS "mimeType"
+     FROM expert_certification_file WHERE id = $1`,
+    [id],
+  );
+}
+
+export async function addExpertDocument(input: ExpertDocumentInput): Promise<string> {
   const id = newId();
   const { text, values } = buildInsert('expert_certification_file', {
     id,
     expert_id: input.expertId,
-    file_url: input.fileUrl ?? null,
-    file_asset_id: input.fileAssetId ?? null,
-    file_name: input.fileName ?? null,
+    doc_type: input.docType,
+    file_url: input.fileUrl,
+    file_asset_id: input.fileAssetId,
+    file_name: input.fileName,
     mime_type: input.mimeType ?? null,
     file_size: input.fileSize ?? null,
-    sort_order: input.sortOrder ?? 0,
+    uploaded_by_id: input.uploadedById ?? null,
   });
   await query(text, values);
   return id;
 }
 
-export async function deleteCertificationFile(id: string): Promise<void> {
+export async function deleteExpertDocument(id: string): Promise<void> {
   await query('DELETE FROM expert_certification_file WHERE id = $1', [id]);
+}
+
+/** Datos de la hoja de vida (expert.cv_file_*) con su URL persistente. */
+export async function getExpertCvAsset(expertId: string): Promise<{
+  fileUrl: string | null;
+  fileAssetId: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+  fileSize: number | null;
+} | null> {
+  return queryOne(
+    `SELECT cv_file_url AS "fileUrl", cv_file_asset_id AS "fileAssetId", cv_file_name AS "fileName",
+       cv_mime_type AS "mimeType", cv_file_size AS "fileSize" FROM expert WHERE id = $1`,
+    [expertId],
+  );
+}
+
+export async function clearExpertCv(expertId: string): Promise<void> {
+  await query(
+    `UPDATE expert SET cv_file_url = NULL, cv_file_asset_id = NULL, cv_file_name = NULL,
+       cv_mime_type = NULL, cv_file_size = NULL WHERE id = $1`,
+    [expertId],
+  );
 }

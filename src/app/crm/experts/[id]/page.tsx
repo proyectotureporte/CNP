@@ -36,6 +36,7 @@ import {
 } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { canManageExperts } from "@/lib/auth/permissions";
+import ExpertDocuments from "@/components/experts/ExpertDocuments";
 
 // Transiciones disponibles del ciclo de vida según el estado actual.
 const PIPELINE: Record<ExpertValidationStatus, { to: ExpertValidationStatus; label: string; kind: "go" | "reject" | "back" }[]> = {
@@ -509,6 +510,9 @@ export default function ExpertDetailPage({
             </div>
           </CardContent>
         </Card>
+
+        {/* Documentación cargada por el perito (registro + perfil) y por el CRM */}
+        <ExpertDocuments endpoint={`/api/experts/${id}/documents`} canManage={canManage} canDeleteCv={canManage} />
 
         {/* Validation Notes */}
         {expert.validationNotes && (

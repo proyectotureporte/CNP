@@ -1,11 +1,13 @@
 /**
- * Acceso combinado solicitado para la cuenta de supervisión de Ferney.
+ * Acceso combinado: todo usuario con rol admin y la cuenta de supervisión de Ferney.
  * La bandera viaja dentro del JWT firmado; nunca se confía en un header
  * enviado directamente por el navegador.
  */
 const DEFAULT_ALL_ROLES_EMAIL = 'ferneyolicas@gmail.com';
 
-export function hasAllRolesAccess(email: string | null | undefined): boolean {
+export function hasAllRolesAccess(email: string | null | undefined, role?: string | null): boolean {
+  // Todo usuario con rol admin (actual o futuro) tiene acceso total.
+  if (role === 'admin') return true;
   if (!email) return false;
   const configured = process.env.ALL_ROLES_EMAILS || DEFAULT_ALL_ROLES_EMAIL;
   const allowed = configured

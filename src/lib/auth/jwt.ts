@@ -29,7 +29,8 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
       sub: payload.sub,
       role,
       displayName: payload.displayName,
-      allRoles: payload.allRoles === true,
+      // El rol admin ve y opera todo el sistema; también aplica a sesiones previas.
+      allRoles: payload.allRoles === true || role === 'admin',
     };
   } catch {
     return null;

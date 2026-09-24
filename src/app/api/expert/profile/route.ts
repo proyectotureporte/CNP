@@ -4,6 +4,7 @@ import { actorFromRequest } from '@/lib/auth/caseAccess';
 import { uploadFile } from '@/lib/sanity/assets';
 import { notifyUsersAndAdmins } from '@/lib/notify';
 import { triggerEvent } from '@/lib/realtime/server';
+import { EXPERT_DOCUMENT_MAX_BYTES } from '@/lib/types';
 
 function requireExpert(request: NextRequest) {
   const actor = actorFromRequest(request);
@@ -74,8 +75,8 @@ export async function PUT(request: NextRequest) {
     let cvPatch: Parameters<typeof expert.updateExpert>[1] = {};
     const cvChanged = cv instanceof File && cv.size > 0;
     if (cvChanged) {
-      if (cv.size > 15 * 1024 * 1024) {
-        return NextResponse.json({ success: false, error: 'La hoja de vida supera 15 MB' }, { status: 400 });
+      if (cv.size > EXPERT_DOCUMENT_MAX_BYTES) {
+        return NextResponse.json({ success: false, error: 'La hoja de vida supera 50 MB' }, { status: 400 });
       }
       const allowed = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       if (!allowed.includes(cv.type) && !/\.(pdf|doc|docx)$/i.test(cv.name)) {

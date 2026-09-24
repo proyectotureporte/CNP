@@ -660,6 +660,31 @@ export interface Expert {
   certificationFiles?: { asset: { _ref: string; url?: string } }[];
 }
 
+// Documentación del perito (tabla expert_certification_file).
+export const EXPERT_DOCUMENT_TYPES = ['cedula', 'certificacion', 'soporte_academico', 'otro'] as const;
+export type ExpertDocumentType = (typeof EXPERT_DOCUMENT_TYPES)[number];
+export const EXPERT_DOCUMENT_TYPE_LABELS: Record<ExpertDocumentType, string> = {
+  cedula: 'Cédula',
+  certificacion: 'Certificaciones',
+  soporte_academico: 'Soportes académicos',
+  otro: 'Otros',
+};
+/** Límite por archivo (Nginx admite 55 MB por petición; se sube un archivo por petición). */
+export const EXPERT_DOCUMENT_MAX_BYTES = 50 * 1024 * 1024;
+
+export interface ExpertDocument {
+  _id: string;
+  _createdAt: string;
+  expertId: string;
+  docType: ExpertDocumentType;
+  fileName: string | null;
+  mimeType: string | null;
+  fileSize: number | null;
+  uploadedByName?: string | null;
+  downloadUrl?: string;
+  viewUrl?: string;
+}
+
 // ============================================
 // API TYPES
 // ============================================

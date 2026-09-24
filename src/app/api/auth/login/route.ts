@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
         sub: user._id,
         role: normalizedRole,
         displayName: user.displayName,
-        allRoles: hasAllRolesAccess(user.email),
+        allRoles: hasAllRolesAccess(user.email, normalizedRole),
       });
 
       const response = NextResponse.json({
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
           role: normalizedRole,
           displayName: user.displayName,
           userId: user._id,
-          allRoles: hasAllRolesAccess(user.email),
+          allRoles: hasAllRolesAccess(user.email, normalizedRole),
         },
       });
 

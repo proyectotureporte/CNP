@@ -11,11 +11,16 @@ function safeDownloadName(value: string): string {
  * nunca recibe la URL persistente, por lo que cada descarga vuelve a validar rol,
  * pertenencia al caso y estado del documento.
  */
+// Tipos que el navegador puede mostrar sin riesgo desde nuestro origen.
+const INLINE_SAFE_TYPES = new Set([
+  'application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'text/plain',
+]);
+
 export async function proxyStoredAsset(input: {
   fileUrl: string | null;
   fileName?: string | null;
   mimeType?: string | null;
-}): Promise<Response> {
+}, options: { inline?: boolean } = {}): Promise<Response> {
   if (!input.fileUrl) {
     return NextResponse.json({ success: false, error: 'Archivo no disponible' }, { status: 404 });
   }
@@ -37,11 +42,15 @@ export async function proxyStoredAsset(input: {
   }
 
   const fileName = safeDownloadName(input.fileName || 'archivo');
+  const contentType = input.mimeType || upstream.headers.get('content-type') || 'application/octet-stream';
+  const disposition = options.inline && INLINE_SAFE_TYPES.has(contentType.split(';')[0].trim().toLowerCase())
+    ? 'inline'
+    : 'attachment';
   return new Response(upstream.body, {
     status: 200,
     headers: {
-      'Content-Type': input.mimeType || upstream.headers.get('content-type') || 'application/octet-stream',
-      'Content-Disposition': `attachment; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      'Content-Type': contentType,
+      'Content-Disposition': `${disposition}; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
       'Cache-Control': 'private, no-store, max-age=0',
       'X-Content-Type-Options': 'nosniff',
     },

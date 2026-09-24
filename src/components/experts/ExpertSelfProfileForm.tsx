@@ -10,6 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import type { Expert, ExpertAvailability } from "@/lib/types";
+import ExpertDocuments from "@/components/experts/ExpertDocuments";
 
 interface ProfilePayload {
   user: { displayName: string; email: string; phone?: string };
@@ -90,6 +91,7 @@ export default function ExpertSelfProfileForm() {
   );
 
   return (
+    <div className="space-y-6">
     <form onSubmit={submit} className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -167,5 +169,11 @@ export default function ExpertSelfProfileForm() {
         </Button>
       </div>
     </form>
+    <ExpertDocuments
+      endpoint="/api/expert/profile/documents"
+      canManage
+      title="Mis documentos (cédula, certificaciones, soportes académicos y otros)"
+    />
+    </div>
   );
 }

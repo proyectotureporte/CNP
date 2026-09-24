@@ -8,6 +8,11 @@ import type { NextConfig } from "next";
 // Desplegamos con `node server.js` sobre el repo completo (PM2).
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    // El middleware recorta cuerpos >10 MB por defecto; los documentos admiten
+    // hasta 50 MB por archivo (+ margen del multipart).
+    proxyClientMaxBodySize: "55mb",
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "cdn.sanity.io" },

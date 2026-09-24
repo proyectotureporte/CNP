@@ -16,7 +16,8 @@ export async function GET(
     if (!found) {
       return NextResponse.json({ success: false, error: 'Perito no encontrado' }, { status: 404 });
     }
-    return NextResponse.json({ success: true, data: found });
+    // La URL persistente del CV no sale del servidor: se descarga por /documents/cv.
+    return NextResponse.json({ success: true, data: { ...found, cvFileUrl: undefined } });
   } catch {
     return NextResponse.json({ success: false, error: 'Error obteniendo perito' }, { status: 500 });
   }
