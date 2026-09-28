@@ -8,7 +8,7 @@ Dominio: **cnp.com.co** · VPS: `ssh restaurar` (82.223.109.156) · Carpeta: `/v
 Next.js 16.1.6 (App Router, TS estricto) + React 19 + Tailwind 4 + shadcn/ui · PostgreSQL vía `pg` con **SQL crudo, sin ORM** (`src/lib/db/`) · Auth JWT custom con `jose` + bcryptjs (NO NextAuth) · WebSockets nativos `ws` en `/ws` (server.js custom, NO Pusher) · Sanity SOLO para assets (archivos) · Resend (email) · Evolution API + n8n (WhatsApp) · npm.
 
 ## Comandos
-dev: `node server.js` · build: `npm run build` · typecheck: `npx tsc --noEmit` · migraciones: `npm run db:migrate` · deploy: push a main + en VPS `git pull && npm install && npm run build && pm2 reload cnp`
+dev: `node server.js` · build: `npm run build` · typecheck: `npx tsc --noEmit` · migraciones: `npm run db:migrate` · deploy: push a `main` activa `.github/workflows/deploy-production.yml`; no desplegar manualmente fuera de ese flujo
 
 ## Estructura esencial
 - Páginas: `src/app/` → públicas (`/`, `/abogados`, `/empresas`, `/jueces`, `/privacy`), `/crm/*`, `/admin/*`, `/portal/*`
@@ -24,5 +24,6 @@ dev: `node server.js` · build: `npm run build` · typecheck: `npx tsc --noEmit`
 - Headers de seguridad en `server.js`, NO en next.config (no corre `headers()` con servidor custom). `output:'standalone'` PROHIBIDO (mataría el hub WS)
 - Inter es la tipografía de toda la aplicación operativa (`/crm`, `/admin`, `/portal`, `/perito`) mediante `src/components/layout/InterAppScope.tsx`; las landings públicas conservan sus fuentes de marca
 - IDs TEXT (UUID o `_id` heredado de Sanity). Tabla de casos se llama `cases` (palabra reservada)
+- Expediente documental: las 12 categorías ordenadas viven en `DOCUMENT_CATEGORIES`; los binarios nunca exponen la URL de Sanity y se consultan/descargan por `/api/documents/[id]/download` (vista previa con `?inline=1`). Las cotizaciones nuevas usan tres cuotas fijas 50/25/25. `cases.assigned_expert_id` es el perito líder y `case_associated_expert` contiene los peritos asociados; ambos acceden por `caseAccess.ts` sin perder el aislamiento frente al cliente.
 - Peritos (`expert`): `seniority` (junior/senior/master) + `category` (7 macro-categorías) + ciclo de vida en `validation_status` = candidato → en_evaluacion → activado (+ rechazado), NO pendiente/aprobado (migración 003 migró los datos). Formación: pregrado/num_especializaciones/num_maestrias/doctorado. Clasificación automática: `src/lib/peritos/clasificacion.ts`. Documentación del perito (cédula/certificacion/soporte_academico/otro, varios archivos, 50 MB c/u, en Sanity) en `expert_certification_file.doc_type` vía `src/lib/peritos/documentos.ts`; la hoja de vida sigue en `expert.cv_file_*`. ALTER de `expert` se aplica como `postgres` (la tabla es de cnp_user), no con `db:migrate`
 - Gotchas: PM2 SIEMPRE fork 1 instancia; Nginx debe proxyear upgrade WS en `/ws`; las `NEXT_PUBLIC_` requieren rebuild
