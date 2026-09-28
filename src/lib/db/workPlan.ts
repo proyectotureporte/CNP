@@ -58,7 +58,9 @@ export async function listExpertWorkPlans(expertId: string, status = '', limit =
          'completadas', (SELECT count(*)::int FROM work_plan_activity a WHERE a.work_plan_id = wp.id AND a.status = 'completada')
        ) AS "activityCounts"
      FROM work_plan wp ${JOINS} JOIN cases c ON c.id = wp.case_id
-     WHERE (c.assigned_expert_id = $1 OR c.assigned_financiero_id = $1)
+     WHERE (c.assigned_expert_id = $1 OR c.assigned_financiero_id = $1 OR EXISTS (
+       SELECT 1 FROM case_associated_expert cae WHERE cae.case_id = c.id AND cae.user_id = $1
+     ))
        AND ($2 = '' OR wp.status = $2::work_plan_status)
      ORDER BY wp.created_at DESC LIMIT $3 OFFSET $4`,
     [expertId, status, limit, offset],
@@ -68,7 +70,9 @@ export async function listExpertWorkPlans(expertId: string, status = '', limit =
 export async function countExpertWorkPlans(expertId: string, status = ''): Promise<number> {
   const row = await queryOne<{ count: number }>(
     `SELECT count(*)::int AS count FROM work_plan wp JOIN cases c ON c.id = wp.case_id
-     WHERE (c.assigned_expert_id = $1 OR c.assigned_financiero_id = $1)
+     WHERE (c.assigned_expert_id = $1 OR c.assigned_financiero_id = $1 OR EXISTS (
+       SELECT 1 FROM case_associated_expert cae WHERE cae.case_id = c.id AND cae.user_id = $1
+     ))
        AND ($2 = '' OR wp.status = $2::work_plan_status)`,
     [expertId, status],
   );

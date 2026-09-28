@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
           if (!ld.file_asset_id) continue;
           await caseDocument.createCaseDocument({
             caseId: created._id,
-            category: 'soporte_tecnico',
+            category: 'documentos_caso',
             fileUrl: ld.file_url,
             fileAssetId: ld.file_asset_id,
             fileName: ld.file_name || 'documento',

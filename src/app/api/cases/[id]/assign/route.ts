@@ -7,11 +7,11 @@ import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { notifyUsers } from '@/lib/notify';
 import { auditEntityChange } from '@/lib/audit';
 
-type AssignRole = 'assignedExpert' | 'assignedFinanciero';
+type AssignRole = 'assignedExpert' | 'associatedExpert' | 'assignedFinanciero';
 
-const VALID_ASSIGN_ROLES: AssignRole[] = ['assignedExpert', 'assignedFinanciero'];
+const VALID_ASSIGN_ROLES: AssignRole[] = ['assignedExpert', 'associatedExpert', 'assignedFinanciero'];
 
-const ROLE_FIELD: Record<AssignRole, 'assignedExpertId' | 'assignedFinancieroId'> = {
+const ROLE_FIELD: Record<Exclude<AssignRole, 'associatedExpert'>, 'assignedExpertId' | 'assignedFinancieroId'> = {
   assignedExpert: 'assignedExpertId',
   assignedFinanciero: 'assignedFinancieroId',
 };
@@ -35,6 +35,7 @@ async function assignUser(
         { status: 400 }
       );
     }
+    const assignRole = role as AssignRole;
 
     if (!userId) {
       return NextResponse.json({ success: false, error: 'userId es requerido' }, { status: 400 });
@@ -50,13 +51,13 @@ async function assignUser(
       return NextResponse.json({ success: false, error: 'Usuario no encontrado' }, { status: 404 });
     }
 
-    if (role === 'assignedExpert' && user.role !== 'perito') {
+    if (['assignedExpert', 'associatedExpert'].includes(assignRole) && user.role !== 'perito') {
       return NextResponse.json({ success: false, error: 'El usuario asignado debe tener rol perito' }, { status: 400 });
     }
-    if (role === 'assignedFinanciero' && user.role !== 'perito_interno') {
+    if (assignRole === 'assignedFinanciero' && user.role !== 'perito_interno') {
       return NextResponse.json({ success: false, error: 'El usuario no puede asumir esta asignación' }, { status: 400 });
     }
-    if (role === 'assignedFinanciero' && !['financiero', 'contable'].includes(existing.discipline)) {
+    if (assignRole === 'assignedFinanciero' && !['financiero', 'contable'].includes(existing.discipline)) {
       return NextResponse.json(
         { success: false, error: 'El perito interno solo recibe casos financieros o contables' },
         { status: 409 },
@@ -64,7 +65,7 @@ async function assignUser(
     }
 
     // G-01: ningún perito entra en producción sin una cuenta pagable completa.
-    if (user.role === 'perito' && role === 'assignedExpert') {
+    if (user.role === 'perito' && ['assignedExpert', 'associatedExpert'].includes(assignRole)) {
       const assignable = await expert.isAssignableExpertForDiscipline(userId, existing.discipline);
       if (!assignable) {
         return NextResponse.json(
@@ -74,23 +75,53 @@ async function assignUser(
       }
     }
 
-    const assignmentPatch: Parameters<typeof cases.updateCase>[1] = {
-      [ROLE_FIELD[role as AssignRole]]: userId,
-    };
-    if (role === 'assignedExpert') assignmentPatch.assignedFinancieroId = null;
-    if (role === 'assignedFinanciero') assignmentPatch.assignedExpertId = null;
+    if (assignRole === 'associatedExpert' && !existing.assignedExpert) {
+      return NextResponse.json(
+        { success: false, error: 'Asigna primero el perito líder del caso' },
+        { status: 409 },
+      );
+    }
+    if (assignRole === 'associatedExpert' && existing.assignedExpert?._id === userId) {
+      return NextResponse.json(
+        { success: false, error: 'El perito líder no puede duplicarse como asociado' },
+        { status: 409 },
+      );
+    }
+    if (assignRole === 'associatedExpert' && existing.associatedExperts?.some((item) => item._id === userId)) {
+      return NextResponse.json(
+        { success: false, error: 'El perito ya pertenece al equipo asociado' },
+        { status: 409 },
+      );
+    }
+
+    const assignmentPatch: Parameters<typeof cases.updateCase>[1] = {};
+    if (assignRole !== 'associatedExpert') assignmentPatch[ROLE_FIELD[assignRole]] = userId;
+    if (assignRole === 'assignedExpert') {
+      assignmentPatch.assignedFinancieroId = null;
+      await cases.removeAssociatedExpert(id, userId);
+    }
+    if (assignRole === 'assignedFinanciero') {
+      assignmentPatch.assignedExpertId = null;
+      await cases.clearAssociatedExperts(id);
+    }
     // Los casos históricos pueden no tener interlocutor tras la unificación de
     // roles. El Comercial Jurídico que hace la primera asignación queda como
     // responsable para que cliente y perito tengan un canal operativo.
     if (!existing.assignedJuridico) assignmentPatch.assignedJuridicoId = request.headers.get('x-user-id');
-    const updated = await cases.updateCase(id, assignmentPatch);
+    if (assignRole === 'associatedExpert') {
+      await cases.addAssociatedExpert(id, userId, request.headers.get('x-user-id'));
+    }
+    const updated = Object.keys(assignmentPatch).length > 0
+      ? await cases.updateCase(id, assignmentPatch)
+      : await cases.getCaseById(id);
 
     const actorId = request.headers.get('x-user-id');
     const actorName = request.headers.get('x-user-name');
     const roleLabel = ({
       assignedExpert: 'perito externo',
+      associatedExpert: 'perito asociado',
       assignedFinanciero: 'perito interno',
-    } as Record<AssignRole, string>)[role as AssignRole];
+    } as Record<AssignRole, string>)[assignRole];
 
     logCaseEvent({
       caseId: id,
@@ -115,8 +146,12 @@ async function assignUser(
       action: 'update',
       entityType: 'case',
       entityId: id,
-      before: { [ROLE_FIELD[role as AssignRole]]: existing[role as AssignRole]?._id ?? null },
-      after: { [ROLE_FIELD[role as AssignRole]]: userId },
+      before: assignRole === 'associatedExpert'
+        ? { associatedExpertIds: existing.associatedExperts?.map((item) => item._id) ?? [] }
+        : { [ROLE_FIELD[assignRole]]: existing[assignRole]?._id ?? null },
+      after: assignRole === 'associatedExpert'
+        ? { associatedExpertIds: updated?.associatedExperts?.map((item) => item._id) ?? [] }
+        : { [ROLE_FIELD[assignRole]]: userId },
     });
 
     triggerEvent('case:assigned', { id });
@@ -136,3 +171,45 @@ async function assignUser(
 
 export const POST = assignUser;
 export const PUT = assignUser;
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const stop = guardRole(request, canAssignExpert);
+    if (stop) return stop;
+    const { id } = await params;
+    const body = await request.json();
+    const userId = String(body.userId || '');
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'userId es requerido' }, { status: 400 });
+    }
+    const existing = await cases.getCaseById(id);
+    const expertToRemove = existing?.associatedExperts?.find((item) => item._id === userId);
+    if (!existing || !expertToRemove) {
+      return NextResponse.json({ success: false, error: 'Perito asociado no encontrado' }, { status: 404 });
+    }
+    await cases.removeAssociatedExpert(id, userId);
+    const updated = await cases.getCaseById(id);
+    logCaseEvent({
+      caseId: id,
+      eventType: 'assignment',
+      description: `${expertToRemove.displayName} retirado del equipo de peritos asociados`,
+      userId: request.headers.get('x-user-id'),
+      userName: request.headers.get('x-user-name'),
+    });
+    auditEntityChange({
+      request,
+      action: 'update',
+      entityType: 'case',
+      entityId: id,
+      before: { associatedExpertIds: existing.associatedExperts?.map((item) => item._id) ?? [] },
+      after: { associatedExpertIds: updated?.associatedExperts?.map((item) => item._id) ?? [] },
+    });
+    triggerEvent('case:assigned', { id });
+    return NextResponse.json({ success: true, data: updated });
+  } catch {
+    return NextResponse.json({ success: false, error: 'Error retirando el perito asociado' }, { status: 500 });
+  }
+}

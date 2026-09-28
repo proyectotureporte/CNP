@@ -9,6 +9,14 @@ const userName = (a: string) => nestedObj(a, { _id: `${a}.id`, displayName: `${a
 const userContact = (a: string) => nestedObj(a, {
   _id: `${a}.id`, displayName: `${a}.display_name`, email: `${a}.email`, phone: `${a}.phone`,
 });
+const associatedExperts = `COALESCE((
+  SELECT json_agg(json_build_object(
+    '_id', au.id, 'displayName', au.display_name, 'email', au.email
+  ) ORDER BY cae.created_at)
+  FROM case_associated_expert cae
+  JOIN crm_user au ON au.id = cae.user_id
+  WHERE cae.case_id = c.id
+), '[]'::json)`;
 
 const SCALARS = `
   c.id AS "_id", c.created_at AS "_createdAt", c.updated_at AS "_updatedAt",
@@ -68,7 +76,8 @@ function casesWhere(p: ListCasesParams): { clause: string; values: unknown[] } {
     AND ($4 = '' OR c.title ILIKE $4 || '%' OR c.case_code ILIKE $4 || '%' OR c.city ILIKE $4 || '%')
     AND ($5 = '' OR (c.deadline_date IS NOT NULL AND c.deadline_date <= $5::timestamptz AND c.status <> 'cancelado'))
     AND ($6 = '' OR c.assigned_financiero_id = $6)
-    AND ($7 = '' OR c.assigned_expert_id = $7 OR c.assigned_financiero_id = $7)
+    AND ($7 = '' OR c.assigned_expert_id = $7 OR c.assigned_financiero_id = $7
+      OR EXISTS (SELECT 1 FROM case_associated_expert cae WHERE cae.case_id = c.id AND cae.user_id = $7))
     AND ($8 = '' OR c.client_id = $8)
   `;
   return { clause, values };
@@ -95,6 +104,7 @@ export async function listCases(p: ListCasesParams = {}): Promise<CaseExpanded[]
        ${clientList} AS "client",
        ${userEmail('cm')} AS "commercial",
        ${userEmail('ae')} AS "assignedExpert",
+       ${associatedExperts} AS "associatedExperts",
        ${userEmail('af')} AS "assignedFinanciero",
        ${userContact('aj')} AS "assignedJuridico"
      FROM cases c ${JOINS}
@@ -144,6 +154,7 @@ export async function getCaseById(id: string): Promise<CaseExpanded | null> {
        ${userEmail('cm')} AS "commercial",
        ${userEmail('ta')} AS "technicalAnalyst",
        ${userEmail('ae')} AS "assignedExpert",
+       ${associatedExperts} AS "associatedExperts",
        ${userEmail('af')} AS "assignedFinanciero",
        ${userContact('aj')} AS "assignedJuridico",
        ${userName('cb')} AS "createdBy"
@@ -187,6 +198,7 @@ export async function listCasesByUser(userId: string): Promise<CaseExpanded[]> {
      LEFT JOIN crm_user cm ON cm.id = c.commercial_id
      WHERE c.status <> 'archivado' AND (
        c.commercial_id = $1 OR c.technical_analyst_id = $1 OR c.assigned_expert_id = $1 OR c.created_by_id = $1
+       OR EXISTS (SELECT 1 FROM case_associated_expert cae WHERE cae.case_id = c.id AND cae.user_id = $1)
      )
      ORDER BY c.created_at DESC`,
     [userId],
@@ -243,7 +255,9 @@ export async function listCasesForExpert(userId: string): Promise<CaseExpanded[]
        c.case_number AS "caseNumber", ${userContact('aj')} AS "assignedJuridico"
      FROM cases c
      LEFT JOIN crm_user aj ON aj.id = c.assigned_juridico_id
-     WHERE c.assigned_expert_id = $1
+     WHERE (c.assigned_expert_id = $1 OR EXISTS (
+       SELECT 1 FROM case_associated_expert cae WHERE cae.case_id = c.id AND cae.user_id = $1
+     ))
        AND c.status <> 'archivado'
      ORDER BY c.created_at DESC`,
     [userId],
@@ -474,4 +488,36 @@ export async function updateCase(id: string, patch: Partial<CaseInput>): Promise
 
 export async function deleteCase(id: string): Promise<void> {
   await query('DELETE FROM cases WHERE id = $1', [id]);
+}
+
+export async function addAssociatedExpert(
+  caseId: string,
+  userId: string,
+  assignedById?: string | null,
+): Promise<void> {
+  await query(
+    `INSERT INTO case_associated_expert (case_id, user_id, assigned_by_id)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (case_id, user_id) DO NOTHING`,
+    [caseId, userId, assignedById && assignedById !== 'admin' ? assignedById : null],
+  );
+}
+
+export async function removeAssociatedExpert(caseId: string, userId: string): Promise<void> {
+  await query(
+    'DELETE FROM case_associated_expert WHERE case_id = $1 AND user_id = $2',
+    [caseId, userId],
+  );
+}
+
+export async function clearAssociatedExperts(caseId: string): Promise<void> {
+  await query('DELETE FROM case_associated_expert WHERE case_id = $1', [caseId]);
+}
+
+export async function listAssociatedExpertIds(caseId: string): Promise<string[]> {
+  const rows = await query<{ userId: string }>(
+    'SELECT user_id AS "userId" FROM case_associated_expert WHERE case_id = $1 ORDER BY created_at',
+    [caseId],
+  );
+  return rows.map((row) => row.userId);
 }

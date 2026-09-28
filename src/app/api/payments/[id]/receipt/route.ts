@@ -67,7 +67,7 @@ export async function POST(
       const docName = `Justificante Pago ${existing.paymentNumber}`;
       await caseDocument.createCaseDocument({
         caseId: existing.caseRef._id,
-        category: 'pago',
+        category: 'comprobantes_pago',
         fileName: docName,
         fileSize: file.size,
         mimeType: file.type,

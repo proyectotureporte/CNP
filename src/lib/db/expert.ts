@@ -24,9 +24,12 @@ const JOINS = `
   LEFT JOIN crm_user vb ON vb.id = e.validated_by_id
   LEFT JOIN LATERAL (
     SELECT count(*)::int AS case_count,
-      CASE WHEN count(*) = 1 THEN min(id) ELSE NULL END AS sole_case_id
-    FROM cases
-    WHERE assigned_expert_id = e.user_id AND status <> 'archivado'
+      CASE WHEN count(*) = 1 THEN min(assigned_case.id) ELSE NULL END AS sole_case_id
+    FROM cases assigned_case
+    WHERE (assigned_case.assigned_expert_id = e.user_id OR EXISTS (
+      SELECT 1 FROM case_associated_expert cae
+      WHERE cae.case_id = assigned_case.id AND cae.user_id = e.user_id
+    )) AND assigned_case.status <> 'archivado'
   ) ac ON TRUE
 `;
 
@@ -64,7 +67,10 @@ function expertsWhere(p: ListExpertsParams): { clause: string; values: unknown[]
     AND ($7 = '' OR e.category = $7::expert_category)
     AND ($8::boolean IS FALSE OR EXISTS (
       SELECT 1 FROM cases assigned_case
-      WHERE assigned_case.assigned_expert_id = e.user_id
+      WHERE (assigned_case.assigned_expert_id = e.user_id OR EXISTS (
+        SELECT 1 FROM case_associated_expert cae
+        WHERE cae.case_id = assigned_case.id AND cae.user_id = e.user_id
+      ))
         AND assigned_case.status <> 'archivado'
     ))
   `;

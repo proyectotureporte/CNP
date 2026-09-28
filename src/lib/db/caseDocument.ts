@@ -94,7 +94,7 @@ export async function createCaseDocument(input: CaseDocumentInput): Promise<Case
     case_id: input.caseId,
     uploaded_by_id: input.uploadedById && input.uploadedById !== 'admin' ? input.uploadedById : null,
     uploaded_by_name: input.uploadedByName ?? null,
-    category: input.category ?? 'otro',
+    category: input.category ?? 'documentos_caso',
     status: input.status ?? (input.fileUrl ? 'recibido' : 'no_recibido'),
     is_required: input.isRequired ?? false,
     file_url: input.fileUrl ?? null,

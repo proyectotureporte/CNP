@@ -93,7 +93,11 @@ export async function listMessageRecipients(
       `SELECT DISTINCT u.id AS "userId", u.email, u.display_name AS "displayName"
        FROM cases c
        JOIN crm_user u ON u.id IN (c.assigned_expert_id, c.assigned_financiero_id)
-       WHERE c.id = $1 AND u.role = 'perito' AND u.active = TRUE`,
+         OR EXISTS (
+           SELECT 1 FROM case_associated_expert cae
+           WHERE cae.case_id = c.id AND cae.user_id = u.id
+         )
+       WHERE c.id = $1 AND u.role IN ('perito', 'perito_interno') AND u.active = TRUE`,
       [caseId],
     );
   }

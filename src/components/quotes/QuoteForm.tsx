@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Calculator, Save, Loader2, Upload } from "lucide-react";
 import type { Quote } from "@/lib/types";
 
@@ -41,12 +40,11 @@ export default function QuoteForm({ caseId, initialData, onSuccess }: QuoteFormP
   const [firstPaymentDate, setFirstPaymentDate] = useState(
     initialData?.firstPaymentDate ? initialData.firstPaymentDate.slice(0, 10) : ""
   );
+  const [secondPaymentDate, setSecondPaymentDate] = useState(
+    initialData?.secondPaymentDate ? initialData.secondPaymentDate.slice(0, 10) : ""
+  );
   const [lastPaymentDate, setLastPaymentDate] = useState(
     initialData?.lastPaymentDate ? initialData.lastPaymentDate.slice(0, 10) : ""
-  );
-  const [customSplit, setCustomSplit] = useState(initialData?.customSplit || false);
-  const [firstPaymentPercentage, setFirstPaymentPercentage] = useState(
-    initialData?.firstPaymentPercentage ? String(initialData.firstPaymentPercentage) : "50"
   );
   const [quotedBusinessDays, setQuotedBusinessDays] = useState(
     initialData?.quotedBusinessDays ? String(initialData.quotedBusinessDays) : "15"
@@ -59,13 +57,12 @@ export default function QuoteForm({ caseId, initialData, onSuccess }: QuoteFormP
     const discount = parseFloat(discountPercentage) || 0;
     const discountValue = price * discount / 100;
     const finalValue = price - discountValue;
-    const pct1 = customSplit ? (parseFloat(firstPaymentPercentage) || 50) : 50;
-    const pct2 = 100 - pct1;
-    const payment1 = Math.round(finalValue * pct1 / 100);
-    const payment2 = finalValue - payment1;
+    const payment1 = Math.round(finalValue * 0.5);
+    const payment2 = Math.round(finalValue * 0.25);
+    const payment3 = finalValue - payment1 - payment2;
 
-    return { discountValue, finalValue, pct1, pct2, payment1, payment2 };
-  }, [totalPrice, discountPercentage, customSplit, firstPaymentPercentage]);
+    return { discountValue, finalValue, payment1, payment2, payment3 };
+  }, [totalPrice, discountPercentage]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -90,11 +87,10 @@ export default function QuoteForm({ caseId, initialData, onSuccess }: QuoteFormP
       if (validUntil) fd.append("validUntil", new Date(validUntil).toISOString());
       if (quoteFile) fd.append("quoteDocument", quoteFile);
       if (firstPaymentDate) fd.append("firstPaymentDate", new Date(firstPaymentDate).toISOString());
+      if (secondPaymentDate) fd.append("secondPaymentDate", new Date(secondPaymentDate).toISOString());
       if (lastPaymentDate) fd.append("lastPaymentDate", new Date(lastPaymentDate).toISOString());
-      fd.append("customSplit", String(customSplit));
-      if (customSplit) {
-        fd.append("firstPaymentPercentage", firstPaymentPercentage || "50");
-      }
+      fd.append("customSplit", "false");
+      fd.append("firstPaymentPercentage", "50");
 
       const url = isEditing
         ? `/api/quotes/${initialData._id}`
@@ -224,7 +220,7 @@ export default function QuoteForm({ caseId, initialData, onSuccess }: QuoteFormP
 
             <Separator />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="firstPaymentDate">Fecha Primer Pago</Label>
                 <Input
@@ -235,7 +231,16 @@ export default function QuoteForm({ caseId, initialData, onSuccess }: QuoteFormP
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastPaymentDate">Fecha Ultimo Pago</Label>
+                <Label htmlFor="secondPaymentDate">Fecha Segundo Pago</Label>
+                <Input
+                  id="secondPaymentDate"
+                  type="date"
+                  value={secondPaymentDate}
+                  onChange={(e) => setSecondPaymentDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastPaymentDate">Fecha Tercer Pago</Label>
                 <Input
                   id="lastPaymentDate"
                   type="date"
@@ -245,32 +250,9 @@ export default function QuoteForm({ caseId, initialData, onSuccess }: QuoteFormP
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="customSplit"
-                checked={customSplit}
-                onCheckedChange={(checked) => setCustomSplit(checked === true)}
-              />
-              <Label htmlFor="customSplit" className="text-sm font-normal cursor-pointer">
-                Diferente al 50/50?
-              </Label>
-            </div>
-
-            {customSplit && (
-              <div className="space-y-2">
-                <Label htmlFor="firstPaymentPercentage">Porcentaje Primer Pago (%)</Label>
-                <Input
-                  id="firstPaymentPercentage"
-                  type="number"
-                  min="1"
-                  max="99"
-                  step="1"
-                  value={firstPaymentPercentage}
-                  onChange={(e) => setFirstPaymentPercentage(e.target.value)}
-                  placeholder="50"
-                />
-              </div>
-            )}
+            <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+              Esquema CNP automático: 50% en la primera cuota, 25% en la segunda y 25% en la tercera.
+            </p>
           </CardContent>
         </Card>
 
@@ -308,7 +290,7 @@ export default function QuoteForm({ caseId, initialData, onSuccess }: QuoteFormP
               <div className="rounded-lg bg-background/60 p-3 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Pago 1 ({calculated.pct1}%)
+                    Primer pago (50%)
                   </span>
                   <span className="font-medium">{formatCurrency(calculated.payment1)}</span>
                 </div>
@@ -321,9 +303,20 @@ export default function QuoteForm({ caseId, initialData, onSuccess }: QuoteFormP
               <div className="rounded-lg bg-background/60 p-3 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Pago 2 ({calculated.pct2}%)
+                    Segundo pago (25%)
                   </span>
                   <span className="font-medium">{formatCurrency(calculated.payment2)}</span>
+                </div>
+                {secondPaymentDate && (
+                  <p className="text-xs text-muted-foreground ml-4">
+                    Vence: {new Date(secondPaymentDate).toLocaleDateString("es-CO")}
+                  </p>
+                )}
+              </div>
+              <div className="rounded-lg bg-background/60 p-3 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Tercer pago (25%)</span>
+                  <span className="font-medium">{formatCurrency(calculated.payment3)}</span>
                 </div>
                 {lastPaymentDate && (
                   <p className="text-xs text-muted-foreground ml-4">

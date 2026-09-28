@@ -153,11 +153,10 @@ export async function PUT(
     const notes = (formData.get('notes') as string) ?? existing.notes;
     const validUntil = (formData.get('validUntil') as string) || existing.validUntil || null;
     const firstPaymentDate = (formData.get('firstPaymentDate') as string) || existing.firstPaymentDate || null;
+    const secondPaymentDate = (formData.get('secondPaymentDate') as string) || existing.secondPaymentDate || null;
     const lastPaymentDate = (formData.get('lastPaymentDate') as string) || existing.lastPaymentDate || null;
-    const customSplit = formData.get('customSplit') === 'true';
-    const firstPaymentPercentage = customSplit
-      ? parseFloat(formData.get('firstPaymentPercentage') as string) || existing.firstPaymentPercentage
-      : 50;
+    const customSplit = false;
+    const firstPaymentPercentage = 50;
     const quoteFile = formData.get('quoteDocument') as File | null;
     const quotedBusinessDays = parseInt(String(formData.get('quotedBusinessDays') || existing.quotedBusinessDays || 15), 10);
 
@@ -175,7 +174,7 @@ export async function PUT(
 
     const updated = await quote.updateQuote(id, {
       totalPrice, discountPercentage, finalValue, notes,
-      validUntil, firstPaymentDate, lastPaymentDate, customSplit, firstPaymentPercentage, quotedBusinessDays,
+      validUntil, firstPaymentDate, secondPaymentDate, lastPaymentDate, customSplit, firstPaymentPercentage, quotedBusinessDays,
       fileUrl: asset?.url,
       fileAssetId: asset?.assetId,
       fileName: asset?.originalFilename,
@@ -185,21 +184,31 @@ export async function PUT(
 
     // Update linked payments (amounts and dates)
     const payments = await payment.listQuotePayments(id);
-    const secondPercentage = 100 - firstPaymentPercentage;
-    const payment1Amount = Math.round(finalValue * firstPaymentPercentage / 100);
-    const payment2Amount = finalValue - payment1Amount;
+    const payment1Amount = Math.round(finalValue * 0.50);
+    const payment2Amount = Math.round(finalValue * 0.25);
+    const payment3Amount = finalValue - payment1Amount - payment2Amount;
 
     await Promise.all(
       payments.map((p) => {
         if (p.paymentNumber === 1) {
-          return payment.updatePayment(p._id, { amount: payment1Amount, percentage: firstPaymentPercentage, dueDate: firstPaymentDate });
+          return payment.updatePayment(p._id, { amount: payment1Amount, percentage: 50, dueDate: firstPaymentDate });
         }
         if (p.paymentNumber === 2) {
-          return payment.updatePayment(p._id, { amount: payment2Amount, percentage: secondPercentage, dueDate: lastPaymentDate });
+          return payment.updatePayment(p._id, { amount: payment2Amount, percentage: 25, dueDate: secondPaymentDate });
+        }
+        if (p.paymentNumber === 3) {
+          return payment.updatePayment(p._id, { amount: payment3Amount, percentage: 25, dueDate: lastPaymentDate });
         }
         return Promise.resolve(null);
       })
     );
+    if (!payments.some((p) => p.paymentNumber === 3)) {
+      await payment.createPayment({
+        caseId, quoteId: id, paymentNumber: 3, amount: payment3Amount,
+        percentage: 25, dueDate: lastPaymentDate, status: 'pendiente',
+        createdById: request.headers.get('x-user-id') === 'admin' ? null : request.headers.get('x-user-id'),
+      });
+    }
 
     triggerEvent('quote:updated', { id });
 

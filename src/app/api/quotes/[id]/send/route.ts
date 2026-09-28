@@ -47,6 +47,8 @@ export async function POST(
     if (!existing.finalValue || existing.finalValue <= 0) missing.push('valor final');
     if (!existing.validUntil) missing.push('fecha de validez (válida hasta)');
     if (!existing.firstPaymentDate) missing.push('fecha del primer pago');
+    if (!existing.secondPaymentDate) missing.push('fecha del segundo pago');
+    if (!existing.lastPaymentDate) missing.push('fecha del tercer pago');
     if (!body.channel) missing.push('canal de envío');
     if (missing.length > 0) {
       return NextResponse.json(

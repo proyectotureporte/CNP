@@ -80,6 +80,7 @@ export async function PUT(
         existing.commercial?._id,
         existing.technicalAnalyst?._id,
         existing.assignedExpert?._id,
+        ...(existing.associatedExperts?.map((expert) => expert._id) ?? []),
         existing.assignedFinanciero?._id,
         existing.createdBy?._id,
       ].filter((uid) => uid !== userId),

@@ -59,9 +59,10 @@ export async function POST(
       notes: existing.notes,
       validUntil: existing.validUntil ?? null,
       firstPaymentDate: existing.firstPaymentDate ?? null,
+      secondPaymentDate: existing.secondPaymentDate ?? null,
       lastPaymentDate: existing.lastPaymentDate ?? null,
-      customSplit: existing.customSplit,
-      firstPaymentPercentage: existing.firstPaymentPercentage,
+      customSplit: false,
+      firstPaymentPercentage: 50,
       quotedBusinessDays: existing.quotedBusinessDays ?? 15,
       createdById,
     });
@@ -70,20 +71,25 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Error creando la nueva versión' }, { status: 500 });
     }
 
-    // Pagos propios de la nueva versión (mismo split que la original).
-    const firstPct = existing.firstPaymentPercentage ?? 50;
+    // Pagos propios de la nueva versión con el esquema CNP 50/25/25.
     const finalValue = existing.finalValue ?? 0;
-    const payment1Amount = Math.round((finalValue * firstPct) / 100);
-    const payment2Amount = finalValue - payment1Amount;
+    const payment1Amount = Math.round(finalValue * 0.50);
+    const payment2Amount = Math.round(finalValue * 0.25);
+    const payment3Amount = finalValue - payment1Amount - payment2Amount;
     await Promise.all([
       payment.createPayment({
         caseId, quoteId: created._id, paymentNumber: 1,
-        amount: payment1Amount, percentage: firstPct,
+        amount: payment1Amount, percentage: 50,
         dueDate: existing.firstPaymentDate ?? null, status: 'pendiente', createdById,
       }),
       payment.createPayment({
         caseId, quoteId: created._id, paymentNumber: 2,
-        amount: payment2Amount, percentage: 100 - firstPct,
+        amount: payment2Amount, percentage: 25,
+        dueDate: existing.secondPaymentDate ?? null, status: 'pendiente', createdById,
+      }),
+      payment.createPayment({
+        caseId, quoteId: created._id, paymentNumber: 3,
+        amount: payment3Amount, percentage: 25,
         dueDate: existing.lastPaymentDate ?? null, status: 'pendiente', createdById,
       }),
     ]);

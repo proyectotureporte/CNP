@@ -15,6 +15,7 @@ function safeDocument(item: CaseDocument, hideUploader: boolean): CaseDocument {
   const safe = { ...item };
   delete safe.fileUrl;
   if (item.fileName) safe.downloadUrl = `/api/documents/${item._id}/download`;
+  if (item.fileName) safe.viewUrl = `/api/documents/${item._id}/download?inline=1`;
   if (hideUploader) {
     delete safe.uploadedBy;
     delete safe.uploadedByName;
@@ -31,11 +32,14 @@ export async function GET(
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
     const category = request.nextUrl.searchParams.get('category') || '';
+    if (category && !DOCUMENT_CATEGORIES.includes(category as DocumentCategory)) {
+      return NextResponse.json({ success: false, error: 'Categoría no válida' }, { status: 400 });
+    }
 
     if (access.actor.role === 'cliente') {
       // Los dictámenes se entregan únicamente desde deliverables tras aprobación.
       const documents = (await caseDocument.listClientVisibleDocuments(id))
-        .filter((document) => document.category !== 'dictamen_final')
+        .filter((document) => document.category !== 'dictamen')
         .map((document) => safeDocument(document, true));
       return NextResponse.json({ success: true, data: documents });
     }
@@ -47,14 +51,14 @@ export async function GET(
     const docs = await caseDocument.listCaseDocuments(id, category);
     const isExpert = access.actor.role === 'perito' || access.actor.role === 'perito_interno';
     const visibleDocs = isExpert
-      ? docs.filter((document) => document.category !== 'pago')
+      ? docs.filter((document) => document.category !== 'comprobantes_pago')
       : docs;
     let data: CaseDocument[] = visibleDocs.map((document) =>
       safeDocument(document, isExpert),
     );
 
     // Los comprobantes del cliente son financieros; nunca se exponen al perito.
-    if (!isExpert && (!category || category === 'pago')) {
+    if (!isExpert && (!category || category === 'comprobantes_pago')) {
       const receipts = await query<{
         _id: string; _createdAt: string; paymentNumber: number;
         fileName: string | null; fileSize: number | null; mimeType: string | null;
@@ -64,13 +68,13 @@ export async function GET(
          FROM payment WHERE case_id = $1 AND file_url IS NOT NULL ORDER BY payment_number ASC`,
         [id],
       );
-      const existing = new Set(docs.filter((document) => document.category === 'pago').map((document) => document.fileName));
+      const existing = new Set(docs.filter((document) => document.category === 'comprobantes_pago').map((document) => document.fileName));
       const virtual: CaseDocument[] = receipts
         .filter((payment) => !existing.has(`Justificante Pago ${payment.paymentNumber}`))
         .map((payment) => ({
           _id: `payment-receipt-${payment._id}`,
           _createdAt: payment._createdAt,
-          category: 'pago',
+          category: 'comprobantes_pago',
           status: 'recibido',
           isRequired: false,
           fileName: payment.fileName || `Justificante Pago ${payment.paymentNumber}`,
@@ -80,6 +84,7 @@ export async function GET(
           isVisibleToClient: true,
           description: `Justificante Pago ${payment.paymentNumber}`,
           downloadUrl: `/api/payments/${payment._id}/receipt-download`,
+          viewUrl: `/api/payments/${payment._id}/receipt-download?inline=1`,
         }));
       data = [...data, ...virtual];
     }
@@ -105,7 +110,7 @@ export async function POST(
         return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
       }
       const body = await request.json();
-      const category = String(body.category || 'otro') as DocumentCategory;
+      const category = String(body.category || 'documentos_caso') as DocumentCategory;
       const description = String(body.description || '').trim();
       if (!description) {
         return NextResponse.json({ success: false, error: 'Indique el nombre del documento requerido' }, { status: 400 });
@@ -141,7 +146,7 @@ export async function POST(
     const file = form.get('file');
     const targetDocumentId = String(form.get('documentId') || '');
     const isClientUpload = access.actor.role === 'cliente';
-    const category = (isClientUpload ? 'soporte_tecnico' : String(form.get('category') || 'otro')) as DocumentCategory;
+    const category = (isClientUpload ? 'documentos_caso' : String(form.get('category') || 'documentos_caso')) as DocumentCategory;
     const description = String(form.get('description') || '');
     const isVisibleToClient = isClientUpload || form.get('isVisibleToClient') === 'true';
 

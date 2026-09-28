@@ -15,6 +15,13 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DOCUMENT_CATEGORIES,
   DOCUMENT_CATEGORY_LABELS,
   CASE_DOCUMENT_STATUSES,
@@ -49,6 +56,14 @@ function getFileIcon(mimeType?: string) {
   return "📎";
 }
 
+function canPreviewInBrowser(mimeType?: string) {
+  return Boolean(mimeType && (
+    mimeType === "application/pdf"
+    || mimeType === "text/plain"
+    || mimeType.startsWith("image/")
+  ));
+}
+
 export default function DocumentList({ caseId, userRole = "admin", allRoles = false }: DocumentListProps) {
   const [documents, setDocuments] = useState<CaseDocument[]>([]);
   const [requests, setRequests] = useState<DocumentRequest[]>([]);
@@ -58,7 +73,8 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [newRequiredName, setNewRequiredName] = useState("");
-  const [newRequiredCategory, setNewRequiredCategory] = useState<string>("otro");
+  const [newRequiredCategory, setNewRequiredCategory] = useState<string>("documentos_caso");
+  const [previewDocument, setPreviewDocument] = useState<CaseDocument | null>(null);
   const [addingRequired, setAddingRequired] = useState(false);
   const [uploadTargetId, setUploadTargetId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -385,8 +401,13 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
                     </Button>
                   )}
                   {doc.downloadUrl && (
+                    <Button variant="ghost" size="sm" onClick={() => setPreviewDocument(doc)} title="Ver documento">
+                      <Eye className="mr-1 h-4 w-4" />Ver
+                    </Button>
+                  )}
+                  {doc.downloadUrl && (
                     <Button variant="ghost" size="sm" asChild>
-                      <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" title="Descargar">
+                      <a href={doc.downloadUrl} title="Descargar">
                         <Download className="h-4 w-4" />
                       </a>
                     </Button>
@@ -407,6 +428,36 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
           })}
         </div>
       )}
+
+      <Dialog open={Boolean(previewDocument)} onOpenChange={(open) => { if (!open) setPreviewDocument(null); }}>
+        <DialogContent className="flex h-[90vh] max-w-6xl flex-col">
+          <DialogHeader>
+            <DialogTitle>{previewDocument?.fileName || previewDocument?.description || "Documento"}</DialogTitle>
+            <DialogDescription>
+              Vista previa protegida dentro del CRM. También puedes descargar el archivo original.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-hidden rounded-md border bg-muted/20">
+            {previewDocument?.viewUrl && previewDocument.mimeType?.startsWith("image/") ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={previewDocument.viewUrl} alt={previewDocument.fileName || "Documento"} className="h-full w-full object-contain" />
+            ) : previewDocument?.viewUrl && canPreviewInBrowser(previewDocument.mimeType) ? (
+              <iframe src={previewDocument.viewUrl} title={previewDocument.fileName || "Documento"} className="h-full w-full" />
+            ) : (
+              <div className="flex h-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
+                Este formato no dispone de vista previa segura en el navegador. Puedes descargar el archivo original.
+              </div>
+            )}
+          </div>
+          {previewDocument?.downloadUrl && (
+            <div className="flex justify-end">
+              <Button variant="outline" asChild>
+                <a href={previewDocument.downloadUrl}><Download className="mr-2 h-4 w-4" />Descargar</a>
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

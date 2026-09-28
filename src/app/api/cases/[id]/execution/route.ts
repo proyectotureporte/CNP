@@ -96,7 +96,12 @@ export async function POST(
     }
 
     await notifyUsersAndAdmins({
-      userIds: [access.row.assignedExpertId, access.row.assignedFinancieroId, access.row.assignedJuridicoId],
+      userIds: [
+        access.row.assignedExpertId,
+        ...access.row.associatedExpertIds,
+        access.row.assignedFinancieroId,
+        access.row.assignedJuridicoId,
+      ],
       title: action === 'suspend' ? 'Plazo de ejecución suspendido' : 'Plazo de ejecución reanudado',
       message: `Se actualizó el contador de días hábiles del caso.`,
       priority: 'alta',

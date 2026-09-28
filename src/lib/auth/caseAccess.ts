@@ -19,6 +19,7 @@ export interface CaseAccessRow {
   caseId: string;
   clientId: string | null;
   assignedExpertId: string | null;
+  associatedExpertIds: string[];
   assignedFinancieroId: string | null;
   assignedJuridicoId: string | null;
   brand: 'CNP' | 'Peritus';
@@ -45,6 +46,7 @@ export async function getCaseAccessRow(caseId: string): Promise<CaseAccessRow | 
   return queryOne<CaseAccessRow>(
     `SELECT id AS "caseId", client_id AS "clientId",
        assigned_expert_id AS "assignedExpertId",
+       ARRAY(SELECT cae.user_id FROM case_associated_expert cae WHERE cae.case_id = cases.id) AS "associatedExpertIds",
        assigned_financiero_id AS "assignedFinancieroId",
        assigned_juridico_id AS "assignedJuridicoId", brand
      FROM cases WHERE id = $1`,
@@ -62,7 +64,9 @@ export async function canActorAccessCase(
 ): Promise<boolean> {
   if (INTERNAL_CASE_ROLES.includes(actor.role)) return true;
   if (actor.role === 'perito_interno') return row.assignedFinancieroId === actor.userId;
-  if (actor.role === 'perito') return row.assignedExpertId === actor.userId;
+  if (actor.role === 'perito') {
+    return row.assignedExpertId === actor.userId || row.associatedExpertIds.includes(actor.userId);
+  }
   if (actor.role === 'cliente') {
     const clientId = await getClientIdForUser(actor.userId);
     return Boolean(clientId && row.clientId === clientId);
@@ -132,6 +136,7 @@ export function sanitizeCaseForRole(
 
   if (role === 'cliente') {
     delete safe.assignedExpert;
+    delete safe.associatedExperts;
     delete safe.assignedFinanciero;
     delete safe.technicalAnalyst;
     delete safe.commercial;

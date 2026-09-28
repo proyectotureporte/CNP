@@ -286,6 +286,7 @@ export interface Case extends SanityDocument {
   commercial?: { _ref: string; _type: 'reference' };
   technicalAnalyst?: { _ref: string; _type: 'reference' };
   assignedExpert?: { _ref: string; _type: 'reference' };
+  associatedExperts?: Array<{ _ref: string; _type: 'reference' }>;
   assignedFinanciero?: { _ref: string; _type: 'reference' };
   assignedJuridico?: { _ref: string; _type: 'reference' };
   discipline: CaseDiscipline;
@@ -350,6 +351,7 @@ export interface CaseExpanded {
   commercial?: { _id: string; displayName: string; email: string };
   technicalAnalyst?: { _id: string; displayName: string; email: string };
   assignedExpert?: { _id: string; displayName: string; email: string };
+  associatedExperts?: Array<{ _id: string; displayName: string; email: string }>;
   assignedFinanciero?: { _id: string; displayName: string; email: string };
   assignedJuridico?: { _id: string; displayName: string; email: string; phone?: string };
   createdBy?: { _id: string; displayName: string };
@@ -443,6 +445,7 @@ export interface Quote {
   quoteDocumentUrl?: string;
   downloadUrl?: string;
   firstPaymentDate?: string;
+  secondPaymentDate?: string;
   lastPaymentDate?: string;
   firstPaymentPercentage: number;
   customSplit: boolean;
@@ -454,19 +457,35 @@ export interface Quote {
 // ============================================
 
 export const DOCUMENT_CATEGORIES = [
-  'demanda', 'soporte_tecnico', 'contrato', 'cotizacion',
-  'plan_trabajo', 'entrega_parcial', 'dictamen_final',
-  'audiencia', 'pago', 'otro',
+  'solicitud_dictamen',
+  'ficha_tecnica',
+  'nda',
+  'solicitud_documentos',
+  'propuesta_comercial',
+  'documentos_caso',
+  'contrato',
+  'plan_trabajo',
+  'informe_preliminar',
+  'dictamen',
+  'audiencia',
+  'comprobantes_pago',
 ] as const;
 
 export type DocumentCategory = (typeof DOCUMENT_CATEGORIES)[number];
 
 export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
-  demanda: 'Demanda', soporte_tecnico: 'Soporte Tecnico',
-  contrato: 'Contrato', cotizacion: 'Cotizacion',
-  plan_trabajo: 'Plan de Trabajo', entrega_parcial: 'Entrega Parcial',
-  dictamen_final: 'Dictamen Final', audiencia: 'Audiencia',
-  pago: 'Pago', otro: 'Otro',
+  solicitud_dictamen: 'Solicitud del dictamen',
+  ficha_tecnica: 'Ficha técnica',
+  nda: 'NDA — Acuerdo de confidencialidad firmado',
+  solicitud_documentos: 'Solicitud de documentos',
+  propuesta_comercial: 'Propuesta comercial',
+  documentos_caso: 'Documentos del caso',
+  contrato: 'Contrato',
+  plan_trabajo: 'Plan de trabajo',
+  informe_preliminar: 'Informe preliminar',
+  dictamen: 'Dictamen',
+  audiencia: 'Audiencia',
+  comprobantes_pago: 'Comprobantes de pago',
 };
 
 export const CASE_DOCUMENT_STATUSES = ['no_recibido', 'parcial', 'recibido'] as const;
@@ -499,6 +518,7 @@ export interface CaseDocument {
   file?: { asset: { _ref: string; url?: string } };
   fileUrl?: string;
   downloadUrl?: string;
+  viewUrl?: string;
 }
 
 export interface AdminConfig extends SanityDocument {
@@ -906,7 +926,7 @@ export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   pendiente: 'Pendiente',
-  validado: 'Validado',
+  validado: 'Pagado',
   anulado: 'Anulado',
 };
 

@@ -3,6 +3,7 @@ import { caseDocument } from '@/lib/db';
 import {
   CASE_DOCUMENT_STATUSES,
   CASE_DOCUMENT_STATUS_LABELS,
+  DOCUMENT_CATEGORIES,
   type CaseDocumentStatus,
   type DocumentCategory,
 } from '@/lib/types';
@@ -30,13 +31,18 @@ export async function GET(
     if (!access.actor.allRoles && !['comercial_juridico', 'junta', 'perito_interno', 'perito', 'cliente'].includes(access.actor.role)) {
       return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
     }
-    if (isExpert && doc.category === 'pago') {
+    if (isExpert && doc.category === 'comprobantes_pago') {
       return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
     }
-    if (access.actor.role === 'cliente' && (!doc.isVisibleToClient || doc.category === 'dictamen_final')) {
+    if (access.actor.role === 'cliente' && (!doc.isVisibleToClient || doc.category === 'dictamen')) {
       return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
     }
-    const safe = { ...doc, fileUrl: undefined, downloadUrl: doc.fileName ? `/api/documents/${id}/download` : undefined };
+    const safe = {
+      ...doc,
+      fileUrl: undefined,
+      downloadUrl: doc.fileName ? `/api/documents/${id}/download` : undefined,
+      viewUrl: doc.fileName ? `/api/documents/${id}/download?inline=1` : undefined,
+    };
     if (isExpert || access.actor.role === 'cliente') {
       delete safe.uploadedBy;
       delete safe.uploadedByName;
@@ -94,6 +100,9 @@ export async function PUT(
 
     if (body.status !== undefined && !CASE_DOCUMENT_STATUSES.includes(body.status as CaseDocumentStatus)) {
       return NextResponse.json({ success: false, error: 'Estado de documento no valido' }, { status: 400 });
+    }
+    if (body.category !== undefined && !DOCUMENT_CATEGORIES.includes(body.category as DocumentCategory)) {
+      return NextResponse.json({ success: false, error: 'Categoría de documento no válida' }, { status: 400 });
     }
 
     const updated = await caseDocument.updateCaseDocument(id, {

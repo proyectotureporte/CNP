@@ -57,11 +57,10 @@ export async function POST(
     const notes = (formData.get('notes') as string) || '';
     const quoteFile = formData.get('quoteDocument') as File | null;
     const firstPaymentDate = (formData.get('firstPaymentDate') as string) || null;
+    const secondPaymentDate = (formData.get('secondPaymentDate') as string) || null;
     const lastPaymentDate = (formData.get('lastPaymentDate') as string) || null;
-    const customSplit = formData.get('customSplit') === 'true';
-    const firstPaymentPercentage = customSplit
-      ? parseFloat(formData.get('firstPaymentPercentage') as string) || 50
-      : 50;
+    const customSplit = false;
+    const firstPaymentPercentage = 50;
     const quotedBusinessDays = parseInt(String(formData.get('quotedBusinessDays') || '15'), 10);
 
     const existing = await cases.getCaseById(id);
@@ -100,6 +99,7 @@ export async function POST(
       notes,
       validUntil,
       firstPaymentDate,
+      secondPaymentDate,
       lastPaymentDate,
       customSplit,
       firstPaymentPercentage,
@@ -120,7 +120,7 @@ export async function POST(
     if (asset && quoteFile) {
       await caseDocument.createCaseDocument({
         caseId: id,
-        category: 'cotizacion',
+        category: 'propuesta_comercial',
         fileName: quoteFile.name,
         fileSize: quoteFile.size,
         mimeType: quoteFile.type,
@@ -133,10 +133,10 @@ export async function POST(
       });
     }
 
-    // Auto-create 2 payments linked to quote and case
-    const secondPercentage = 100 - firstPaymentPercentage;
-    const payment1Amount = Math.round(finalValue * firstPaymentPercentage / 100);
-    const payment2Amount = finalValue - payment1Amount;
+    // Esquema financiero CNP: tres cuotas fijas 50% / 25% / 25%.
+    const payment1Amount = Math.round(finalValue * 0.50);
+    const payment2Amount = Math.round(finalValue * 0.25);
+    const payment3Amount = finalValue - payment1Amount - payment2Amount;
     const createdById = userId && userId !== 'admin' ? userId : null;
 
     await Promise.all([
@@ -147,7 +147,12 @@ export async function POST(
       }),
       payment.createPayment({
         caseId: id, quoteId: created._id, paymentNumber: 2,
-        amount: payment2Amount, percentage: secondPercentage,
+        amount: payment2Amount, percentage: 25,
+        dueDate: secondPaymentDate, status: 'pendiente', createdById,
+      }),
+      payment.createPayment({
+        caseId: id, quoteId: created._id, paymentNumber: 3,
+        amount: payment3Amount, percentage: 25,
         dueDate: lastPaymentDate, status: 'pendiente', createdById,
       }),
     ]);

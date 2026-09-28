@@ -400,6 +400,9 @@ export default function QuoteList({ caseId, userRole }: QuoteListProps) {
                               <p className="text-xs text-muted-foreground">
                                 {payment.percentage}% | Vence: {formatDate(payment.dueDate)}
                               </p>
+                              {payment.paymentDate && (
+                                <p className="text-xs text-green-700">Fecha de pago: {formatDate(payment.paymentDate)}</p>
+                              )}
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                               {/* Upload receipt button - only for pending payments when user can manage */}

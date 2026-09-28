@@ -28,7 +28,7 @@ interface DocumentUploadProps {
 
 export default function DocumentUpload({ caseId, onSuccess }: DocumentUploadProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [category, setCategory] = useState("otro");
+  const [category, setCategory] = useState("documentos_caso");
   const [description, setDescription] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -94,7 +94,7 @@ export default function DocumentUpload({ caseId, onSuccess }: DocumentUploadProp
       }
 
       setFile(null);
-      setCategory("otro");
+      setCategory("documentos_caso");
       setDescription("");
       onSuccess();
     } catch {

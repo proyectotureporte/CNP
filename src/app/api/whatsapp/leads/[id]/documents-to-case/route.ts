@@ -39,7 +39,7 @@ export async function POST(
       if (!doc.file_asset_id) continue;
       await caseDocument.createCaseDocument({
         caseId,
-        category: 'soporte_tecnico',
+        category: 'documentos_caso',
         fileName: doc.file_name || 'documento',
         fileSize: doc.file_size || 0,
         mimeType: doc.mime_type || 'application/octet-stream',

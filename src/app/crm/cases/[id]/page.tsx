@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Calendar, MapPin, Gavel, FileText, Users, Clock, DollarSign,
-  Pencil, ArrowLeft, AlertTriangle, UserCheck,
+  Pencil, ArrowLeft, AlertTriangle, UserCheck, UserMinus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -120,7 +120,7 @@ export default function CrmCaseDetailPage({
   const [activeTab, setActiveTab] = useState("summary");
   const [refreshKey, setRefreshKey] = useState(0);
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
-  const [assignmentType, setAssignmentType] = useState<'internal' | 'external'>('internal');
+  const [assignmentType, setAssignmentType] = useState<'internal' | 'leader' | 'associate'>('leader');
   const [assignmentOptions, setAssignmentOptions] = useState<{ internal: AssignmentOption[]; external: AssignmentOption[] }>({ internal: [], external: [] });
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
   const [assignmentLoading, setAssignmentLoading] = useState(false);
@@ -219,7 +219,7 @@ export default function CrmCaseDetailPage({
 
   async function openAssignmentDialog() {
     setShowAssignmentDialog(true);
-    setAssignmentType(['financiero', 'contable'].includes(caseData?.discipline || '') ? 'internal' : 'external');
+    setAssignmentType(['financiero', 'contable'].includes(caseData?.discipline || '') ? 'internal' : 'leader');
     setSelectedAssigneeId("");
     setAssignmentLoading(true);
     setError("");
@@ -244,7 +244,11 @@ export default function CrmCaseDetailPage({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          role: assignmentType === 'external' ? 'assignedExpert' : 'assignedFinanciero',
+          role: assignmentType === 'leader'
+            ? 'assignedExpert'
+            : assignmentType === 'associate'
+              ? 'associatedExpert'
+              : 'assignedFinanciero',
           userId: selectedAssigneeId,
         }),
       });
@@ -258,6 +262,25 @@ export default function CrmCaseDetailPage({
       }
     } catch {
       setError("Error de conexion");
+    } finally {
+      setAssigning(false);
+    }
+  }
+
+  async function handleRemoveAssociatedExpert(userId: string) {
+    setAssigning(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/cases/${id}/assign`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "No fue posible retirar el perito asociado");
+      setCaseData(data.data);
+    } catch (removeError) {
+      setError(removeError instanceof Error ? removeError.message : "No fue posible retirar el perito asociado");
     } finally {
       setAssigning(false);
     }
@@ -686,11 +709,38 @@ export default function CrmCaseDetailPage({
                         {caseData.assignedJuridico?.email && <p className="text-xs text-muted-foreground">{caseData.assignedJuridico.email}</p>}
                         {caseData.assignedJuridico?.phone && <p className="text-xs text-muted-foreground">{caseData.assignedJuridico.phone}</p>}
                       </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Perito líder</p>
+                        <p className="text-sm font-medium">{caseData.assignedExpert?.displayName || "Pendiente de asignar"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Equipo de peritos asociados</p>
+                        <p className="text-sm font-medium">
+                          {caseData.associatedExperts?.map((expert) => expert.displayName).join(", ") || "Sin peritos asociados"}
+                        </p>
+                      </div>
                     </>
                   ) : (
                     <>
                       <div><p className="text-xs text-muted-foreground">Cliente</p><p className="text-sm font-medium">{caseData.client ? `${caseData.client.name} (${caseData.client.company || "Sin empresa"})` : "-"}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Perito externo</p><p className="text-sm font-medium">{caseData.assignedExpert?.displayName || "-"}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Perito líder</p><p className="text-sm font-medium">{caseData.assignedExpert?.displayName || "-"}</p></div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Peritos asociados</p>
+                        {caseData.associatedExperts?.length ? (
+                          <div className="mt-1 space-y-1">
+                            {caseData.associatedExperts.map((expert) => (
+                              <div key={expert._id} className="flex items-center justify-between gap-2 text-sm font-medium">
+                                <span>{expert.displayName}</span>
+                                {canAssignExpert(userRole as Parameters<typeof canAssignExpert>[0], user?.allRoles) && (
+                                  <Button variant="ghost" size="sm" onClick={() => handleRemoveAssociatedExpert(expert._id)} disabled={assigning} title="Retirar perito asociado">
+                                    <UserMinus className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : <p className="text-sm font-medium">-</p>}
+                      </div>
                       <div><p className="text-xs text-muted-foreground">Perito interno</p><p className="text-sm font-medium">{caseData.assignedFinanciero?.displayName || "-"}</p></div>
                       <div><p className="text-xs text-muted-foreground">Comercial Jurídico</p><p className="text-sm font-medium">{caseData.assignedJuridico?.displayName || "-"}</p></div>
                     </>
@@ -932,7 +982,7 @@ export default function CrmCaseDetailPage({
               Asignar perito
             </DialogTitle>
             <DialogDescription>
-              Elija si el caso será atendido por el perito interno de la firma o por un perito externo habilitado para la disciplina.
+              Asigna al responsable principal o agrega profesionales al equipo interdisciplinario del mismo expediente.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -940,7 +990,7 @@ export default function CrmCaseDetailPage({
               <Label>Tipo de perito</Label>
               <Select
                 value={assignmentType}
-                onValueChange={(value: 'internal' | 'external') => {
+                onValueChange={(value: 'internal' | 'leader' | 'associate') => {
                   setAssignmentType(value);
                   setSelectedAssigneeId("");
                 }}
@@ -950,7 +1000,8 @@ export default function CrmCaseDetailPage({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="internal">Perito interno</SelectItem>
-                  <SelectItem value="external">Perito externo</SelectItem>
+                  <SelectItem value="leader">Perito líder</SelectItem>
+                  <SelectItem value="associate" disabled={!caseData.assignedExpert}>Perito asociado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -958,7 +1009,7 @@ export default function CrmCaseDetailPage({
               <Label>Perito</Label>
               {assignmentLoading ? (
                 <p className="text-sm text-muted-foreground">Cargando peritos disponibles...</p>
-              ) : assignmentOptions[assignmentType].length === 0 ? (
+              ) : assignmentOptions[assignmentType === 'internal' ? 'internal' : 'external'].length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No hay peritos {assignmentType === 'internal' ? 'internos' : 'externos habilitados para esta disciplina'} disponibles.
                 </p>
@@ -968,7 +1019,12 @@ export default function CrmCaseDetailPage({
                     <SelectValue placeholder="Seleccionar perito..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {assignmentOptions[assignmentType].map((option) => (
+                    {assignmentOptions[assignmentType === 'internal' ? 'internal' : 'external']
+                      .filter((option) => assignmentType !== 'associate' || (
+                        option.userId !== caseData.assignedExpert?._id
+                        && !caseData.associatedExperts?.some((expert) => expert._id === option.userId)
+                      ))
+                      .map((option) => (
                       <SelectItem key={option.userId} value={option.userId}>
                         {option.displayName}
                         {option.specialization ? ` · ${option.specialization}` : ''}

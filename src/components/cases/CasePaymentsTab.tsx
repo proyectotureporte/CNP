@@ -94,7 +94,7 @@ export default function CasePaymentsTab({ caseId, userRole, allRoles = false }: 
                       <Badge className={`${colors?.bg} ${colors?.text} border-0`}>{PAYMENT_STATUS_LABELS[payment.status as PaymentStatus]}</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">{payment.percentage || 0}% · vence {formatDate(payment.dueDate)}</p>
-                    {payment.paymentDate && <p className="text-xs text-muted-foreground">Comprobante cargado {formatDate(payment.paymentDate)}</p>}
+                    {payment.paymentDate && <p className="text-xs text-green-700">Fecha de pago: {formatDate(payment.paymentDate)}</p>}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {payment.receiptDownloadUrl && (

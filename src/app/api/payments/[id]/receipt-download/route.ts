@@ -18,5 +18,5 @@ export async function GET(
   if (access.actor.role === 'cliente' && !file.clientVisible) {
     return NextResponse.json({ success: false, error: 'Comprobante no encontrado' }, { status: 404 });
   }
-  return proxyStoredAsset(file);
+  return proxyStoredAsset(file, { inline: request.nextUrl.searchParams.get('inline') === '1' });
 }

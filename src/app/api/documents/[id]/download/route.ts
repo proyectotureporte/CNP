@@ -15,11 +15,11 @@ export async function GET(
   if (!access.actor.allRoles && !['comercial_juridico', 'junta', 'perito_interno', 'perito', 'cliente'].includes(access.actor.role)) {
     return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
   }
-  if (['perito', 'perito_interno'].includes(access.actor.role) && file.category === 'pago') {
+  if (['perito', 'perito_interno'].includes(access.actor.role) && file.category === 'comprobantes_pago') {
     return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
   }
-  if (access.actor.role === 'cliente' && (!file.isVisibleToClient || file.category === 'dictamen_final')) {
+  if (access.actor.role === 'cliente' && (!file.isVisibleToClient || file.category === 'dictamen')) {
     return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
   }
-  return proxyStoredAsset(file);
+  return proxyStoredAsset(file, { inline: request.nextUrl.searchParams.get('inline') === '1' });
 }

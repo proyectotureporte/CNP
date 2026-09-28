@@ -172,7 +172,9 @@ export async function listExpertDeliverables(
     `SELECT ${SELECT}, ${caseObj} AS "case"
      FROM deliverable d ${JOINS}
      JOIN cases c ON c.id = d.case_id
-     WHERE (c.assigned_expert_id = $1 OR c.assigned_financiero_id = $1)
+     WHERE (c.assigned_expert_id = $1 OR c.assigned_financiero_id = $1 OR EXISTS (
+       SELECT 1 FROM case_associated_expert cae WHERE cae.case_id = c.id AND cae.user_id = $1
+     ))
        AND ($2 = '' OR d.status = $2::deliverable_status)
        AND ($3 = '' OR d.phase = $3::deliverable_phase)
      ORDER BY d.created_at DESC LIMIT $4 OFFSET $5`,
@@ -184,7 +186,9 @@ export async function countExpertDeliverables(expertId: string, status = '', pha
   const row = await queryOne<{ count: number }>(
     `SELECT count(*)::int AS count FROM deliverable d
      JOIN cases c ON c.id = d.case_id
-     WHERE (c.assigned_expert_id = $1 OR c.assigned_financiero_id = $1)
+     WHERE (c.assigned_expert_id = $1 OR c.assigned_financiero_id = $1 OR EXISTS (
+       SELECT 1 FROM case_associated_expert cae WHERE cae.case_id = c.id AND cae.user_id = $1
+     ))
        AND ($2 = '' OR d.status = $2::deliverable_status)
        AND ($3 = '' OR d.phase = $3::deliverable_phase)`,
     [expertId, status, phase],

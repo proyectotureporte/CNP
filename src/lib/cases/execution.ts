@@ -54,6 +54,7 @@ export async function maybeStartExecutionClock(
         caseRow.commercial?._id,
         caseRow.technicalAnalyst?._id,
         caseRow.assignedExpert?._id,
+        ...(caseRow.associatedExperts?.map((expert) => expert._id) ?? []),
         caseRow.assignedFinanciero?._id,
         caseRow.assignedJuridico?._id,
       ],

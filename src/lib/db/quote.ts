@@ -12,7 +12,8 @@ const SELECT = `
   q.sent_at AS "sentAt", q.approved_at AS "approvedAt", q.rejection_reason AS "rejectionReason",
   q.acceptance_notes AS "acceptanceNotes", q.channel,
   q.parent_quote_id AS "parentQuoteId", q.next_follow_up_date AS "nextFollowUpDate",
-  q.notes, q.first_payment_date AS "firstPaymentDate", q.last_payment_date AS "lastPaymentDate",
+  q.notes, q.first_payment_date AS "firstPaymentDate", q.second_payment_date AS "secondPaymentDate",
+  q.last_payment_date AS "lastPaymentDate",
   q.first_payment_percentage AS "firstPaymentPercentage", q.custom_split AS "customSplit",
   q.quoted_business_days AS "quotedBusinessDays",
   q.file_url AS "quoteDocumentUrl",
@@ -114,6 +115,7 @@ export interface QuoteInput {
   mimeType?: string | null;
   fileSize?: number | null;
   firstPaymentDate?: string | null;
+  secondPaymentDate?: string | null;
   lastPaymentDate?: string | null;
   firstPaymentPercentage?: number;
   customSplit?: boolean;
@@ -145,6 +147,7 @@ function toColumns(input: Partial<QuoteInput>): Record<string, unknown> {
     mime_type: input.mimeType,
     file_size: input.fileSize,
     first_payment_date: input.firstPaymentDate,
+    second_payment_date: input.secondPaymentDate,
     last_payment_date: input.lastPaymentDate,
     first_payment_percentage: input.firstPaymentPercentage,
     custom_split: input.customSplit,
