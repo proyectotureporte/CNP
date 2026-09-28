@@ -35,7 +35,7 @@ import {
   type Quote, type Payment, type UserRole, type QuoteChannel,
 } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
-import { canCreateQuote, canApproveQuote } from "@/lib/auth/permissions";
+import { canAccessFinances, canCreateQuote, canApproveQuote } from "@/lib/auth/permissions";
 import QuoteForm from "./QuoteForm";
 
 interface QuoteListProps {
@@ -86,6 +86,7 @@ export default function QuoteList({ caseId, userRole }: QuoteListProps) {
   const role = (userRole || user?.role || '') as UserRole;
   const canManageQuotes = !!user && canCreateQuote(role, user.allRoles);
   const canApproveQuotes = !!user && canApproveQuote(role, user.allRoles);
+  const canManagePayments = !!user && canAccessFinances(role, user.allRoles);
 
   const loadQuotes = useCallback(async () => {
     try {
@@ -400,13 +401,16 @@ export default function QuoteList({ caseId, userRole }: QuoteListProps) {
                               <p className="text-xs text-muted-foreground">
                                 {payment.percentage}% | Vence: {formatDate(payment.dueDate)}
                               </p>
-                              {payment.paymentDate && (
+                              {payment.status === "validado" && payment.paymentDate && (
                                 <p className="text-xs text-green-700">Fecha de pago: {formatDate(payment.paymentDate)}</p>
+                              )}
+                              {payment.status === "pendiente" && payment.receiptUploadedAt && (
+                                <p className="text-xs text-muted-foreground">Comprobante cargado: {formatDate(payment.receiptUploadedAt)}</p>
                               )}
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                               {/* Upload receipt button - only for pending payments when user can manage */}
-                              {payment.status === "pendiente" && canManageQuotes && (
+                              {payment.status === "pendiente" && canManagePayments && (
                                 <div className="relative">
                                   <Input
                                     type="file"

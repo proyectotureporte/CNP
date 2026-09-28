@@ -75,6 +75,7 @@ interface AssignmentOption {
   specialization?: string;
   city?: string;
   rating?: number;
+  disciplines?: CaseExpanded["discipline"][];
 }
 
 function formatDate(dateStr?: string) {
@@ -121,7 +122,11 @@ export default function CrmCaseDetailPage({
   const [refreshKey, setRefreshKey] = useState(0);
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
   const [assignmentType, setAssignmentType] = useState<'internal' | 'leader' | 'associate'>('leader');
-  const [assignmentOptions, setAssignmentOptions] = useState<{ internal: AssignmentOption[]; external: AssignmentOption[] }>({ internal: [], external: [] });
+  const [assignmentOptions, setAssignmentOptions] = useState<{
+    internal: AssignmentOption[];
+    external: AssignmentOption[];
+    associated: AssignmentOption[];
+  }>({ internal: [], external: [], associated: [] });
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -716,7 +721,9 @@ export default function CrmCaseDetailPage({
                       <div>
                         <p className="text-xs text-muted-foreground">Equipo de peritos asociados</p>
                         <p className="text-sm font-medium">
-                          {caseData.associatedExperts?.map((expert) => expert.displayName).join(", ") || "Sin peritos asociados"}
+                          {caseData.associatedExperts?.map((expert) => (
+                            `${expert.displayName}${expert.specialization ? ` (${expert.specialization})` : ""}`
+                          )).join(", ") || "Sin peritos asociados"}
                         </p>
                       </div>
                     </>
@@ -731,6 +738,9 @@ export default function CrmCaseDetailPage({
                             {caseData.associatedExperts.map((expert) => (
                               <div key={expert._id} className="flex items-center justify-between gap-2 text-sm font-medium">
                                 <span>{expert.displayName}</span>
+                                <span className="text-xs font-normal text-muted-foreground">
+                                  {expert.specialization || expert.disciplines?.map((discipline) => DISCIPLINE_LABELS[discipline]).join(", ")}
+                                </span>
                                 {canAssignExpert(userRole as Parameters<typeof canAssignExpert>[0], user?.allRoles) && (
                                   <Button variant="ghost" size="sm" onClick={() => handleRemoveAssociatedExpert(expert._id)} disabled={assigning} title="Retirar perito asociado">
                                     <UserMinus className="h-4 w-4 text-destructive" />
@@ -1009,7 +1019,7 @@ export default function CrmCaseDetailPage({
               <Label>Perito</Label>
               {assignmentLoading ? (
                 <p className="text-sm text-muted-foreground">Cargando peritos disponibles...</p>
-              ) : assignmentOptions[assignmentType === 'internal' ? 'internal' : 'external'].length === 0 ? (
+              ) : assignmentOptions[assignmentType === 'internal' ? 'internal' : assignmentType === 'associate' ? 'associated' : 'external'].length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No hay peritos {assignmentType === 'internal' ? 'internos' : 'externos habilitados para esta disciplina'} disponibles.
                 </p>
@@ -1019,7 +1029,7 @@ export default function CrmCaseDetailPage({
                     <SelectValue placeholder="Seleccionar perito..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {assignmentOptions[assignmentType === 'internal' ? 'internal' : 'external']
+                    {assignmentOptions[assignmentType === 'internal' ? 'internal' : assignmentType === 'associate' ? 'associated' : 'external']
                       .filter((option) => assignmentType !== 'associate' || (
                         option.userId !== caseData.assignedExpert?._id
                         && !caseData.associatedExperts?.some((expert) => expert._id === option.userId)
@@ -1028,6 +1038,7 @@ export default function CrmCaseDetailPage({
                       <SelectItem key={option.userId} value={option.userId}>
                         {option.displayName}
                         {option.specialization ? ` · ${option.specialization}` : ''}
+                        {option.disciplines?.length ? ` · ${option.disciplines.map((discipline) => DISCIPLINE_LABELS[discipline] || discipline).join(', ')}` : ''}
                         {option.city ? ` · ${option.city}` : ''}
                       </SelectItem>
                     ))}

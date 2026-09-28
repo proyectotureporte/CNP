@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cases, quote, caseDocument, payment } from '@/lib/db';
+import { cases, quote } from '@/lib/db';
 import { guardRole } from '@/lib/auth/guard';
 import { canCreateQuote } from '@/lib/auth/permissions';
 import { uploadFile } from '@/lib/sanity/assets';
@@ -89,7 +89,12 @@ export async function POST(
       asset = await uploadFile(buffer, quoteFile.name, quoteFile.type);
     }
 
-    const created = await quote.createQuote({
+    const createdById = userId && userId !== 'admin' ? userId : null;
+    const payment1Amount = Math.round(finalValue * 0.50);
+    const payment2Amount = Math.round(finalValue * 0.25);
+    const payment3Amount = finalValue - payment1Amount - payment2Amount;
+
+    const created = await quote.createQuoteWithPaymentPlan({
       caseId: id,
       version,
       totalPrice,
@@ -104,58 +109,29 @@ export async function POST(
       customSplit,
       firstPaymentPercentage,
       quotedBusinessDays,
-      createdById: userId && userId !== 'admin' ? userId : null,
+      createdById,
       fileUrl: asset?.url,
       fileAssetId: asset?.assetId,
       fileName: asset?.originalFilename,
       mimeType: asset?.mimeType,
       fileSize: asset?.size,
-    });
+    }, [
+      { paymentNumber: 1, amount: payment1Amount, percentage: 50, dueDate: firstPaymentDate, createdById },
+      { paymentNumber: 2, amount: payment2Amount, percentage: 25, dueDate: secondPaymentDate, createdById },
+      { paymentNumber: 3, amount: payment3Amount, percentage: 25, dueDate: lastPaymentDate, createdById },
+    ], asset && quoteFile ? {
+      fileUrl: asset.url,
+      fileAssetId: asset.assetId,
+      fileName: quoteFile.name,
+      mimeType: quoteFile.type,
+      fileSize: quoteFile.size,
+      description: `Documento de cotizacion v${version}`,
+      uploadedById: createdById,
+    } : undefined);
 
     if (!created) {
       return NextResponse.json({ success: false, error: 'Error creando cotizacion' }, { status: 500 });
     }
-
-    // Also create a caseDocument if file was uploaded
-    if (asset && quoteFile) {
-      await caseDocument.createCaseDocument({
-        caseId: id,
-        category: 'propuesta_comercial',
-        fileName: quoteFile.name,
-        fileSize: quoteFile.size,
-        mimeType: quoteFile.type,
-        fileUrl: asset.url,
-        fileAssetId: asset.assetId,
-        version,
-        isVisibleToClient: true,
-        description: `Documento de cotizacion v${version}`,
-        uploadedById: userId && userId !== 'admin' ? userId : null,
-      });
-    }
-
-    // Esquema financiero CNP: tres cuotas fijas 50% / 25% / 25%.
-    const payment1Amount = Math.round(finalValue * 0.50);
-    const payment2Amount = Math.round(finalValue * 0.25);
-    const payment3Amount = finalValue - payment1Amount - payment2Amount;
-    const createdById = userId && userId !== 'admin' ? userId : null;
-
-    await Promise.all([
-      payment.createPayment({
-        caseId: id, quoteId: created._id, paymentNumber: 1,
-        amount: payment1Amount, percentage: firstPaymentPercentage,
-        dueDate: firstPaymentDate, status: 'pendiente', createdById,
-      }),
-      payment.createPayment({
-        caseId: id, quoteId: created._id, paymentNumber: 2,
-        amount: payment2Amount, percentage: 25,
-        dueDate: secondPaymentDate, status: 'pendiente', createdById,
-      }),
-      payment.createPayment({
-        caseId: id, quoteId: created._id, paymentNumber: 3,
-        amount: payment3Amount, percentage: 25,
-        dueDate: lastPaymentDate, status: 'pendiente', createdById,
-      }),
-    ]);
 
     logCaseEvent({
       caseId: id,

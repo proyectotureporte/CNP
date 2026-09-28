@@ -58,6 +58,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.status !== undefined && !PAYMENT_STATUSES.includes(body.status as PaymentStatus)) {
       return NextResponse.json({ success: false, error: 'Estado de pago no válido' }, { status: 400 });
     }
+    if (body.status === 'validado' && body.paymentDate && Number.isNaN(Date.parse(body.paymentDate))) {
+      return NextResponse.json({ success: false, error: 'Fecha de pago no válida' }, { status: 400 });
+    }
     const caseId = existing.caseRef?._id;
     if (!caseId) return NextResponse.json({ success: false, error: 'Pago sin caso asociado' }, { status: 409 });
     const access = await requireCaseAccess(request, caseId);
@@ -65,6 +68,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const updated = await payment.updatePayment(id, {
       status: body.status as PaymentStatus | undefined,
+      paymentDate: body.status === 'validado'
+        ? (body.paymentDate || existing.paymentDate || new Date().toISOString())
+        : undefined,
       transactionReference: body.transactionReference,
       notes: body.notes,
     });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { quote, payment } from '@/lib/db';
+import { quote } from '@/lib/db';
 import { guardRole } from '@/lib/auth/guard';
 import { canCreateQuote } from '@/lib/auth/permissions';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
@@ -48,7 +48,11 @@ export async function POST(
     const version = (await quote.getMaxQuoteVersion(caseId)) + 1;
     const createdById = userId && userId !== 'admin' ? userId : null;
 
-    const created = await quote.createQuote({
+    const finalValue = existing.finalValue ?? 0;
+    const payment1Amount = Math.round(finalValue * 0.50);
+    const payment2Amount = Math.round(finalValue * 0.25);
+    const payment3Amount = finalValue - payment1Amount - payment2Amount;
+    const created = await quote.createQuoteWithPaymentPlan({
       caseId,
       version,
       parentQuoteId: existing._id,
@@ -65,34 +69,15 @@ export async function POST(
       firstPaymentPercentage: 50,
       quotedBusinessDays: existing.quotedBusinessDays ?? 15,
       createdById,
-    });
+    }, [
+      { paymentNumber: 1, amount: payment1Amount, percentage: 50, dueDate: existing.firstPaymentDate ?? null, createdById },
+      { paymentNumber: 2, amount: payment2Amount, percentage: 25, dueDate: existing.secondPaymentDate ?? null, createdById },
+      { paymentNumber: 3, amount: payment3Amount, percentage: 25, dueDate: existing.lastPaymentDate ?? null, createdById },
+    ]);
 
     if (!created) {
       return NextResponse.json({ success: false, error: 'Error creando la nueva versión' }, { status: 500 });
     }
-
-    // Pagos propios de la nueva versión con el esquema CNP 50/25/25.
-    const finalValue = existing.finalValue ?? 0;
-    const payment1Amount = Math.round(finalValue * 0.50);
-    const payment2Amount = Math.round(finalValue * 0.25);
-    const payment3Amount = finalValue - payment1Amount - payment2Amount;
-    await Promise.all([
-      payment.createPayment({
-        caseId, quoteId: created._id, paymentNumber: 1,
-        amount: payment1Amount, percentage: 50,
-        dueDate: existing.firstPaymentDate ?? null, status: 'pendiente', createdById,
-      }),
-      payment.createPayment({
-        caseId, quoteId: created._id, paymentNumber: 2,
-        amount: payment2Amount, percentage: 25,
-        dueDate: existing.secondPaymentDate ?? null, status: 'pendiente', createdById,
-      }),
-      payment.createPayment({
-        caseId, quoteId: created._id, paymentNumber: 3,
-        amount: payment3Amount, percentage: 25,
-        dueDate: existing.lastPaymentDate ?? null, status: 'pendiente', createdById,
-      }),
-    ]);
 
     logCaseEvent({
       caseId,

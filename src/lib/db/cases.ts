@@ -11,10 +11,12 @@ const userContact = (a: string) => nestedObj(a, {
 });
 const associatedExperts = `COALESCE((
   SELECT json_agg(json_build_object(
-    '_id', au.id, 'displayName', au.display_name, 'email', au.email
+    '_id', au.id, 'displayName', au.display_name, 'email', au.email,
+    'disciplines', ax.disciplines, 'specialization', ax.specialization
   ) ORDER BY cae.created_at)
   FROM case_associated_expert cae
   JOIN crm_user au ON au.id = cae.user_id
+  LEFT JOIN expert ax ON ax.user_id = au.id
   WHERE cae.case_id = c.id
 ), '[]'::json)`;
 

@@ -55,7 +55,7 @@ export async function POST(
       mimeType: asset.mimeType,
       fileSize: asset.size,
       receiptUploadedById: actorUserReference(access.actor),
-      paymentDate: new Date().toISOString(),
+      receiptUploadedAt: new Date().toISOString(),
       status: 'pendiente',
     });
 

@@ -8,6 +8,7 @@ const createdByObj = nestedObj('cb', { _id: 'cb.id', displayName: 'cb.display_na
 const FIELDS = `
   p.id AS "_id", p.created_at AS "_createdAt", p.payment_number AS "paymentNumber",
   p.amount, p.percentage, p.due_date AS "dueDate", p.payment_date AS "paymentDate",
+  p.receipt_uploaded_at AS "receiptUploadedAt",
   p.payment_method AS "paymentMethod", p.status, p.transaction_reference AS "transactionReference",
   p.notes, p.file_url AS "receiptUrl", p.file_name AS "receiptFileName"
 `;
@@ -88,7 +89,7 @@ export async function listQuotePayments(quoteId: string): Promise<Payment[]> {
   return query<Payment>(
     `SELECT p.id AS "_id", p.created_at AS "_createdAt", p.payment_number AS "paymentNumber",
        p.amount, p.percentage, p.due_date AS "dueDate", p.payment_date AS "paymentDate",
-       p.status, p.file_url AS "receiptUrl"
+       p.receipt_uploaded_at AS "receiptUploadedAt", p.status, p.file_url AS "receiptUrl"
      FROM payment p WHERE p.quote_id = $1 ORDER BY p.payment_number ASC`,
     [quoteId],
   );
@@ -155,6 +156,7 @@ export interface PaymentInput {
   percentage?: number | null;
   dueDate?: string | null;
   paymentDate?: string | null;
+  receiptUploadedAt?: string | null;
   paymentMethod?: PaymentMethod | null;
   status?: PaymentStatus;
   transactionReference?: string | null;
@@ -177,6 +179,7 @@ function toColumns(input: Partial<PaymentInput>): Record<string, unknown> {
     percentage: input.percentage,
     due_date: input.dueDate,
     payment_date: input.paymentDate,
+    receipt_uploaded_at: input.receiptUploadedAt,
     payment_method: input.paymentMethod,
     status: input.status,
     transaction_reference: input.transactionReference,

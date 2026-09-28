@@ -351,7 +351,13 @@ export interface CaseExpanded {
   commercial?: { _id: string; displayName: string; email: string };
   technicalAnalyst?: { _id: string; displayName: string; email: string };
   assignedExpert?: { _id: string; displayName: string; email: string };
-  associatedExperts?: Array<{ _id: string; displayName: string; email: string }>;
+  associatedExperts?: Array<{
+    _id: string;
+    displayName: string;
+    email: string;
+    disciplines?: CaseDiscipline[];
+    specialization?: string;
+  }>;
   assignedFinanciero?: { _id: string; displayName: string; email: string };
   assignedJuridico?: { _id: string; displayName: string; email: string; phone?: string };
   createdBy?: { _id: string; displayName: string };
@@ -944,6 +950,7 @@ export interface Payment {
   percentage: number;
   dueDate?: string;
   paymentDate?: string;
+  receiptUploadedAt?: string;
   paymentMethod?: PaymentMethod;
   status: PaymentStatus;
   transactionReference?: string;
@@ -1184,7 +1191,7 @@ export interface WhatsappMessage {
 export const ROLE_CASE_TABS: Record<string, string[]> = {
   admin: ['summary', 'timeline'],
   comercial_juridico: ['summary', 'documents', 'committee', 'quotes', 'work-plan', 'deliverables', 'timeline'],
-  junta: ['summary', 'documents', 'committee', 'timeline'],
+  junta: ['summary', 'documents', 'committee', 'payments', 'timeline'],
   perito_interno: ['summary', 'documents', 'work-plan', 'deliverables', 'timeline'],
   perito: ['summary', 'documents', 'work-plan', 'deliverables', 'timeline'],
   cliente: ['summary', 'documents', 'quotes', 'deliverables', 'payments', 'messages', 'timeline'],

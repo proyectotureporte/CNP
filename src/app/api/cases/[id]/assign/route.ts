@@ -66,10 +66,17 @@ async function assignUser(
 
     // G-01: ningún perito entra en producción sin una cuenta pagable completa.
     if (user.role === 'perito' && ['assignedExpert', 'associatedExpert'].includes(assignRole)) {
-      const assignable = await expert.isAssignableExpertForDiscipline(userId, existing.discipline);
+      const assignable = assignRole === 'associatedExpert'
+        ? await expert.isAssignableExpert(userId)
+        : await expert.isAssignableExpertForDiscipline(userId, existing.discipline);
       if (!assignable) {
         return NextResponse.json(
-          { success: false, error: 'No se puede asignar el caso: el perito debe estar activado, disponible, habilitado para la disciplina y tener sus datos bancarios completos.' },
+          {
+            success: false,
+            error: assignRole === 'associatedExpert'
+              ? 'No se puede asociar al perito: debe estar activado, disponible y tener sus datos bancarios completos.'
+              : 'No se puede asignar el caso: el perito líder debe estar activado, disponible, habilitado para la disciplina principal y tener sus datos bancarios completos.',
+          },
           { status: 409 },
         );
       }

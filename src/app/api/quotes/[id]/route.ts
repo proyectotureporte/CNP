@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { quote, payment } from '@/lib/db';
+import { quote } from '@/lib/db';
 import { guardRole } from '@/lib/auth/guard';
 import { canCreateQuote } from '@/lib/auth/permissions';
 import { uploadFile } from '@/lib/sanity/assets';
@@ -172,43 +172,24 @@ export async function PUT(
       asset = await uploadFile(buffer, quoteFile.name, quoteFile.type);
     }
 
-    const updated = await quote.updateQuote(id, {
+    const payment1Amount = Math.round(finalValue * 0.50);
+    const payment2Amount = Math.round(finalValue * 0.25);
+    const payment3Amount = finalValue - payment1Amount - payment2Amount;
+    const createdById = request.headers.get('x-user-id') === 'admin' ? null : request.headers.get('x-user-id');
+    const updated = await quote.updateQuoteWithPaymentPlan(id, {
       totalPrice, discountPercentage, finalValue, notes,
-      validUntil, firstPaymentDate, secondPaymentDate, lastPaymentDate, customSplit, firstPaymentPercentage, quotedBusinessDays,
+      validUntil, firstPaymentDate, secondPaymentDate, lastPaymentDate,
+      customSplit, firstPaymentPercentage, quotedBusinessDays,
       fileUrl: asset?.url,
       fileAssetId: asset?.assetId,
       fileName: asset?.originalFilename,
       mimeType: asset?.mimeType,
       fileSize: asset?.size,
-    });
-
-    // Update linked payments (amounts and dates)
-    const payments = await payment.listQuotePayments(id);
-    const payment1Amount = Math.round(finalValue * 0.50);
-    const payment2Amount = Math.round(finalValue * 0.25);
-    const payment3Amount = finalValue - payment1Amount - payment2Amount;
-
-    await Promise.all(
-      payments.map((p) => {
-        if (p.paymentNumber === 1) {
-          return payment.updatePayment(p._id, { amount: payment1Amount, percentage: 50, dueDate: firstPaymentDate });
-        }
-        if (p.paymentNumber === 2) {
-          return payment.updatePayment(p._id, { amount: payment2Amount, percentage: 25, dueDate: secondPaymentDate });
-        }
-        if (p.paymentNumber === 3) {
-          return payment.updatePayment(p._id, { amount: payment3Amount, percentage: 25, dueDate: lastPaymentDate });
-        }
-        return Promise.resolve(null);
-      })
-    );
-    if (!payments.some((p) => p.paymentNumber === 3)) {
-      await payment.createPayment({
-        caseId, quoteId: id, paymentNumber: 3, amount: payment3Amount,
-        percentage: 25, dueDate: lastPaymentDate, status: 'pendiente',
-        createdById: request.headers.get('x-user-id') === 'admin' ? null : request.headers.get('x-user-id'),
-      });
-    }
+    }, caseId, [
+      { paymentNumber: 1, amount: payment1Amount, percentage: 50, dueDate: firstPaymentDate, createdById },
+      { paymentNumber: 2, amount: payment2Amount, percentage: 25, dueDate: secondPaymentDate, createdById },
+      { paymentNumber: 3, amount: payment3Amount, percentage: 25, dueDate: lastPaymentDate, createdById },
+    ]);
 
     triggerEvent('quote:updated', { id });
 

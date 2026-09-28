@@ -1,11 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Download, Loader2, Receipt, Upload } from "lucide-react";
+import { CheckCircle2, Download, Loader2, Receipt, Upload } from "lucide-react";
 import { usePusher } from "@/hooks/usePusher";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   PAYMENT_STATUS_COLORS,
   PAYMENT_STATUS_LABELS,
@@ -26,7 +36,11 @@ export default function CasePaymentsTab({ caseId, userRole, allRoles = false }: 
   const [loading, setLoading] = useState(true);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [paymentToValidate, setPaymentToValidate] = useState<Payment | null>(null);
+  const [paidDate, setPaidDate] = useState("");
+  const [validating, setValidating] = useState(false);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const canManagePayments = allRoles || userRole === "junta";
 
   const load = useCallback(async () => {
     if (!allRoles && !['cliente', 'junta'].includes(userRole)) {
@@ -69,6 +83,36 @@ export default function CasePaymentsTab({ caseId, userRole, allRoles = false }: 
     }
   }
 
+  function openPaymentValidation(payment: Payment) {
+    setPaymentToValidate(payment);
+    setPaidDate(new Date().toLocaleDateString("en-CA"));
+  }
+
+  async function markAsPaid() {
+    if (!paymentToValidate || !paidDate) return;
+    setValidating(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/payments/${paymentToValidate._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "validado",
+          paymentDate: new Date(`${paidDate}T12:00:00`).toISOString(),
+        }),
+      });
+      const payload = await response.json();
+      if (!payload.success) throw new Error(payload.error || "No fue posible registrar el pago");
+      setPaymentToValidate(null);
+      setPaidDate("");
+      await load();
+    } catch (validationError) {
+      setError(validationError instanceof Error ? validationError.message : "No fue posible registrar el pago");
+    } finally {
+      setValidating(false);
+    }
+  }
+
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>;
 
   return (
@@ -94,7 +138,8 @@ export default function CasePaymentsTab({ caseId, userRole, allRoles = false }: 
                       <Badge className={`${colors?.bg} ${colors?.text} border-0`}>{PAYMENT_STATUS_LABELS[payment.status as PaymentStatus]}</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">{payment.percentage || 0}% · vence {formatDate(payment.dueDate)}</p>
-                    {payment.paymentDate && <p className="text-xs text-green-700">Fecha de pago: {formatDate(payment.paymentDate)}</p>}
+                    {payment.status === "validado" && payment.paymentDate && <p className="text-xs text-green-700">Fecha de pago: {formatDate(payment.paymentDate)}</p>}
+                    {payment.status === "pendiente" && payment.receiptUploadedAt && <p className="text-xs text-muted-foreground">Comprobante cargado: {formatDate(payment.receiptUploadedAt)}</p>}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {payment.receiptDownloadUrl && (
@@ -115,6 +160,11 @@ export default function CasePaymentsTab({ caseId, userRole, allRoles = false }: 
                         </Button>
                       </>
                     )}
+                    {canManagePayments && payment.status === "pendiente" && (
+                      <Button size="sm" onClick={() => openPaymentValidation(payment)}>
+                        <CheckCircle2 className="mr-2 h-4 w-4" />Marcar pagado
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -122,6 +172,28 @@ export default function CasePaymentsTab({ caseId, userRole, allRoles = false }: 
           })}
         </div>
       )}
+
+      <Dialog open={Boolean(paymentToValidate)} onOpenChange={(open) => { if (!open && !validating) setPaymentToValidate(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar cuota como pagada</DialogTitle>
+            <DialogDescription>
+              Confirma la fecha real del pago {paymentToValidate?.paymentNumber || ""} por {paymentToValidate ? formatCurrency(paymentToValidate.amount) : ""}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="paid-date">Fecha del pago</Label>
+            <Input id="paid-date" type="date" value={paidDate} onChange={(event) => setPaidDate(event.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPaymentToValidate(null)} disabled={validating}>Cancelar</Button>
+            <Button onClick={markAsPaid} disabled={!paidDate || validating}>
+              {validating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+              Confirmar pago
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

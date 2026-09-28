@@ -55,9 +55,9 @@ export async function POST(
       estimatedDays: body.estimatedDays || 0,
       deliverablesDescription: body.deliverablesDescription || '',
       status: 'borrador',
-      assignedExpertId: ['perito', 'perito_interno'].includes(access.actor.role)
-        ? access.actor.userId
-        : (body.assignedExpert || caseData.assignedExpert?._id || null),
+      // El plan conserva como responsable al líder del caso aunque lo redacte
+      // un asociado. En casos internos, el perito interno ocupa esa función.
+      assignedExpertId: caseData.assignedExpert?._id || caseData.assignedFinanciero?._id || null,
       createdById: actorUserReference(access.actor),
     });
 

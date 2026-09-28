@@ -1,4 +1,4 @@
-import { query, queryOne, buildInsert, buildUpdate, newId, pruneUndefined, nestedObj } from './pool';
+import { query, queryOne, buildInsert, buildUpdate, newId, pruneUndefined, nestedObj, withTransaction } from './pool';
 import type { Quote, QuoteStatus } from '@/lib/types';
 
 const approvedByObj = nestedObj('ab', { _id: 'ab.id', displayName: 'ab.display_name' });
@@ -159,6 +159,118 @@ export async function createQuote(input: QuoteInput): Promise<Quote | null> {
   const id = newId();
   const { text, values } = buildInsert('quote', { id, ...toColumns(input) });
   await query(text, values);
+  return getQuoteById(id);
+}
+
+export interface QuoteInstallmentInput {
+  paymentNumber: 1 | 2 | 3;
+  amount: number;
+  percentage: number;
+  dueDate?: string | null;
+  createdById?: string | null;
+}
+
+export interface QuoteCaseDocumentInput {
+  fileUrl: string;
+  fileAssetId?: string | null;
+  fileName: string;
+  mimeType?: string | null;
+  fileSize?: number | null;
+  description: string;
+  uploadedById?: string | null;
+}
+
+/** Guarda la cotización, sus tres cuotas y su documento en una sola transacción. */
+export async function createQuoteWithPaymentPlan(
+  input: QuoteInput,
+  installments: QuoteInstallmentInput[],
+  document?: QuoteCaseDocumentInput,
+): Promise<Quote | null> {
+  const quoteId = newId();
+  await withTransaction(async (client) => {
+    const quoteInsert = buildInsert('quote', { id: quoteId, ...toColumns(input) });
+    await client.query(quoteInsert.text, quoteInsert.values);
+
+    for (const installment of installments) {
+      const paymentInsert = buildInsert('payment', {
+        id: newId(),
+        case_id: input.caseId,
+        quote_id: quoteId,
+        payment_number: installment.paymentNumber,
+        amount: installment.amount,
+        percentage: installment.percentage,
+        due_date: installment.dueDate ?? null,
+        status: 'pendiente',
+        created_by_id: installment.createdById ?? null,
+      });
+      await client.query(paymentInsert.text, paymentInsert.values);
+    }
+
+    if (document) {
+      const documentInsert = buildInsert('case_document', {
+        id: newId(),
+        case_id: input.caseId,
+        uploaded_by_id: document.uploadedById ?? null,
+        category: 'propuesta_comercial',
+        status: 'recibido',
+        is_required: false,
+        file_url: document.fileUrl,
+        file_asset_id: document.fileAssetId ?? null,
+        file_name: document.fileName,
+        mime_type: document.mimeType ?? null,
+        file_size: document.fileSize ?? null,
+        version: input.version ?? 1,
+        is_visible_to_client: true,
+        description: document.description,
+      });
+      await client.query(documentInsert.text, documentInsert.values);
+    }
+  });
+  return getQuoteById(quoteId);
+}
+
+/** Recalcula atómicamente el borrador y las tres cuotas vinculadas. */
+export async function updateQuoteWithPaymentPlan(
+  id: string,
+  patch: Partial<QuoteInput>,
+  caseId: string,
+  installments: QuoteInstallmentInput[],
+): Promise<Quote | null> {
+  await withTransaction(async (client) => {
+    const quoteUpdate = buildUpdate('quote', id, toColumns(patch));
+    if (quoteUpdate) await client.query(quoteUpdate.text, quoteUpdate.values);
+
+    for (const installment of installments) {
+      const existing = await client.query<{ id: string; status: string }>(
+        `SELECT id, status FROM payment
+         WHERE quote_id = $1 AND payment_number = $2 FOR UPDATE`,
+        [id, installment.paymentNumber],
+      );
+      if (existing.rows[0]) {
+        if (existing.rows[0].status !== 'pendiente') {
+          throw new Error('No se puede recalcular una cuota que ya no está pendiente');
+        }
+        await client.query(
+          `UPDATE payment SET amount = $1, percentage = $2, due_date = $3, updated_at = now()
+           WHERE id = $4`,
+          [installment.amount, installment.percentage, installment.dueDate ?? null, existing.rows[0].id],
+        );
+      } else {
+        const paymentInsert = buildInsert('payment', {
+          id: newId(),
+          case_id: caseId,
+          quote_id: id,
+          payment_number: installment.paymentNumber,
+          amount: installment.amount,
+          percentage: installment.percentage,
+          due_date: installment.dueDate ?? null,
+          status: 'pendiente',
+          created_by_id: installment.createdById ?? null,
+        });
+        await client.query(paymentInsert.text, paymentInsert.values);
+      }
+    }
+  });
   return getQuoteById(id);
 }
 

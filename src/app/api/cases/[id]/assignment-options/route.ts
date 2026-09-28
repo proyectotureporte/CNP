@@ -21,9 +21,10 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Caso no encontrado' }, { status: 404 });
     }
 
-    const [users, externalExperts] = await Promise.all([
+    const [users, externalExperts, associatedExperts] = await Promise.all([
       crmUser.listActiveUsersBasic(),
       expert.listAvailableExpertsForDiscipline(caseData.discipline),
+      expert.listAvailableExperts(),
     ]);
 
     return NextResponse.json({
@@ -40,6 +41,17 @@ export async function GET(
             specialization: item.specialization || '',
             city: item.city || '',
             rating: item.rating || 0,
+            disciplines: item.disciplines || [],
+          })),
+        associated: associatedExperts
+          .filter((item) => Boolean(item.user?._id))
+          .map((item) => ({
+            userId: item.user!._id,
+            displayName: item.user!.displayName,
+            specialization: item.specialization || '',
+            city: item.city || '',
+            rating: item.rating || 0,
+            disciplines: item.disciplines || [],
           })),
       },
     });

@@ -59,6 +59,7 @@ export async function POST(
       fileSize: file.size,
       status: 'validado',
       paymentDate: new Date().toISOString(),
+      receiptUploadedAt: new Date().toISOString(),
       receiptUploadedById: actorUserReference(access.actor),
     });
 

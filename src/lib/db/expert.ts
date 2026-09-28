@@ -154,6 +154,50 @@ export async function listAvailableExpertsForDiscipline(discipline: string): Pro
   );
 }
 
+/** Peritos habilitados para integrar equipos interdisciplinarios, sin limitar
+ * la búsqueda a la disciplina principal del caso. */
+export async function listAvailableExperts(): Promise<Expert[]> {
+  return query<Expert>(
+    `SELECT e.id AS "_id", e.disciplines, e.specialization, e.experience_years AS "experienceYears",
+       e.seniority, e.category,
+       e.city, e.region, e.base_fee AS "baseFee", e.availability, e.rating,
+       e.total_cases AS "totalCases", e.completed_cases AS "completedCases",
+       ${userObj} AS "user"
+     FROM expert e LEFT JOIN crm_user u ON u.id = e.user_id
+     WHERE e.validation_status = 'activado' AND e.availability = 'disponible'
+       AND u.active = TRUE AND u.role::text = 'perito'
+       AND nullif(trim(e.bank_name), '') IS NOT NULL
+       AND e.bank_account_type IS NOT NULL
+       AND nullif(trim(e.bank_account_number), '') IS NOT NULL
+       AND nullif(trim(e.bank_account_holder), '') IS NOT NULL
+       AND nullif(trim(e.bank_holder_document), '') IS NOT NULL
+     ORDER BY e.rating DESC`,
+  );
+}
+
+/** Compuerta de asignación para asociados de otra disciplina. */
+export async function isAssignableExpert(userId: string): Promise<boolean> {
+  const row = await queryOne<{ allowed: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1
+       FROM expert e
+       JOIN crm_user u ON u.id = e.user_id
+       WHERE e.user_id = $1
+         AND u.active = TRUE
+         AND u.role::text = 'perito'
+         AND e.validation_status = 'activado'
+         AND e.availability = 'disponible'
+         AND nullif(trim(e.bank_name), '') IS NOT NULL
+         AND e.bank_account_type IS NOT NULL
+         AND nullif(trim(e.bank_account_number), '') IS NOT NULL
+         AND nullif(trim(e.bank_account_holder), '') IS NOT NULL
+         AND nullif(trim(e.bank_holder_document), '') IS NOT NULL
+     ) AS allowed`,
+    [userId],
+  );
+  return row?.allowed ?? false;
+}
+
 /** Misma compuerta que alimenta el selector, aplicada de nuevo al confirmar. */
 export async function isAssignableExpertForDiscipline(
   userId: string,
