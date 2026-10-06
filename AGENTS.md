@@ -9,7 +9,7 @@ Consulta `docs/PROJECT-MAP.md` antes de cualquier cambio no trivial; es el mapa 
 - Auth JWT propia en `src/lib/auth/` y permisos compartidos entre UI/API.
 - Servidor custom `server.js` para Next.js y WebSockets.
 - Antes de entregar cambios: `npx tsc --noEmit`, lint del alcance y `npm run build`.
-- No hacer commit, push ni despliegue salvo petición expresa del usuario.
+- Toda petición de cambio o implementación debe completarse con commit, push a `main` y despliegue verificado en producción, salvo que el usuario indique expresamente que no se publique.
 
 ## Reglas críticas
 
