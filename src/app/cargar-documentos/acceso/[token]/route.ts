@@ -6,7 +6,7 @@ import {
 } from '@/lib/files/documentUploadToken';
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
@@ -15,9 +15,15 @@ export async function GET(
     ? await documentUploadLink.getValidLink(parsed.id, parsed.tokenHash)
     : null;
 
-  const destination = new URL('/cargar-documentos', request.url);
-  if (!link) destination.searchParams.set('estado', 'invalido');
-  const response = NextResponse.redirect(destination);
+  const destination = link
+    ? '/cargar-documentos'
+    : '/cargar-documentos?estado=invalido';
+  // Use a relative Location so the reverse proxy's internal host never leaks
+  // into the public redirect (request.url is localhost behind PM2/nginx).
+  const response = new NextResponse(null, {
+    status: 303,
+    headers: { Location: destination },
+  });
   response.headers.set('Cache-Control', 'no-store');
   response.headers.set('Referrer-Policy', 'no-referrer');
 
