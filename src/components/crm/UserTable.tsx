@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
+import { Pencil, RotateCcw } from "lucide-react";
 import type { CrmUser } from "@/lib/types";
 import { ROLE_LABELS, ROLE_COLORS } from "@/lib/types";
 
 interface UserTableProps {
   users: CrmUser[];
   onDeactivate?: (id: string) => void;
+  onActivate?: (id: string) => void;
 }
 
 function formatDate(dateString: string): string {
@@ -69,7 +72,7 @@ function RoleBadge({ role }: { role: CrmUser["role"] }) {
   );
 }
 
-export default function UserTable({ users, onDeactivate }: UserTableProps) {
+export default function UserTable({ users, onDeactivate, onActivate }: UserTableProps) {
   if (users.length === 0) {
     return (
       <div className="rounded-xl border border-gray-100 bg-white px-6 py-16 text-center shadow-sm">
@@ -151,7 +154,15 @@ export default function UserTable({ users, onDeactivate }: UserTableProps) {
                   {formatDate(user._createdAt)}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3.5 text-sm">
-                  {user.active && onDeactivate && (
+                  <div className="flex items-center gap-1">
+                    <Link
+                      href={`/admin/users/${user._id}/edit`}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-medium text-[#2969b0] transition-all duration-200 hover:bg-blue-50"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Editar
+                    </Link>
+                    {user.active && onDeactivate && (
                     <button
                       onClick={() => onDeactivate(user._id)}
                       className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-medium text-red-600 transition-all duration-200 hover:bg-red-50"
@@ -159,7 +170,17 @@ export default function UserTable({ users, onDeactivate }: UserTableProps) {
                       <BanIcon />
                       Desactivar
                     </button>
-                  )}
+                    )}
+                    {!user.active && onActivate && (
+                      <button
+                        onClick={() => onActivate(user._id)}
+                        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-medium text-green-700 transition-all duration-200 hover:bg-green-50"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Activar
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

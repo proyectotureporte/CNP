@@ -50,6 +50,25 @@ export async function getUserByEmail(email: string): Promise<CrmUser | null> {
   ));
 }
 
+/** Búsqueda administrativa: incluye cuentas inactivas y nunca expone el hash. */
+export async function getAnyUserByEmail(email: string, excludeId = ''): Promise<CrmUser | null> {
+  return normalizedUser(await queryOne<CrmUser>(
+    `SELECT ${SAFE} ${FROM}
+     WHERE lower(u.email) = lower($1) AND ($2 = '' OR u.id <> $2)
+     ORDER BY u.active DESC, u.created_at ASC LIMIT 1`,
+    [email, excludeId],
+  ));
+}
+
+export async function getAnyUserByUsername(username: string, excludeId = ''): Promise<CrmUser | null> {
+  return normalizedUser(await queryOne<CrmUser>(
+    `SELECT ${SAFE} ${FROM}
+     WHERE lower(u.username) = lower($1) AND ($2 = '' OR u.id <> $2)
+     ORDER BY u.active DESC, u.created_at ASC LIMIT 1`,
+    [username, excludeId],
+  ));
+}
+
 export async function getUserById(id: string): Promise<CrmUser | null> {
   return normalizedUser(await queryOne<CrmUser>(`SELECT ${SAFE} ${FROM} WHERE u.id = $1`, [id]));
 }

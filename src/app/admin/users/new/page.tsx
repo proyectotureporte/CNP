@@ -246,6 +246,7 @@ export default function AdminNewUserPage() {
                   id="password"
                   type="password"
                   required
+                  minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={inputClass}

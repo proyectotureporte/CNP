@@ -183,6 +183,7 @@ export async function POST(
           status: 'recibido', fileUrl: asset.url, fileAssetId: asset.assetId,
           fileName: file.name, mimeType: file.type, fileSize: file.size,
           uploadedById: actorUserReference(access.actor), uploadedByName: access.actor.displayName,
+          uploadedAt: new Date().toISOString(),
         })
       : await caseDocument.createCaseDocument({
           caseId: id, category, status: 'recibido', fileName: file.name,

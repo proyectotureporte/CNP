@@ -36,6 +36,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<CrmUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showActiveInternalOnly, setShowActiveInternalOnly] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   async function loadUsers() {
     try {
@@ -83,15 +84,40 @@ export default function AdminUsersPage() {
     if (!confirmed) return;
 
     try {
+      setActionError("");
       const res = await fetch(`/api/admin/users/${id}`, {
-        method: "DELETE",
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active: false }),
       });
 
       if (res.ok) {
         await loadUsers();
+      } else {
+        const data = await res.json();
+        setActionError(data.error || "No fue posible desactivar el usuario");
       }
     } catch {
-      // Network error
+      setActionError("No fue posible conectar con el servidor");
+    }
+  }
+
+  async function handleActivate(id: string) {
+    setActionError("");
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active: true }),
+      });
+      if (res.ok) {
+        await loadUsers();
+      } else {
+        const data = await res.json();
+        setActionError(data.error || "No fue posible activar el usuario");
+      }
+    } catch {
+      setActionError("No fue posible conectar con el servidor");
     }
   }
 
@@ -141,8 +167,12 @@ export default function AdminUsersPage() {
           </div>
         )}
 
+        {actionError && (
+          <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</div>
+        )}
+
         {loading ? <UsersSkeleton /> : (
-          <UserTable users={visibleUsers} onDeactivate={handleDeactivate} />
+          <UserTable users={visibleUsers} onDeactivate={handleDeactivate} onActivate={handleActivate} />
         )}
     </>
   );

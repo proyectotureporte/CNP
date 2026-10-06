@@ -17,6 +17,7 @@ export async function middleware(request: NextRequest) {
     pathname === '/api/whatsapp/webhook' ||
     pathname === '/api/cron/check-alerts' ||
     pathname === '/api/web-form' ||
+    pathname.startsWith('/api/public/document-upload') ||
     // Server-to-server desde el panel /santiago (se auto-protegen con
     // x-content-secret === CONTENT_ADMIN_SECRET dentro del handler)
     pathname.startsWith('/api/site-content/') ||

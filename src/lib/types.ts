@@ -510,6 +510,7 @@ export const CASE_DOCUMENT_STATUS_COLORS: Record<CaseDocumentStatus, { bg: strin
 export interface CaseDocument {
   _id: string;
   _createdAt: string;
+  uploadedAt?: string;
   category: DocumentCategory;
   status: CaseDocumentStatus;
   isRequired: boolean;
@@ -520,11 +521,35 @@ export interface CaseDocument {
   isVisibleToClient: boolean;
   description?: string;
   uploadedByName?: string;
+  uploadedViaLink?: boolean;
   uploadedBy?: { _id: string; displayName: string };
   file?: { asset: { _ref: string; url?: string } };
   fileUrl?: string;
   downloadUrl?: string;
   viewUrl?: string;
+}
+
+export interface DocumentUploadLinkStatus {
+  _id: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt?: string;
+  lastUsedAt?: string;
+  uploadCount: number;
+  active: boolean;
+}
+
+export interface PublicDocumentUploadContext {
+  brand: 'CNP' | 'Peritus';
+  caseCode: string;
+  caseTitle: string;
+  clientName: string;
+  expiresAt: string;
+  pendingDocuments: Array<{
+    _id: string;
+    description: string;
+    category: DocumentCategory;
+  }>;
 }
 
 export interface AdminConfig extends SanityDocument {

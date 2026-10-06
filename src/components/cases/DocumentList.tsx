@@ -33,6 +33,7 @@ import {
   type DocumentRequest,
 } from "@/lib/types";
 import DocumentUpload from "./DocumentUpload";
+import DocumentUploadLinkManager from "./DocumentUploadLinkManager";
 
 interface DocumentListProps {
   caseId: string;
@@ -214,6 +215,10 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
       {/* Upload */}
       {(allRoles || userRole === "comercial_juridico") && <DocumentUpload caseId={caseId} onSuccess={fetchDocuments} />}
 
+      {canManageChecklist && (
+        <DocumentUploadLinkManager caseId={caseId} />
+      )}
+
       {canViewDocumentRequests && (
         <div className="space-y-4 rounded-lg border border-blue-200 bg-blue-50/50 p-4">
           <div className="flex items-start gap-3">
@@ -355,11 +360,14 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
                     {doc.fileSize != null && (
                       <span className="text-xs text-muted-foreground">{formatFileSize(doc.fileSize)}</span>
                     )}
+                    {doc.uploadedViaLink && (
+                      <Badge variant="outline" className="text-[10px] text-blue-700">Enlace cliente</Badge>
+                    )}
                     <span className="text-xs text-muted-foreground">
                       {doc.uploadedByName || doc.uploadedBy?.displayName || "Sistema"}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(doc._createdAt).toLocaleDateString("es-CO")}
+                      {new Date(doc.uploadedAt || doc._createdAt).toLocaleString("es-CO")}
                     </span>
                   </div>
                 </div>

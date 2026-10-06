@@ -105,6 +105,13 @@ app.prepare().then(() => {
     for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
       res.setHeader(key, value);
     }
+    // El enlace de invitación contiene un secreto de un solo caso. La ruta de
+    // acceso responde con redirect hacia la página limpia y nunca debe quedar
+    // como referrer de esa página ni de GTM/GA.
+    const requestPathname = parse(req.url || '').pathname || '';
+    if (requestPathname.startsWith('/cargar-documentos')) {
+      res.setHeader('Referrer-Policy', 'no-referrer');
+    }
     handle(req, res, parse(req.url, true));
   });
 

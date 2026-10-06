@@ -5,10 +5,12 @@ const uploadedByObj = nestedObj('u', { _id: 'u.id', displayName: 'u.display_name
 
 const SELECT = `
   d.id AS "_id", d.created_at AS "_createdAt", d.category,
+  d.uploaded_at AS "uploadedAt",
   d.status, d.is_required AS "isRequired",
   d.file_name AS "fileName", d.file_size AS "fileSize", d.mime_type AS "mimeType",
   d.version, d.is_visible_to_client AS "isVisibleToClient", d.description,
   d.uploaded_by_name AS "uploadedByName",
+  (d.upload_link_id IS NOT NULL) AS "uploadedViaLink",
   ${uploadedByObj} AS "uploadedBy",
   d.file_url AS "fileUrl"
 `;
@@ -85,6 +87,8 @@ export interface CaseDocumentInput {
   version?: number;
   isVisibleToClient?: boolean;
   description?: string | null;
+  uploadedAt?: string | null;
+  uploadLinkId?: string | null;
 }
 
 export async function createCaseDocument(input: CaseDocumentInput): Promise<CaseDocument | null> {
@@ -105,6 +109,8 @@ export async function createCaseDocument(input: CaseDocumentInput): Promise<Case
     version: input.version ?? 1,
     is_visible_to_client: input.isVisibleToClient ?? false,
     description: input.description ?? null,
+    uploaded_at: input.uploadedAt ?? (input.fileUrl ? new Date().toISOString() : null),
+    upload_link_id: input.uploadLinkId ?? null,
   });
   await query(text, values);
   return getCaseDocumentById(id);
@@ -118,6 +124,7 @@ export async function updateCaseDocument(
       | 'category' | 'isVisibleToClient' | 'description' | 'status' | 'isRequired'
       | 'fileUrl' | 'fileAssetId' | 'fileName' | 'mimeType' | 'fileSize'
       | 'uploadedById' | 'uploadedByName'
+      | 'uploadedAt' | 'uploadLinkId'
     >
   >,
 ): Promise<CaseDocument | null> {
@@ -134,6 +141,8 @@ export async function updateCaseDocument(
     file_size: patch.fileSize,
     uploaded_by_id: patch.uploadedById === 'admin' ? null : patch.uploadedById,
     uploaded_by_name: patch.uploadedByName,
+    uploaded_at: patch.uploadedAt,
+    upload_link_id: patch.uploadLinkId,
   });
   const upd = buildUpdate('case_document', id, data);
   if (upd) await query(upd.text, upd.values);
