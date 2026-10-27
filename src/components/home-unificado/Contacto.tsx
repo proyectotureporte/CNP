@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { contacto, datosContacto } from '@/lib/content/home-unificado/sitio';
 import { MapaCobertura } from './MapaCobertura';
+import { trackLead } from '@/lib/track';
 
 type Estado = 'idle' | 'loading' | 'success' | 'error';
 
@@ -26,6 +27,7 @@ export function Contacto() {
       });
       if (!respuesta.ok) throw new Error('No se pudo enviar el formulario');
 
+      trackLead('contacto');
       setNombre('');
       setEmail('');
       setTelefono('');

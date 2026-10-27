@@ -54,6 +54,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 })(window,document,'script','dataLayer','${GTM_ID}');`}
         </Script>
         {/* End Google Tag Manager */}
+        {/* Métricas propias (nativas, sin cookies ni terceros): panel https://restaurar.co/metricas */}
+        <script
+          defer
+          src="https://restaurar.co/m.js"
+          data-site="cnp"
+          data-exclude="/crm,/admin,/portal,/perito,/cargar-documentos"
+        />
       </head>
       <body className={`${oswald.className} ${oswald.variable} ${quicksand.variable} ${montserrat.variable}`}>
         {/* Google Tag Manager (noscript) */}

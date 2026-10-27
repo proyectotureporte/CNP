@@ -45,11 +45,11 @@ const handle = app.getRequestHandler();
 // sus dominios). next/font se auto-hostea.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.googletagmanager.com",
+  "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.googletagmanager.com https://restaurar.co",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://cdn.sanity.io https://*.googletagmanager.com https://*.google-analytics.com",
   "font-src 'self' data:",
-  "connect-src 'self' ws: wss: https://cdn.sanity.io https://*.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com",
+  "connect-src 'self' ws: wss: https://cdn.sanity.io https://*.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://api.restaurar.co",
   "frame-src 'self' https://maps.google.com https://www.google.com https://*.googletagmanager.com",
   "frame-ancestors 'self'",
   "base-uri 'self'",

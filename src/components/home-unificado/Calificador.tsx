@@ -3,6 +3,7 @@
 import { useId, useRef, useState } from 'react';
 import { cierre, errorEnvio, etapas, materias, paso3 } from '@/lib/content/home-unificado/calificador';
 import { IconoMateria } from './IconoMateria';
+import { trackLead } from '@/lib/track';
 
 /**
  * Calificador del hero. Tres pasos y un cierre.
@@ -94,6 +95,7 @@ export function Calificador() {
         }),
       });
       if (!r.ok) throw new Error('la API respondió ' + r.status);
+      trackLead('calificador');
       setEnviada(true);
       setEnvio('quieto');
     } catch {

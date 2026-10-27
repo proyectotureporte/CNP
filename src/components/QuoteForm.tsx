@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useReveal } from "@/hooks/useReveal";
+import { trackLead } from '@/lib/track';
 
 interface Props {
   origen?: "landing" | "abogados" | "empresas" | "jueces" | "masterclass";
@@ -34,6 +35,7 @@ export default function QuoteForm({ origen = "landing" }: Props) {
         body: JSON.stringify({ nombre, email, telefono, mensaje, origen }),
       });
       if (res.ok) {
+        trackLead(origen);
         setStatus("ok");
         setNombre("");
         setEmail("");
