@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Ban, Check, Copy, Link2, RefreshCw, ShieldCheck } from "lucide-react";
+import { Ban, Check, Copy, Link2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { DocumentUploadLinkStatus } from "@/lib/types";
 
@@ -14,6 +15,9 @@ export default function DocumentUploadLinkManager({ caseId }: { caseId: string }
   const [working, setWorking] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const [sentNotice, setSentNotice] = useState("");
+  const [showMessage, setShowMessage] = useState(false);
+  const [message, setMessage] = useState("");
 
   const loadStatus = useCallback(async () => {
     try {
@@ -27,21 +31,30 @@ export default function DocumentUploadLinkManager({ caseId }: { caseId: string }
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
-  async function generateLink() {
-    if (status?.active && !window.confirm("Al generar un enlace nuevo, el anterior dejará de funcionar. ¿Continuar?")) return;
+  async function generateLink(notifyClient = false) {
+    const confirmText = notifyClient
+      ? `Se generará un enlace${status?.active ? " nuevo (el anterior dejará de funcionar)" : ""} y se enviará por correo al cliente con la lista de documentos pendientes. ¿Continuar?`
+      : "Al generar un enlace nuevo, el anterior dejará de funcionar. ¿Continuar?";
+    if ((status?.active || notifyClient) && !window.confirm(confirmText)) return;
     setWorking(true);
     setError("");
+    setSentNotice("");
     setCopied(false);
     try {
       const response = await fetch(`/api/cases/${caseId}/document-upload-link`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ expiresInDays: Number(days) }),
+        body: JSON.stringify({ expiresInDays: Number(days), notifyClient, message: notifyClient ? message.trim() : undefined }),
       });
       const payload = await response.json();
       if (!response.ok || !payload.success) throw new Error(payload.error || "No fue posible generar el enlace");
       setStatus(payload.data);
       setUrl(payload.data.url);
+      if (payload.data.emailed) {
+        setSentNotice("Enlace enviado por correo al cliente con los documentos pendientes.");
+        setShowMessage(false);
+        setMessage("");
+      }
     } catch (generateError) {
       setError(generateError instanceof Error ? generateError.message : "No fue posible generar el enlace");
     } finally {
@@ -81,7 +94,8 @@ export default function DocumentUploadLinkManager({ caseId }: { caseId: string }
           <h3 className="text-sm font-semibold text-blue-950">Link para carga de documentos del cliente</h3>
           <p className="mt-1 text-xs text-blue-800">
             El enlace es exclusivo de este caso, vence automáticamente y puede revocarse en cualquier momento.
-            El cliente verá los documentos requeridos que estén marcados como visibles.
+            El cliente verá los documentos requeridos visibles y los devueltos para corrección. «Solicitar documentos por correo»
+            genera el enlace y se lo envía al cliente con esa lista.
           </p>
         </div>
         {status?.active && (
@@ -116,6 +130,26 @@ export default function DocumentUploadLinkManager({ caseId }: { caseId: string }
       )}
 
       {error && <p className="text-sm text-red-700">{error}</p>}
+      {sentNotice && <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">{sentNotice}</p>}
+
+      {showMessage && (
+        <div className="space-y-2">
+          <Textarea
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            rows={3}
+            maxLength={2000}
+            placeholder="Mensaje opcional para el cliente (se incluye en el correo junto a la lista de documentos pendientes)..."
+            className="bg-white"
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" onClick={() => generateLink(true)} disabled={working}>
+              <Mail className="mr-2 h-4 w-4" /> {working ? "Enviando..." : "Enviar correo al cliente"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setShowMessage(false)} disabled={working}>Cancelar</Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <Select value={days} onValueChange={setDays}>
@@ -127,10 +161,15 @@ export default function DocumentUploadLinkManager({ caseId }: { caseId: string }
             <SelectItem value="90">Vence en 90 días</SelectItem>
           </SelectContent>
         </Select>
-        <Button type="button" onClick={generateLink} disabled={working}>
+        <Button type="button" onClick={() => generateLink(false)} disabled={working}>
           <RefreshCw className={`mr-2 h-4 w-4 ${working ? "animate-spin" : ""}`} />
           {status?.active ? "Generar enlace nuevo" : "Generar link para carga"}
         </Button>
+        {!showMessage && (
+          <Button type="button" variant="outline" onClick={() => setShowMessage(true)} disabled={working}>
+            <Mail className="mr-2 h-4 w-4" /> Solicitar documentos por correo
+          </Button>
+        )}
         {status?.active && (
           <Button type="button" variant="outline" onClick={revokeLink} disabled={working} className="text-red-700 hover:text-red-800">
             <Ban className="mr-2 h-4 w-4" /> Revocar

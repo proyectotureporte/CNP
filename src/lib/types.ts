@@ -390,13 +390,32 @@ export const CASE_EVENT_LABELS: Record<CaseEventType, string> = {
   other: 'Otro',
 };
 
+/**
+ * Tipos de actuación que el cliente ve por defecto en su portal. Las notas
+ * internas, asignaciones de peritos, hilos de mensajes y decisiones de comité
+ * quedan ocultas salvo que el equipo las marque visibles de forma expresa.
+ */
+export const CLIENT_VISIBLE_EVENT_TYPES: ReadonlySet<CaseEventType> = new Set<CaseEventType>([
+  'case_created', 'status_changed', 'quote_created', 'quote_approved', 'quote_rejected',
+  'deliverable_approved', 'payment_recorded', 'payment_receipt_uploaded',
+  'document_requested', 'document_uploaded',
+  'execution_started', 'execution_suspended', 'execution_resumed',
+]);
+
 export interface CaseEvent {
   _id: string;
   _createdAt: string;
   /** Solo difiere de `_createdAt` cuando el registro fue editado posteriormente. */
   _updatedAt?: string;
   eventType: CaseEventType;
+  /** Título legible de la actuación; si falta se usa la etiqueta del tipo. */
+  title?: string | null;
+  /** Fecha de la actuación (puede ser anterior al registro). */
+  eventDate?: string;
   description?: string;
+  isVisibleToClient?: boolean;
+  /** Documento de soporte asociado a la actuación. */
+  document?: { _id: string; fileName?: string | null; description?: string | null; isVisibleToClient?: boolean } | null;
   createdByName?: string;
   createdByRole?: UserRole;
   createdBy?: { _id: string; displayName: string };
@@ -507,6 +526,23 @@ export const CASE_DOCUMENT_STATUS_COLORS: Record<CaseDocumentStatus, { bg: strin
   recibido: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
 };
 
+// Revisión documental: todo archivo recibido del cliente o de un perito externo
+// entra "pendiente de revisión"; el equipo lo aprueba o pide una nueva versión.
+export const CASE_DOCUMENT_REVIEW_STATUSES = ['pendiente_revision', 'aprobado', 'requiere_correccion'] as const;
+export type CaseDocumentReviewStatus = (typeof CASE_DOCUMENT_REVIEW_STATUSES)[number];
+
+export const CASE_DOCUMENT_REVIEW_LABELS: Record<CaseDocumentReviewStatus, string> = {
+  pendiente_revision: 'Pendiente de revisión',
+  aprobado: 'Aprobado',
+  requiere_correccion: 'Requiere corrección',
+};
+
+export const CASE_DOCUMENT_REVIEW_COLORS: Record<CaseDocumentReviewStatus, { bg: string; text: string; dot: string }> = {
+  pendiente_revision: { bg: 'bg-amber-50', text: 'text-amber-800', dot: 'bg-amber-500' },
+  aprobado: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+  requiere_correccion: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+};
+
 export interface CaseDocument {
   _id: string;
   _createdAt: string;
@@ -520,6 +556,15 @@ export interface CaseDocument {
   version: number;
   isVisibleToClient: boolean;
   description?: string;
+  /** Null mientras el requerido no tenga archivo. */
+  reviewStatus?: CaseDocumentReviewStatus | null;
+  reviewNote?: string | null;
+  reviewedByName?: string | null;
+  reviewedAt?: string | null;
+  /** Versión anterior reemplazada por esta fila. */
+  supersedesDocumentId?: string | null;
+  /** Fecha en que una versión nueva reemplazó a esta fila (null = versión vigente). */
+  supersededAt?: string | null;
   uploadedByName?: string;
   uploadedViaLink?: boolean;
   uploadedBy?: { _id: string; displayName: string };
@@ -539,17 +584,25 @@ export interface DocumentUploadLinkStatus {
   active: boolean;
 }
 
+/** Documento que el cliente aún debe aportar (requerido sin archivo o versión devuelta). */
+export interface ClientPendingDocument {
+  _id: string;
+  description: string;
+  category: DocumentCategory;
+  /** 'requerido' = aún no recibido; 'correccion' = recibido pero devuelto con observación. */
+  reason: 'requerido' | 'correccion';
+  reviewNote?: string | null;
+  fileName?: string | null;
+  version?: number;
+}
+
 export interface PublicDocumentUploadContext {
   brand: 'CNP' | 'Peritus';
   caseCode: string;
   caseTitle: string;
   clientName: string;
   expiresAt: string;
-  pendingDocuments: Array<{
-    _id: string;
-    description: string;
-    category: DocumentCategory;
-  }>;
+  pendingDocuments: ClientPendingDocument[];
 }
 
 export interface AdminConfig extends SanityDocument {
@@ -1103,6 +1156,7 @@ export interface AuditLog {
   action: string;
   entityType: string;
   entityId?: string;
+  caseId?: string | null;
   oldValues?: string;
   newValues?: string;
   ipAddress?: string;

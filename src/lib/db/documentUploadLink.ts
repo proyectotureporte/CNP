@@ -1,4 +1,5 @@
 import { query, queryOne, withTransaction } from './pool';
+import { listClientPendingDocuments } from './caseDocument';
 import type { DocumentUploadLinkStatus, PublicDocumentUploadContext } from '@/lib/types';
 
 interface ValidUploadLinkRow {
@@ -82,15 +83,7 @@ export async function getValidLink(id: string, tokenHash: string): Promise<Valid
 }
 
 export async function getPublicContext(link: ValidUploadLinkRow): Promise<PublicDocumentUploadContext> {
-  const pendingDocuments = await query<PublicDocumentUploadContext['pendingDocuments'][number]>(
-    `SELECT id AS "_id", COALESCE(NULLIF(description, ''), file_name, 'Documento requerido') AS description,
-       category
-     FROM case_document
-     WHERE case_id = $1 AND is_required = TRUE AND is_visible_to_client = TRUE
-       AND status <> 'recibido'
-     ORDER BY created_at ASC`,
-    [link.caseId],
-  );
+  const pendingDocuments = await listClientPendingDocuments(link.caseId);
   return {
     brand: link.brand,
     caseCode: link.caseCode,

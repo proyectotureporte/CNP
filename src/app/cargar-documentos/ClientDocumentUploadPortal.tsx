@@ -4,7 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, FileCheck2, FileUp, LockKeyhole, ShieldCheck } from "lucide-react";
 import type { PublicDocumentUploadContext } from "@/lib/types";
 import { DOCUMENT_CATEGORY_LABELS } from "@/lib/types";
-import { CASE_DOCUMENT_MAX_SIZE_MB } from "@/lib/files/uploadLimits";
+import {
+  CASE_DOCUMENT_ACCEPT_ATTRIBUTE,
+  CASE_DOCUMENT_ALLOWED_LABEL,
+  CASE_DOCUMENT_MAX_FILES_PER_UPLOAD,
+  CASE_DOCUMENT_MAX_SIZE_MB,
+  validateDocumentFiles,
+} from "@/lib/files/uploadLimits";
 
 export default function ClientDocumentUploadPortal() {
   const [context, setContext] = useState<PublicDocumentUploadContext | null>(null);
@@ -107,10 +113,17 @@ export default function ClientDocumentUploadPortal() {
               {context.pendingDocuments.length ? (
                 <ul className="mt-4 space-y-2">
                   {context.pendingDocuments.map((item) => (
-                    <li key={item._id} className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
-                      <span className="flex-1 font-medium">{item.description}</span>
-                      <span className="text-xs text-amber-800">{DOCUMENT_CATEGORY_LABELS[item.category]}</span>
+                    <li key={item._id} className={`rounded-lg border px-4 py-3 text-sm ${item.reason === "correccion" ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"}`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${item.reason === "correccion" ? "bg-red-500" : "bg-amber-500"}`} />
+                        <span className="flex-1 font-medium">{item.description}</span>
+                        <span className={`text-xs ${item.reason === "correccion" ? "text-red-800" : "text-amber-800"}`}>
+                          {item.reason === "correccion" ? "Versión corregida" : DOCUMENT_CATEGORY_LABELS[item.category]}
+                        </span>
+                      </div>
+                      {item.reason === "correccion" && item.reviewNote && (
+                        <p className="mt-1 pl-5 text-xs text-red-800">Observación del equipo: {item.reviewNote}</p>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -128,7 +141,7 @@ export default function ClientDocumentUploadPortal() {
                   <label htmlFor="document-request" className="mb-1.5 block text-sm font-semibold">¿A qué solicitud corresponde?</label>
                   <select id="document-request" value={documentId} onChange={(event) => setDocumentId(event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm focus:border-[#2969b0] focus:outline-none focus:ring-2 focus:ring-blue-100">
                     <option value="">Documentación adicional / no está en la lista</option>
-                    {context.pendingDocuments.map((item) => <option key={item._id} value={item._id}>{item.description}</option>)}
+                    {context.pendingDocuments.map((item) => <option key={item._id} value={item._id}>{item.description}{item.reason === "correccion" ? " (versión corregida)" : ""}</option>)}
                   </select>
                 </div>
                 <div>
@@ -136,8 +149,13 @@ export default function ClientDocumentUploadPortal() {
                   <label htmlFor="client-files" className="flex cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/40 px-5 py-8 text-center transition hover:bg-blue-50">
                     <FileUp className="h-9 w-9 text-[#2969b0]" />
                     <span className="mt-3 text-sm font-semibold text-[#113a69]">Seleccionar uno o varios archivos</span>
-                    <span className="mt-1 text-xs text-slate-500">Máximo 10 archivos y {CASE_DOCUMENT_MAX_SIZE_MB} MB en total por envío</span>
-                    <input id="client-files" type="file" multiple className="sr-only" onChange={(event) => setFiles(Array.from(event.target.files || []))} />
+                    <span className="mt-1 text-xs text-slate-500">{CASE_DOCUMENT_ALLOWED_LABEL} · máximo {CASE_DOCUMENT_MAX_FILES_PER_UPLOAD} archivos y {CASE_DOCUMENT_MAX_SIZE_MB} MB por envío</span>
+                    <input id="client-files" type="file" multiple accept={CASE_DOCUMENT_ACCEPT_ATTRIBUTE} className="sr-only" onChange={(event) => {
+                      const selected = Array.from(event.target.files || []);
+                      const problem = selected.length ? validateDocumentFiles(selected) : null;
+                      setError(problem || "");
+                      setFiles(problem ? [] : selected);
+                    }} />
                   </label>
                   {files.length > 0 && (
                     <div className="mt-3 rounded-lg bg-slate-50 px-4 py-3 text-sm">

@@ -36,10 +36,15 @@ export function ipFromRequest(request: Request): string | null {
 }
 
 export interface AuditChangeInput {
-  request: Request;
+  /** Petición autenticada; null para acciones públicas (enlace de carga del cliente). */
+  request: Request | null;
   action: 'create' | 'update' | 'delete' | string;
   entityType: string;
   entityId: string;
+  /** Expediente al que pertenece la acción (trazabilidad por caso). */
+  caseId?: string | null;
+  /** Identidad explícita cuando no viene de las cabeceras (p. ej. "Cliente: X · enlace seguro"). */
+  actorLabel?: string | null;
   /** Snapshot previo (update/delete). */
   before?: Record<string, unknown> | null;
   /** Snapshot posterior (create/update). */
@@ -49,7 +54,7 @@ export interface AuditChangeInput {
 /** Registra la edición en audit_log con diff campo a campo. No bloqueante. */
 export async function auditEntityChange(input: AuditChangeInput): Promise<void> {
   try {
-    const userId = input.request.headers.get('x-user-id');
+    const userId = input.request?.headers.get('x-user-id') ?? null;
     let oldValues: string | null = null;
     let newValues: string | null = null;
 
@@ -62,15 +67,20 @@ export async function auditEntityChange(input: AuditChangeInput): Promise<void> 
       if (input.before) oldValues = JSON.stringify(input.before);
       if (input.after) newValues = JSON.stringify(input.after);
     }
+    if (input.actorLabel) {
+      const parsed = newValues ? (JSON.parse(newValues) as Record<string, unknown>) : {};
+      newValues = JSON.stringify({ ...parsed, actor: input.actorLabel });
+    }
 
     await auditLog.createAuditLog({
       userId,
       action: `${input.action}:${input.entityType}`,
       entityType: input.entityType,
       entityId: input.entityId,
+      caseId: input.caseId ?? (input.entityType === 'case' ? input.entityId : null),
       oldValues,
       newValues,
-      ipAddress: ipFromRequest(input.request),
+      ipAddress: input.request ? ipFromRequest(input.request) : null,
     });
   } catch (err) {
     console.error('[audit] Error registrando auditoría:', err);

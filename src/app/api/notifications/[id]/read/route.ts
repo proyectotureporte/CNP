@@ -3,12 +3,13 @@ import { notification } from '@/lib/db';
 import { triggerEvent } from '@/lib/realtime/server';
 
 export async function PUT(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    await notification.markNotificationRead(id);
+    const userId = request.headers.get('x-user-id');
+    await notification.markNotificationRead(id, userId && userId !== 'admin' ? userId : null);
 
     triggerEvent('notification:read', { id });
 

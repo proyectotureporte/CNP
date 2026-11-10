@@ -6,13 +6,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Upload, X, FileIcon } from 'lucide-react';
 import {
-  CASE_DOCUMENT_MAX_SIZE_BYTES,
+  CASE_DOCUMENT_ACCEPT_ATTRIBUTE,
+  CASE_DOCUMENT_ALLOWED_LABEL,
+  CASE_DOCUMENT_MAX_FILES_PER_UPLOAD,
   CASE_DOCUMENT_MAX_SIZE_MB,
+  validateDocumentFiles,
 } from '@/lib/files/uploadLimits';
+import type { ClientPendingDocument } from '@/lib/types';
 
 interface PortalDocumentUploadProps {
   caseId: string;
   onUploadComplete: () => void;
+  /** Requeridos pendientes o devueltos: el cliente elige a cuál responde. */
+  pendingDocuments?: ClientPendingDocument[];
+  /** Preselección (p. ej. botón "Enviar" de un pendiente concreto). */
+  initialTargetId?: string;
 }
 
 function formatFileSize(bytes: number) {
@@ -21,51 +29,46 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function PortalDocumentUpload({ caseId, onUploadComplete }: PortalDocumentUploadProps) {
-  const [file, setFile] = useState<File | null>(null);
+export default function PortalDocumentUpload({ caseId, onUploadComplete, pendingDocuments = [], initialTargetId = '' }: PortalDocumentUploadProps) {
+  const [files, setFiles] = useState<File[]>([]);
   const [description, setDescription] = useState('');
+  const [targetId, setTargetId] = useState(initialTargetId);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = useCallback((f: File) => {
-    setError('');
-    if (f.size > CASE_DOCUMENT_MAX_SIZE_BYTES) {
-      setError(`El archivo excede el limite de ${CASE_DOCUMENT_MAX_SIZE_MB}MB`);
-      return;
-    }
-    setFile(f);
+  const addFiles = useCallback((incoming: FileList | File[] | null) => {
+    const list = Array.from(incoming ?? []);
+    if (list.length === 0) return;
+    setFiles((prev) => {
+      const merged = [...prev, ...list.filter((f) => !prev.some((p) => p.name === f.name && p.size === f.size))];
+      const problem = validateDocumentFiles(merged);
+      if (problem) {
+        setError(problem);
+        return prev;
+      }
+      setError('');
+      return merged;
+    });
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragActive(false);
-    if (e.dataTransfer.files?.[0]) {
-      handleFile(e.dataTransfer.files[0]);
-    }
-  }, [handleFile]);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragActive(true);
-  }, []);
-
-  const handleDragLeave = useCallback(() => {
-    setDragActive(false);
-  }, []);
+  const target = pendingDocuments.find((item) => item._id === targetId);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!file) return;
+    if (files.length === 0) return;
 
     setError('');
+    setSuccess('');
     setUploading(true);
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      files.forEach((file) => formData.append('files', file));
       formData.append('description', description);
+      if (targetId) formData.append('documentId', targetId);
 
       const res = await fetch(`/api/cases/${caseId}/documents`, {
         method: 'POST',
@@ -78,9 +81,11 @@ export default function PortalDocumentUpload({ caseId, onUploadComplete }: Porta
         return;
       }
 
-      setFile(null);
+      setFiles([]);
       setDescription('');
+      setTargetId('');
       if (inputRef.current) inputRef.current.value = '';
+      setSuccess(`${data.count ?? files.length} archivo(s) enviado(s). El equipo los revisará y te avisará si necesita algo más.`);
       onUploadComplete();
     } catch {
       setError('Error de conexion');
@@ -94,60 +99,94 @@ export default function PortalDocumentUpload({ caseId, onUploadComplete }: Porta
       {error && (
         <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
       )}
+      {success && (
+        <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">{success}</div>
+      )}
+
+      {pendingDocuments.length > 0 && (
+        <div className="space-y-1">
+          <Label htmlFor="doc-target" className="text-sm">¿A qué solicitud corresponde?</Label>
+          <select
+            id="doc-target"
+            value={targetId}
+            onChange={(e) => setTargetId(e.target.value)}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            disabled={uploading}
+          >
+            <option value="">Documentación adicional / no está en la lista</option>
+            {pendingDocuments.map((item) => (
+              <option key={item._id} value={item._id}>
+                {item.description}{item.reason === 'correccion' ? ' (versión corregida)' : ''}
+              </option>
+            ))}
+          </select>
+          {target?.reason === 'correccion' && target.reviewNote && (
+            <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">Observación del equipo: {target.reviewNote}</p>
+          )}
+        </div>
+      )}
 
       <div
         className={`relative rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
           dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-muted-foreground/50'
         }`}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
+        onDrop={(e) => { e.preventDefault(); setDragActive(false); addFiles(e.dataTransfer.files); }}
+        onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+        onDragLeave={() => setDragActive(false)}
       >
-        {file ? (
-          <div className="flex items-center justify-center gap-3">
-            <FileIcon className="h-5 w-5 text-muted-foreground" />
-            <div className="text-left">
-              <p className="text-sm font-medium">{file.name}</p>
-              <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={() => {
-                setFile(null);
-                if (inputRef.current) inputRef.current.value = '';
-              }}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <>
-            <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Arrastra un archivo aqui o{' '}
-              <button
-                type="button"
-                className="text-primary underline"
-                onClick={() => inputRef.current?.click()}
-              >
-                selecciona
-              </button>
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Maximo {CASE_DOCUMENT_MAX_SIZE_MB}MB</p>
-          </>
-        )}
+        <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">
+          Arrastra uno o varios archivos aquí o{' '}
+          <button
+            type="button"
+            className="text-primary underline"
+            onClick={() => inputRef.current?.click()}
+          >
+            selecciona
+          </button>
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {CASE_DOCUMENT_ALLOWED_LABEL} · hasta {CASE_DOCUMENT_MAX_FILES_PER_UPLOAD} archivos de máximo {CASE_DOCUMENT_MAX_SIZE_MB} MB
+        </p>
         <input
           ref={inputRef}
           type="file"
+          multiple
+          accept={CASE_DOCUMENT_ACCEPT_ATTRIBUTE}
           className="hidden"
-          onChange={(e) => {
-            if (e.target.files?.[0]) handleFile(e.target.files[0]);
-          }}
+          onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
         />
       </div>
+
+      {files.length > 0 && (
+        <ul className="divide-y rounded-lg border">
+          {files.map((file) => (
+            <li key={`${file.name}-${file.size}`} className="flex items-center gap-3 px-3 py-2">
+              <FileIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0 flex-1 text-left">
+                <p className="truncate text-sm font-medium">{file.name}</p>
+                <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                aria-label={`Quitar ${file.name}`}
+                onClick={() => setFiles((prev) => prev.filter((item) => item !== file))}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {target && files.length > 1 && (
+        <p className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-800">
+          El primer archivo atenderá “{target.description}”; los demás quedarán como anexos.
+        </p>
+      )}
 
       <div className="space-y-1">
         <Label htmlFor="doc-description" className="text-sm">Descripcion (opcional)</Label>
@@ -160,16 +199,16 @@ export default function PortalDocumentUpload({ caseId, onUploadComplete }: Porta
         />
       </div>
 
-      <Button type="submit" disabled={!file || uploading} className="w-full">
+      <Button type="submit" disabled={files.length === 0 || uploading} className="w-full">
         {uploading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Subiendo...
+            Enviando...
           </>
         ) : (
           <>
             <Upload className="mr-2 h-4 w-4" />
-            Subir Documento
+            Enviar {files.length <= 1 ? 'documento' : `${files.length} documentos`}
           </>
         )}
       </Button>

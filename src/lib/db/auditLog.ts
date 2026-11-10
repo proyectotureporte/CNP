@@ -3,12 +3,14 @@ import type { AuditLog } from '@/lib/types';
 
 const userObj = nestedObj('u', { _id: 'u.id', displayName: 'u.display_name' });
 
+const SELECT = `SELECT a.id AS "_id", a.created_at AS "_createdAt", a.action, a.entity_type AS "entityType",
+       a.entity_id AS "entityId", a.case_id AS "caseId", a.old_values AS "oldValues", a.new_values AS "newValues",
+       a.ip_address AS "ipAddress", ${userObj} AS "user"
+     FROM audit_log a LEFT JOIN crm_user u ON u.id = a.user_id`;
+
 export async function listAuditLogs(limit = 50, offset = 0): Promise<AuditLog[]> {
   return query<AuditLog>(
-    `SELECT a.id AS "_id", a.created_at AS "_createdAt", a.action, a.entity_type AS "entityType",
-       a.entity_id AS "entityId", a.old_values AS "oldValues", a.new_values AS "newValues",
-       a.ip_address AS "ipAddress", ${userObj} AS "user"
-     FROM audit_log a LEFT JOIN crm_user u ON u.id = a.user_id
+    `${SELECT}
      ORDER BY a.created_at DESC LIMIT $1 OFFSET $2`,
     [limit, offset],
   );
@@ -19,11 +21,22 @@ export async function countAuditLogs(): Promise<number> {
   return row?.count ?? 0;
 }
 
+/** Trazabilidad de un expediente: toda acción relevante con usuario, fecha y detalle. */
+export async function listAuditLogsByCase(caseId: string, limit = 200): Promise<AuditLog[]> {
+  return query<AuditLog>(
+    `${SELECT}
+     WHERE a.case_id = $1
+     ORDER BY a.created_at DESC LIMIT $2`,
+    [caseId, limit],
+  );
+}
+
 export interface AuditLogInput {
   userId?: string | null;
   action: string;
   entityType?: string | null;
   entityId?: string | null;
+  caseId?: string | null;
   oldValues?: string | null;
   newValues?: string | null;
   ipAddress?: string | null;
@@ -37,6 +50,7 @@ export async function createAuditLog(input: AuditLogInput): Promise<void> {
     action: input.action,
     entity_type: input.entityType ?? null,
     entity_id: input.entityId ?? null,
+    case_id: input.caseId ?? null,
     old_values: input.oldValues ?? null,
     new_values: input.newValues ?? null,
     ip_address: input.ipAddress ?? null,

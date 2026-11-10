@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { Briefcase, LogOut, UserCircle } from 'lucide-react';
 import InterAppScope from '@/components/layout/InterAppScope';
+import PortalNotificationsBell from '@/components/portal/PortalNotificationsBell';
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -57,7 +58,8 @@ function PortalAuthLayout({ children, pathname }: { children: React.ReactNode; p
             <ButtonLink href="/portal/cases" active={pathname.startsWith('/portal/cases')}><Briefcase className="h-4 w-4" />Mis casos</ButtonLink>
             <ButtonLink href="/portal/profile" active={pathname === '/portal/profile'}><UserCircle className="h-4 w-4" />Mi perfil</ButtonLink>
           </nav>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <PortalNotificationsBell />
             <span className="text-sm text-muted-foreground">{user?.displayName}</span>
             <button
               onClick={async () => {

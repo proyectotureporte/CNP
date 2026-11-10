@@ -6,6 +6,7 @@ import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
 import { notifyUsersAndAdmins } from '@/lib/notify';
 import { auditEntityChange } from '@/lib/audit';
+import { notifyCaseClient } from '@/lib/notifyClient';
 import { requireCaseAccess } from '@/lib/auth/caseAccess';
 
 export async function PUT(
@@ -70,6 +71,7 @@ export async function PUT(
       action: 'update',
       entityType: 'case',
       entityId: id,
+      caseId: id,
       before: { status: existing.status },
       after: { status },
     });
@@ -91,6 +93,19 @@ export async function PUT(
       linkUrl: `/crm/cases/${id}`,
       mailbox: 'admin',
     }).catch((err) => console.error('[status] Error notificando cambio de estado:', err));
+
+    // El cliente ve el estado en su portal: aviso in-app y por correo.
+    notifyCaseClient({
+      caseId: id,
+      title: `Tu caso cambió de estado: ${toLabel}`,
+      message: `El caso "${existing.title}" pasó de "${fromLabel}" a "${toLabel}".`,
+      portalPath: `/portal/cases/${id}`,
+      email: {
+        subject: `Tu caso ahora está en estado "${toLabel}"`,
+        body: `Te informamos que tu caso "${existing.title}" pasó de "${fromLabel}" a "${toLabel}". Puedes consultar el detalle y el seguimiento en tu portal.`,
+        ctaLabel: 'Ver mi caso',
+      },
+    });
 
     triggerEvent('case:status-changed', { id, status });
 

@@ -7,7 +7,9 @@ import { triggerEvent } from '@/lib/realtime/server';
 import {
   CASE_DOCUMENT_MAX_SIZE_BYTES,
   CASE_DOCUMENT_MAX_SIZE_MB,
+  validateDocumentFiles,
 } from '@/lib/files/uploadLimits';
+import { auditEntityChange } from '@/lib/audit';
 import {
   DOCUMENT_UPLOAD_COOKIE,
   parseDocumentUploadCredential,
@@ -74,12 +76,9 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const oversized = files.find((file) => file.size > CASE_DOCUMENT_MAX_SIZE_BYTES);
-    if (oversized) {
-      return NextResponse.json(
-        { success: false, error: `${oversized.name} excede el límite de ${CASE_DOCUMENT_MAX_SIZE_MB} MB` },
-        { status: 400 },
-      );
+    const validationError = validateDocumentFiles(files);
+    if (validationError) {
+      return NextResponse.json({ success: false, error: validationError }, { status: 400 });
     }
 
     const target = targetDocumentId
@@ -87,16 +86,19 @@ export async function POST(request: NextRequest) {
       : null;
     if (targetDocumentId) {
       const targetCaseId = await caseDocument.getCaseDocumentCaseId(targetDocumentId);
-      if (!target || targetCaseId !== link.caseId || !target.isRequired || !target.isVisibleToClient) {
+      if (!target || targetCaseId !== link.caseId || !target.isVisibleToClient || target.supersededAt) {
         return NextResponse.json({ success: false, error: 'La solicitud documental no existe' }, { status: 404 });
       }
-      if (target.status === 'recibido') {
+      // Solo se acepta sobre un requerido sin archivo o sobre una versión devuelta.
+      const isCorrection = target.reviewStatus === 'requiere_correccion';
+      if (!isCorrection && (!target.isRequired || target.status === 'recibido' || target.fileName)) {
         return NextResponse.json({ success: false, error: 'Este documento ya fue recibido' }, { status: 409 });
       }
     }
 
     const uploadedByName = `Cliente: ${link.clientName} · enlace seguro`;
     const storedNames: string[] = [];
+    const storedIds: string[] = [];
     for (const [index, file] of files.entries()) {
       const asset = await uploadFile(
         Buffer.from(await file.arrayBuffer()),
@@ -104,22 +106,33 @@ export async function POST(request: NextRequest) {
         file.type || 'application/octet-stream',
       );
       const uploadedAt = new Date().toISOString();
-      if (target && index === 0) {
-        await caseDocument.updateCaseDocument(target._id, {
+      const mimeType = file.type || 'application/octet-stream';
+      let saved: { _id: string } | null = null;
+      if (target && index === 0 && target.reviewStatus === 'requiere_correccion') {
+        // Versión corregida: la anterior se conserva con su observación.
+        saved = await caseDocument.createDocumentVersion(target, link.caseId, {
+          fileUrl: asset.url, fileAssetId: asset.assetId, fileName: file.name, mimeType,
+          fileSize: file.size, uploadedById: null, uploadedByName, uploadLinkId: link.id,
+          reviewStatus: 'pendiente_revision', isVisibleToClient: true,
+        });
+      } else if (target && index === 0) {
+        saved = await caseDocument.updateCaseDocument(target._id, {
           status: 'recibido',
           isVisibleToClient: true,
           fileUrl: asset.url,
           fileAssetId: asset.assetId,
           fileName: file.name,
-          mimeType: file.type || 'application/octet-stream',
+          mimeType,
           fileSize: file.size,
           uploadedById: null,
           uploadedByName,
           uploadedAt,
           uploadLinkId: link.id,
+          reviewStatus: 'pendiente_revision',
+          reviewNote: null, reviewedById: null, reviewedByName: null, reviewedAt: null,
         });
       } else {
-        await caseDocument.createCaseDocument({
+        saved = await caseDocument.createCaseDocument({
           caseId: link.caseId,
           category: target?.category ?? 'documentos_caso',
           status: 'recibido',
@@ -129,28 +142,39 @@ export async function POST(request: NextRequest) {
           fileUrl: asset.url,
           fileAssetId: asset.assetId,
           fileName: file.name,
-          mimeType: file.type || 'application/octet-stream',
+          mimeType,
           fileSize: file.size,
           uploadedById: null,
           uploadedByName,
           uploadedAt,
           uploadLinkId: link.id,
+          reviewStatus: 'pendiente_revision',
         });
       }
       storedNames.push(file.name);
+      if (saved) storedIds.push(saved._id);
     }
 
     await documentUploadLink.recordUploads(link.id, storedNames.length);
     await logCaseEvent({
       caseId: link.caseId,
       eventType: 'document_uploaded',
+      title: 'Documentación recibida del cliente',
       description: `${link.clientName} cargó ${storedNames.length} archivo(s) mediante el enlace seguro: ${storedNames.join(', ')}`,
       userName: uploadedByName,
+      documentId: storedIds[0] ?? null,
     });
+    for (const [index, documentId] of storedIds.entries()) {
+      auditEntityChange({
+        request: null, action: 'create', entityType: 'case_document', entityId: documentId, caseId: link.caseId,
+        actorLabel: uploadedByName,
+        after: { fileName: storedNames[index], origen: 'enlace seguro', reviewStatus: 'pendiente_revision' },
+      });
+    }
     await notifyUsers({
       userIds: [link.assignedJuridicoId, link.commercialId],
       title: 'El cliente cargó documentación',
-      message: `${link.clientName} envió ${storedNames.length} archivo(s) para el caso ${link.caseCode}.`,
+      message: `${link.clientName} envió ${storedNames.length} archivo(s) para el caso ${link.caseCode}. Pendiente de revisión.`,
       linkUrl: `/crm/cases/${link.caseId}?tab=documents`,
       priority: 'alta',
     });

@@ -34,6 +34,9 @@ import {
 } from "@/lib/types";
 import DocumentUpload from "./DocumentUpload";
 import DocumentUploadLinkManager from "./DocumentUploadLinkManager";
+import DocumentReviewControls, { ReviewBadge } from "./DocumentReviewControls";
+import DocumentVersionHistory from "./DocumentVersionHistory";
+import { CASE_DOCUMENT_ACCEPT_ATTRIBUTE, validateDocumentFiles } from "@/lib/files/uploadLimits";
 
 interface DocumentListProps {
   caseId: string;
@@ -78,6 +81,8 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
   const [previewDocument, setPreviewDocument] = useState<CaseDocument | null>(null);
   const [addingRequired, setAddingRequired] = useState(false);
   const [uploadTargetId, setUploadTargetId] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState("");
+  const [showSuperseded, setShowSuperseded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canManageChecklist = allRoles || userRole === "comercial_juridico";
@@ -175,14 +180,23 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !uploadTargetId) return;
+    const problem = validateDocumentFiles([file]);
+    if (problem) {
+      setUploadError(problem);
+      setUploadTargetId(null);
+      return;
+    }
+    setUploadError("");
     const formData = new FormData();
     formData.append("file", file);
     formData.append("documentId", uploadTargetId);
     try {
-      await fetch(`/api/cases/${caseId}/documents`, { method: "POST", body: formData });
+      const res = await fetch(`/api/cases/${caseId}/documents`, { method: "POST", body: formData });
+      const data = await res.json();
+      if (!data.success) setUploadError(data.error || "No fue posible subir el archivo");
       fetchDocuments();
     } catch {
-      // Ignore
+      setUploadError("Error de conexión");
     } finally {
       setUploadTargetId(null);
     }
@@ -209,6 +223,10 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
       setRequesting(false);
     }
   }
+
+  const visibleDocuments = showSuperseded ? documents : documents.filter((doc) => !doc.supersededAt);
+  const supersededCount = documents.filter((doc) => doc.supersededAt).length;
+  const pendingReviewCount = documents.filter((doc) => !doc.supersededAt && doc.reviewStatus === "pendiente_revision").length;
 
   return (
     <div className="space-y-6">
@@ -295,7 +313,8 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
       )}
 
       {/* input oculto para subir archivo a un requerido */}
-      <input ref={fileInputRef} type="file" className="hidden" onChange={handlePlaceholderFile} />
+      <input ref={fileInputRef} type="file" accept={CASE_DOCUMENT_ACCEPT_ATTRIBUTE} className="hidden" onChange={handlePlaceholderFile} />
+      {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
 
       {/* Filter */}
       <div className="flex items-center gap-3">
@@ -311,7 +330,16 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
             ))}
           </SelectContent>
         </Select>
-        <span className="text-sm text-muted-foreground">{documents.length} documentos</span>
+        <span className="text-sm text-muted-foreground">{visibleDocuments.length} documentos</span>
+        {pendingReviewCount > 0 && (
+          <Badge className="border-0 bg-amber-50 text-amber-800">{pendingReviewCount} por revisar</Badge>
+        )}
+        {supersededCount > 0 && (
+          <label className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+            <input type="checkbox" checked={showSuperseded} onChange={(e) => setShowSuperseded(e.target.checked)} />
+            Mostrar versiones reemplazadas ({supersededCount})
+          </label>
+        )}
       </div>
 
       {/* List */}
@@ -327,25 +355,32 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
             </div>
           ))}
         </div>
-      ) : documents.length === 0 ? (
+      ) : visibleDocuments.length === 0 ? (
         <div className="text-center py-8 text-sm text-muted-foreground">
           <FileText className="mx-auto h-8 w-8 mb-2" />
           No hay documentos
         </div>
       ) : (
         <div className="space-y-2">
-          {documents.map((doc) => {
+          {visibleDocuments.map((doc) => {
             const status = (doc.status ?? "recibido") as CaseDocumentStatus;
             const statusColor = CASE_DOCUMENT_STATUS_COLORS[status];
             return (
-              <div key={doc._id} className="flex items-center gap-4 rounded-lg border p-3 hover:bg-muted/50 transition-colors">
+              <div key={doc._id} className={`flex items-center gap-4 rounded-lg border p-3 transition-colors hover:bg-muted/50 ${doc.supersededAt ? "opacity-60" : ""} ${doc.reviewStatus === "requiere_correccion" ? "border-red-200 bg-red-50/40" : ""}`}>
                 <span className="text-2xl">{getFileIcon(doc.mimeType)}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">
                     {doc.fileName || doc.description || "Documento requerido"}
+                    {doc.fileName && doc.description && <span className="ml-1 text-xs font-normal text-muted-foreground">— {doc.description}</span>}
+                    {doc.version > 1 && <span className="ml-1 text-xs text-muted-foreground">v{doc.version}</span>}
                     {doc.isRequired && (
                       <Badge variant="outline" className="ml-2 text-[10px] uppercase tracking-wide">
                         Requerido
+                      </Badge>
+                    )}
+                    {doc.supersededAt && (
+                      <Badge variant="outline" className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Reemplazado
                       </Badge>
                     )}
                   </p>
@@ -354,6 +389,7 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
                       <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${statusColor?.dot}`} />
                       {CASE_DOCUMENT_STATUS_LABELS[status]}
                     </Badge>
+                    <ReviewBadge status={doc.reviewStatus} />
                     <Badge variant="outline" className="text-xs">
                       {DOCUMENT_CATEGORY_LABELS[doc.category as DocumentCategory] || doc.category}
                     </Badge>
@@ -370,6 +406,12 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
                       {new Date(doc.uploadedAt || doc._createdAt).toLocaleString("es-CO")}
                     </span>
                   </div>
+                  {doc.reviewNote && (
+                    <p className="mt-1 text-xs text-red-700">
+                      Observación{doc.reviewedByName ? ` de ${doc.reviewedByName}` : ""}: {doc.reviewNote}
+                    </p>
+                  )}
+                  <DocumentVersionHistory document={doc} onPreview={setPreviewDocument} />
                 </div>
                 <div className="flex items-center gap-1">
                   {canManageChecklist && !doc._id.startsWith("payment-receipt-") && (
@@ -393,6 +435,9 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
                     >
                       <Upload className="h-4 w-4" />
                     </Button>
+                  )}
+                  {canManageChecklist && !doc._id.startsWith("payment-receipt-") && (
+                    <DocumentReviewControls document={doc} onChanged={fetchDocuments} />
                   )}
                   {canManageChecklist && !doc._id.startsWith("payment-receipt-") && (
                     <Button

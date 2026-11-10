@@ -71,7 +71,20 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
     }
     await caseDocument.deleteCaseDocument(id);
-    triggerEvent('document:deleted', { id });
+    auditEntityChange({
+      request, action: 'delete', entityType: 'case_document', entityId: id, caseId,
+      before: { fileName: doc.fileName, description: doc.description, category: doc.category, version: doc.version },
+    });
+    logCaseEvent({
+      caseId,
+      eventType: 'other',
+      title: 'Documento eliminado del expediente',
+      description: `Se eliminó "${doc.fileName || doc.description || doc.category}" (${doc.category})`,
+      isVisibleToClient: false,
+      userId: request.headers.get('x-user-id'),
+      userName: request.headers.get('x-user-name'),
+    });
+    triggerEvent('document:deleted', { id, caseId });
     return NextResponse.json({ success: true, data: { message: 'Documento eliminado' } });
   } catch {
     return NextResponse.json({ success: false, error: 'Error eliminando documento' }, { status: 500 });
@@ -113,27 +126,38 @@ export async function PUT(
       isRequired: body.isRequired as boolean | undefined,
     });
 
+    const userId = request.headers.get('x-user-id');
+    const userName = request.headers.get('x-user-name');
+    const name = doc.description || doc.fileName || doc.category;
     if (body.status !== undefined && body.status !== doc.status && updated) {
-      const userId = request.headers.get('x-user-id');
-      const userName = request.headers.get('x-user-name');
-      const name = doc.description || doc.fileName || doc.category;
       logCaseEvent({
         caseId,
         eventType: 'document_uploaded',
-        description: `Checklist documental: "${name}" marcado como ${CASE_DOCUMENT_STATUS_LABELS[body.status as CaseDocumentStatus]}`,
+        title: 'Checklist documental actualizado',
+        description: `"${name}" marcado como ${CASE_DOCUMENT_STATUS_LABELS[body.status as CaseDocumentStatus]}`,
+        isVisibleToClient: false,
         userId, userName,
       });
+    }
+    if (updated) {
       auditEntityChange({
         request,
         action: 'update',
         entityType: 'case_document',
         entityId: id,
-        before: { status: doc.status },
-        after: { status: body.status },
+        caseId,
+        before: {
+          status: doc.status, category: doc.category, description: doc.description,
+          isVisibleToClient: doc.isVisibleToClient, isRequired: doc.isRequired,
+        },
+        after: {
+          status: updated.status, category: updated.category, description: updated.description,
+          isVisibleToClient: updated.isVisibleToClient, isRequired: updated.isRequired,
+        },
       });
     }
 
-    triggerEvent('document:created', { id });
+    triggerEvent('document:created', { id, caseId });
     return NextResponse.json({ success: true, data: updated });
   } catch {
     return NextResponse.json({ success: false, error: 'Error actualizando documento' }, { status: 500 });

@@ -74,7 +74,12 @@ export async function createNotification(input: NotificationInput): Promise<stri
   return id;
 }
 
-export async function markNotificationRead(id: string): Promise<void> {
+/** Marca leída una notificación; si se indica el usuario, solo si le pertenece. */
+export async function markNotificationRead(id: string, userId?: string | null): Promise<void> {
+  if (userId) {
+    await query('UPDATE notification SET is_read = TRUE, read_at = now() WHERE id = $1 AND user_id = $2', [id, userId]);
+    return;
+  }
   await query('UPDATE notification SET is_read = TRUE, read_at = now() WHERE id = $1', [id]);
 }
 

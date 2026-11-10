@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { caseDocument, query } from '@/lib/db';
+import { caseDocument, query, queryOne } from '@/lib/db';
 import { actorUserReference, requireCaseAccess } from '@/lib/auth/caseAccess';
 import { uploadFile } from '@/lib/sanity/assets';
 import { DOCUMENT_CATEGORIES, DOCUMENT_CATEGORY_LABELS, type CaseDocument, type DocumentCategory } from '@/lib/types';
 import { canManageDocumentChecklist } from '@/lib/auth/permissions';
 import { logCaseEvent } from '@/lib/sanity/logEvent';
 import { triggerEvent } from '@/lib/realtime/server';
-import {
-  CASE_DOCUMENT_MAX_SIZE_BYTES,
-  CASE_DOCUMENT_MAX_SIZE_MB,
-} from '@/lib/files/uploadLimits';
+import { auditEntityChange } from '@/lib/audit';
+import { notifyUsers } from '@/lib/notify';
+import { validateDocumentFiles } from '@/lib/files/uploadLimits';
+
+async function commercialIdForCase(caseId: string): Promise<string | null> {
+  const row = await queryOne<{ commercialId: string | null }>(
+    'SELECT commercial_id AS "commercialId" FROM cases WHERE id = $1',
+    [caseId],
+  );
+  return row?.commercialId ?? null;
+}
 
 function safeDocument(item: CaseDocument, hideUploader: boolean): CaseDocument {
   const safe = { ...item };
@@ -118,22 +125,34 @@ export async function POST(
       if (!DOCUMENT_CATEGORIES.includes(category)) {
         return NextResponse.json({ success: false, error: 'Categoría no válida' }, { status: 400 });
       }
+      // Visible al cliente por defecto: un requerido existe para que el cliente lo aporte.
+      const isVisibleToClient = body.isVisibleToClient !== false;
       const placeholder = await caseDocument.createCaseDocument({
         caseId: id,
         category,
         status: 'no_recibido',
         isRequired: true,
+        isVisibleToClient,
         description,
         uploadedById: actorUserReference(access.actor),
         uploadedByName: access.actor.displayName,
       });
       logCaseEvent({
         caseId: id,
-        eventType: 'document_uploaded',
-        description: `Documento requerido creado en el checklist: "${description}"`,
+        eventType: 'document_requested',
+        title: 'Documento solicitado',
+        description: `Se solicitó el documento "${description}" (${DOCUMENT_CATEGORY_LABELS[category]})`,
+        isVisibleToClient,
         userId: access.actor.userId,
         userName: access.actor.displayName,
+        documentId: placeholder?._id ?? null,
       });
+      if (placeholder) {
+        auditEntityChange({
+          request, action: 'create', entityType: 'case_document', entityId: placeholder._id, caseId: id,
+          after: { requerido: description, category, isVisibleToClient },
+        });
+      }
       triggerEvent('document:created', { caseId: id });
       return NextResponse.json({ success: true, data: placeholder }, { status: 201 });
     }
@@ -143,68 +162,119 @@ export async function POST(
     }
 
     const form = await request.formData();
-    const file = form.get('file');
+    const files = [...form.getAll('files'), ...form.getAll('file')]
+      .filter((value): value is File => value instanceof File && value.size > 0);
     const targetDocumentId = String(form.get('documentId') || '');
     const isClientUpload = access.actor.role === 'cliente';
     const category = (isClientUpload ? 'documentos_caso' : String(form.get('category') || 'documentos_caso')) as DocumentCategory;
-    const description = String(form.get('description') || '');
+    const description = String(form.get('description') || '').trim();
     const isVisibleToClient = isClientUpload || form.get('isVisibleToClient') === 'true';
 
-    if (!(file instanceof File) || file.size === 0) {
+    if (files.length === 0) {
       return NextResponse.json({ success: false, error: 'Archivo requerido' }, { status: 400 });
     }
     if (!DOCUMENT_CATEGORIES.includes(category)) {
       return NextResponse.json({ success: false, error: 'Categoría no válida' }, { status: 400 });
     }
-    if (file.size > CASE_DOCUMENT_MAX_SIZE_BYTES) {
-      return NextResponse.json(
-        { success: false, error: `El archivo excede ${CASE_DOCUMENT_MAX_SIZE_MB} MB` },
-        { status: 400 },
-      );
+    const validationError = validateDocumentFiles(files);
+    if (validationError) {
+      return NextResponse.json({ success: false, error: validationError }, { status: 400 });
     }
+
+    let targetDocument: CaseDocument | null = null;
     if (targetDocumentId) {
-      const targetDocument = await caseDocument.getCaseDocumentById(targetDocumentId);
+      targetDocument = await caseDocument.getCaseDocumentById(targetDocumentId);
       const targetCaseId = await caseDocument.getCaseDocumentCaseId(targetDocumentId);
-      if (!targetDocument || targetCaseId !== id) {
+      if (!targetDocument || targetCaseId !== id || targetDocument.supersededAt) {
         return NextResponse.json({ success: false, error: 'Documento requerido no encontrado' }, { status: 404 });
       }
-      if (isClientUpload && (!targetDocument.isRequired || !targetDocument.isVisibleToClient)) {
+      if (isClientUpload && !targetDocument.isVisibleToClient) {
         return NextResponse.json({ success: false, error: 'Documento requerido no encontrado' }, { status: 404 });
+      }
+      if (isClientUpload && targetDocument.fileName && targetDocument.reviewStatus !== 'requiere_correccion') {
+        return NextResponse.json({ success: false, error: 'Este documento ya fue recibido' }, { status: 409 });
       }
     }
 
-    const asset = await uploadFile(
-      Buffer.from(await file.arrayBuffer()),
-      file.name,
-      file.type || 'application/octet-stream',
-    );
-    const stored = targetDocumentId
-      ? await caseDocument.updateCaseDocument(targetDocumentId, {
-          status: 'recibido', fileUrl: asset.url, fileAssetId: asset.assetId,
-          fileName: file.name, mimeType: file.type, fileSize: file.size,
-          uploadedById: actorUserReference(access.actor), uploadedByName: access.actor.displayName,
-          uploadedAt: new Date().toISOString(),
-        })
-      : await caseDocument.createCaseDocument({
-          caseId: id, category, status: 'recibido', fileName: file.name,
-          fileSize: file.size, mimeType: file.type, fileUrl: asset.url,
-          fileAssetId: asset.assetId, version: 1, isVisibleToClient,
-          description, uploadedById: actorUserReference(access.actor),
-          uploadedByName: access.actor.displayName,
-        });
+    // Lo que carga el equipo queda aprobado; lo que carga el cliente entra a revisión.
+    const reviewStatus = isClientUpload ? 'pendiente_revision' : 'aprobado';
+    const uploadedById = actorUserReference(access.actor);
+    const uploadedByName = access.actor.displayName;
+    const stored: CaseDocument[] = [];
 
-    const categoryLabel = DOCUMENT_CATEGORY_LABELS[category] || category;
+    for (const [index, file] of files.entries()) {
+      const asset = await uploadFile(
+        Buffer.from(await file.arrayBuffer()),
+        file.name,
+        file.type || 'application/octet-stream',
+      );
+      const mimeType = file.type || 'application/octet-stream';
+      let saved: CaseDocument | null;
+      if (targetDocument && index === 0 && targetDocument.fileName) {
+        // Versión nueva de un documento devuelto: se conserva la anterior.
+        saved = await caseDocument.createDocumentVersion(targetDocument, id, {
+          fileUrl: asset.url, fileAssetId: asset.assetId, fileName: file.name, mimeType,
+          fileSize: file.size, uploadedById, uploadedByName, reviewStatus,
+        });
+      } else if (targetDocument && index === 0) {
+        saved = await caseDocument.updateCaseDocument(targetDocument._id, {
+          status: 'recibido', fileUrl: asset.url, fileAssetId: asset.assetId,
+          fileName: file.name, mimeType, fileSize: file.size,
+          uploadedById, uploadedByName, uploadedAt: new Date().toISOString(),
+          reviewStatus, reviewNote: null, reviewedById: null, reviewedByName: null, reviewedAt: null,
+        });
+      } else {
+        saved = await caseDocument.createCaseDocument({
+          caseId: id,
+          category: targetDocument?.category ?? category,
+          status: 'recibido', fileName: file.name,
+          fileSize: file.size, mimeType, fileUrl: asset.url,
+          fileAssetId: asset.assetId, version: 1,
+          isVisibleToClient: targetDocument ? targetDocument.isVisibleToClient || isVisibleToClient : isVisibleToClient,
+          description: description || (targetDocument?.description ?? null),
+          uploadedById, uploadedByName, reviewStatus,
+        });
+      }
+      if (saved) stored.push(saved);
+    }
+
+    const categoryLabel = DOCUMENT_CATEGORY_LABELS[targetDocument?.category ?? category] || category;
+    const names = stored.map((item) => item.fileName).filter(Boolean).join(', ');
     logCaseEvent({
       caseId: id,
       eventType: 'document_uploaded',
-      description: `Documento recibido: "${file.name}" (${categoryLabel})`,
+      title: isClientUpload ? 'Documentación recibida del cliente' : 'Documento agregado al expediente',
+      description: isClientUpload
+        ? `El cliente envió ${stored.length} archivo(s) desde su portal: ${names}`
+        : `Documento recibido: ${names} (${categoryLabel})`,
       userId: access.actor.userId,
       userName: access.actor.displayName,
+      documentId: stored[0]?._id ?? null,
     });
+    for (const item of stored) {
+      auditEntityChange({
+        request, action: 'create', entityType: 'case_document', entityId: item._id, caseId: id,
+        after: {
+          fileName: item.fileName, category: item.category, version: item.version,
+          isVisibleToClient: item.isVisibleToClient, reviewStatus: item.reviewStatus,
+          origen: isClientUpload ? 'portal del cliente' : 'CRM',
+        },
+      });
+    }
+    if (isClientUpload) {
+      notifyUsers({
+        userIds: [access.row.assignedJuridicoId, await commercialIdForCase(id)],
+        title: 'El cliente cargó documentación',
+        message: `${access.actor.displayName} envió ${stored.length} archivo(s) desde el portal: ${names}. Pendiente de revisión.`,
+        linkUrl: `/crm/cases/${id}?tab=documents`,
+        priority: 'alta',
+      }).catch((err) => console.error('[case-documents] Error notificando carga del cliente:', err));
+    }
     triggerEvent('document:created', { caseId: id });
     return NextResponse.json({
       success: true,
-      data: stored && safeDocument(stored, isClientUpload),
+      data: stored.length === 1 ? safeDocument(stored[0], isClientUpload) : stored.map((item) => safeDocument(item, isClientUpload)),
+      count: stored.length,
     }, { status: targetDocumentId ? 200 : 201 });
   } catch (error) {
     console.error('[case-documents] POST error:', error);

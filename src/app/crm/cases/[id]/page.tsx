@@ -22,6 +22,7 @@ import CaseMessages from "@/components/cases/CaseMessages";
 import CasePaymentsTab from "@/components/cases/CasePaymentsTab";
 import ExecutionClockCard from "@/components/cases/ExecutionClockCard";
 import CommitteeTab from "@/components/cases/CommitteeTab";
+import CaseTimelineTab from "@/components/cases/CaseTimelineTab";
 import ContractTab from "@/components/cases/ContractTab";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -45,12 +46,11 @@ import {
   DISCIPLINE_LABELS,
   COMPLEXITY_LABELS, COMPLEXITY_COLORS,
   PRIORITY_LABELS, PRIORITY_COLORS,
-  CASE_EVENT_LABELS,
   CASE_CHANNEL_LABELS,
   COMMERCIAL_STATUS_LABELS, COMMERCIAL_STATUS_COLORS,
   ALL_ROLE_CASE_TABS, ROLE_CASE_TABS,
   type CaseExpanded, type CaseStatus, type CaseComplexity, type CasePriority,
-  type CaseEvent, type CaseEventType, type CaseChannel, type CommercialStatus,
+  type CaseEvent, type CaseChannel, type CommercialStatus,
 } from "@/lib/types";
 import { VALID_TRANSITIONS, COMMERCIAL_TRANSITIONS } from "@/lib/cases/stateMachine";
 import {
@@ -93,12 +93,6 @@ function formatDateTime(dateStr?: string) {
   });
 }
 
-/** Un registro cuenta como editado cuando `updated_at` se separa de `created_at`. */
-function wasEventEdited(event: CaseEvent) {
-  if (!event._updatedAt) return false;
-  return new Date(event._updatedAt).getTime() - new Date(event._createdAt).getTime() > 1000;
-}
-
 function formatCurrency(amount?: number) {
   if (!amount) return "-";
   return `$${amount.toLocaleString("es-CO")}`;
@@ -133,12 +127,6 @@ export default function CrmCaseDetailPage({
   const [commercialChanging, setCommercialChanging] = useState(false);
   const [showLossDialog, setShowLossDialog] = useState(false);
   const [lossReason, setLossReason] = useState("");
-  const [noteText, setNoteText] = useState("");
-  const [noteSaving, setNoteSaving] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<CaseEvent | null>(null);
-  const [editText, setEditText] = useState("");
-  const [editError, setEditError] = useState("");
-  const [editSaving, setEditSaving] = useState(false);
 
   const userRole = user?.role || '';
   const visibleTabs = user?.allRoles ? ALL_ROLE_CASE_TABS : ROLE_CASE_TABS[userRole] || EMPTY_CASE_TABS;
@@ -323,69 +311,6 @@ export default function CrmCaseDetailPage({
       return;
     }
     executeCommercialChange(next);
-  }
-
-  // --- Nota manual del timeline (RF-04) ---
-  async function handleAddNote() {
-    if (!noteText.trim()) return;
-    setNoteSaving(true);
-    try {
-      const res = await fetch(`/api/cases/${id}/events`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventType: "comment", description: noteText.trim() }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setNoteText("");
-        await loadEvents();
-      } else {
-        setError(data.error || "Error agregando la nota");
-      }
-    } catch {
-      setError("Error de conexion");
-    } finally {
-      setNoteSaving(false);
-    }
-  }
-
-  // --- Edición posterior de un registro del timeline ---
-  function openEditEvent(event: CaseEvent) {
-    setEditingEvent(event);
-    setEditText(event.description || "");
-    setEditError("");
-  }
-
-  function closeEditEvent() {
-    if (editSaving) return;
-    setEditingEvent(null);
-    setEditText("");
-    setEditError("");
-  }
-
-  async function handleSaveEventEdit() {
-    if (!editingEvent || !editText.trim()) return;
-    setEditSaving(true);
-    setEditError("");
-    try {
-      const res = await fetch(`/api/cases/${id}/events/${editingEvent._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: editText.trim() }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setEditingEvent(null);
-        setEditText("");
-        await loadEvents();
-      } else {
-        setEditError(data.error || "Error editando el registro");
-      }
-    } catch {
-      setEditError("Error de conexion");
-    } finally {
-      setEditSaving(false);
-    }
   }
 
   if (loading) {
@@ -833,119 +758,16 @@ export default function CrmCaseDetailPage({
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Historial de Eventos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {/* RF-04: nota manual a la bitácora */}
-              {canAddCaseTimelineNote(userRole as Parameters<typeof canAddCaseTimelineNote>[0], user?.allRoles) && (
-                <>
-                  <div className="mb-6 space-y-2">
-                    <Label>Agregar nota</Label>
-                    <Textarea
-                      value={noteText}
-                      onChange={(e) => setNoteText(e.target.value)}
-                      placeholder="Escriba una nota o novedad del caso..."
-                      rows={2}
-                    />
-                    <div className="flex justify-end">
-                      <Button size="sm" onClick={handleAddNote} disabled={noteSaving || !noteText.trim()}>
-                        {noteSaving ? "Guardando..." : "Agregar al timeline"}
-                      </Button>
-                    </div>
-                  </div>
-                  <Separator className="mb-6" />
-                </>
-              )}
-              {events.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No hay eventos registrados
-                </p>
-              ) : (
-                <div className="relative space-y-0">
-                  {events.map((event, index) => (
-                    <div key={event._id} className="flex gap-4 pb-6 last:pb-0">
-                      <div className="relative flex flex-col items-center">
-                        <div className="h-2.5 w-2.5 rounded-full bg-primary ring-4 ring-background" />
-                        {index < events.length - 1 && (
-                          <div className="mt-1 w-px flex-1 bg-border" />
-                        )}
-                      </div>
-                      <div className="flex-1 -mt-0.5">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-medium">
-                            {CASE_EVENT_LABELS[event.eventType as CaseEventType] || event.eventType}
-                          </p>
-                          {canEditTimeline && (
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              className="shrink-0 text-muted-foreground"
-                              onClick={() => openEditEvent(event)}
-                              aria-label="Editar registro"
-                              title="Editar registro"
-                            >
-                              <Pencil />
-                            </Button>
-                          )}
-                        </div>
-                        {event.description && (
-                          <p className="mt-0.5 text-sm text-muted-foreground">{event.description}</p>
-                        )}
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {event.createdBy?.displayName || event.createdByName || "Sistema"} &middot;{" "}
-                          {new Date(event._createdAt).toLocaleString("es-CO", {
-                            month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-                          })}
-                          {wasEventEdited(event) && (
-                            <span title={`Editado ${formatDateTime(event._updatedAt)}`}> &middot; editado</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <CaseTimelineTab
+            caseId={id}
+            events={events}
+            onReload={loadEvents}
+            canAddNote={canAddCaseTimelineNote(userRole as Parameters<typeof canAddCaseTimelineNote>[0], user?.allRoles)}
+            canEdit={canEditTimeline}
+            canViewAudit={Boolean(user?.allRoles) || ['admin', 'comercial_juridico', 'junta'].includes(userRole)}
+          />
         </TabsContent>
       </Tabs>
-
-      {/* Edición posterior de un registro del timeline */}
-      <Dialog open={!!editingEvent} onOpenChange={(open) => { if (!open) closeEditEvent(); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-5 w-5" />
-              Editar registro del timeline
-            </DialogTitle>
-            <DialogDescription>
-              {editingEvent
-                ? `${CASE_EVENT_LABELS[editingEvent.eventType as CaseEventType] || editingEvent.eventType} · ${formatDateTime(editingEvent._createdAt)}`
-                : ""}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 py-2">
-            <Label>Descripción *</Label>
-            <Textarea
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-              placeholder="Corrija o complemente la información del registro..."
-              rows={4}
-            />
-            {editError && <p className="text-sm text-destructive">{editError}</p>}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeEditEvent} disabled={editSaving}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveEventEdit} disabled={editSaving || !editText.trim()}>
-              {editSaving ? "Guardando..." : "Guardar cambios"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Loss reason dialog (RF-10/RF-11) */}
       <Dialog open={showLossDialog} onOpenChange={setShowLossDialog}>

@@ -178,6 +178,75 @@ export async function sendQuoteSentEmail({
   return data;
 }
 
+/**
+ * Correo al cliente final sobre su caso (documentos solicitados, devueltos,
+ * nuevas actuaciones, cambios de estado). Texto neutro: nunca menciona peritos
+ * ni información interna; eso lo garantiza quien lo invoca.
+ */
+export async function sendClientCaseEmail({
+  to,
+  clientName,
+  caseCode,
+  caseTitle,
+  subject,
+  body,
+  highlights,
+  ctaLabel,
+  ctaUrl,
+}: {
+  to: string | string[];
+  clientName: string;
+  caseCode: string;
+  caseTitle: string;
+  subject: string;
+  body: string;
+  highlights?: string[];
+  ctaLabel?: string;
+  ctaUrl?: string;
+}) {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not configured, skipping email');
+    return null;
+  }
+
+  const emailFrom = process.env.EMAIL_FROM || 'CNP Portal <noreply@cnp.com.co>';
+  const replyTo = process.env.EMAIL_REPLY_TO || 'soporte@cnp.com.co';
+  const label = ctaLabel || 'Abrir mi portal';
+  const items = (highlights ?? []).filter((line) => line.trim());
+  const textItems = items.length ? `\n${items.map((line) => `  • ${line}`).join('\n')}\n` : '';
+
+  const { data, error } = await getResend().emails.send({
+    from: emailFrom,
+    to,
+    replyTo,
+    subject: `${subject} — ${caseCode}`,
+    text: `Hola ${clientName},\n\n${body}\n${textItems}\nCaso: ${caseTitle} (${caseCode})${ctaUrl ? `\n\n${label}: ${ctaUrl}` : ''}\n\nCNP | Peritus`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #0a2a6e; background-image: linear-gradient(#0a2a6e, #0a2a6e); border-radius: 8px; padding: 18px 24px; margin-bottom: 20px;">
+          <h2 style="color: #ffffff; margin: 0; font-size: 18px;">${escapeHtml(subject)}</h2>
+          <p style="color: #c7d4ee; margin: 6px 0 0; font-size: 13px;">${escapeHtml(caseTitle)} &middot; ${escapeHtml(caseCode)}</p>
+        </div>
+        <p style="color: #333333;">Hola <strong>${escapeHtml(clientName)}</strong>,</p>
+        <p style="color: #333333; white-space: pre-line;">${escapeHtml(body)}</p>
+        ${items.length ? `
+        <div style="background-color: #f4f6fb; background-image: linear-gradient(#f4f6fb, #f4f6fb); border-left: 4px solid #0a2a6e; border-radius: 6px; padding: 12px 16px; margin: 16px 0;">
+          ${items.map((line) => `<p style="margin: 4px 0; color: #1a1a1a;">&bull; ${escapeHtml(line)}</p>`).join('')}
+        </div>` : ''}
+        ${ctaUrl ? `<p style="margin: 20px 0;"><a href="${escapeHtml(ctaUrl)}" style="background-color: #0a2a6e; background-image: linear-gradient(#0a2a6e, #0a2a6e); color: #ffffff; padding: 10px 18px; border-radius: 6px; text-decoration: none;">${escapeHtml(label)}</a></p>` : ''}
+        <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 24px 0;" />
+        <p style="color: #999999; font-size: 12px;">Este es un correo autom&aacute;tico del sistema CNP | Peritus. Si tienes dudas, responde a este mensaje.</p>
+      </div>
+    `,
+  });
+
+  if (error) {
+    console.error('[email] Error sending client case email:', error);
+    return null;
+  }
+  return data;
+}
+
 // El nombre viene de un formulario público: escapar antes de interpolarlo en el HTML.
 function escapeHtml(value: string): string {
   return value

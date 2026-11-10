@@ -5,6 +5,7 @@ import { Upload, X, File as FileIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -17,8 +18,11 @@ import {
   DOCUMENT_CATEGORY_LABELS,
 } from "@/lib/types";
 import {
-  CASE_DOCUMENT_MAX_SIZE_BYTES,
+  CASE_DOCUMENT_ACCEPT_ATTRIBUTE,
+  CASE_DOCUMENT_ALLOWED_LABEL,
+  CASE_DOCUMENT_MAX_FILES_PER_UPLOAD,
   CASE_DOCUMENT_MAX_SIZE_MB,
+  validateDocumentFiles,
 } from "@/lib/files/uploadLimits";
 
 interface DocumentUploadProps {
@@ -26,61 +30,52 @@ interface DocumentUploadProps {
   onSuccess: () => void;
 }
 
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function DocumentUpload({ caseId, onSuccess }: DocumentUploadProps) {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [category, setCategory] = useState("documentos_caso");
   const [description, setDescription] = useState("");
+  const [visibleToClient, setVisibleToClient] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function handleDragOver(e: DragEvent) {
-    e.preventDefault();
-    setDragOver(true);
-  }
-
-  function handleDragLeave(e: DragEvent) {
-    e.preventDefault();
-    setDragOver(false);
+  function addFiles(incoming: FileList | File[] | null) {
+    const list = Array.from(incoming ?? []);
+    if (list.length === 0) return;
+    const merged = [...files, ...list.filter((f) => !files.some((existing) => existing.name === f.name && existing.size === f.size))];
+    const problem = validateDocumentFiles(merged);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    setFiles(merged);
+    setError("");
   }
 
   function handleDrop(e: DragEvent) {
     e.preventDefault();
     setDragOver(false);
-    const dropped = e.dataTransfer.files[0];
-    if (dropped) {
-      if (dropped.size > CASE_DOCUMENT_MAX_SIZE_BYTES) {
-        setError(`El archivo excede el limite de ${CASE_DOCUMENT_MAX_SIZE_MB}MB`);
-        return;
-      }
-      setFile(dropped);
-      setError("");
-    }
-  }
-
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const selected = e.target.files?.[0];
-    if (selected) {
-      if (selected.size > CASE_DOCUMENT_MAX_SIZE_BYTES) {
-        setError(`El archivo excede el limite de ${CASE_DOCUMENT_MAX_SIZE_MB}MB`);
-        return;
-      }
-      setFile(selected);
-      setError("");
-    }
+    addFiles(e.dataTransfer.files);
   }
 
   async function handleUpload() {
-    if (!file) return;
+    if (files.length === 0) return;
     setUploading(true);
     setError("");
 
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      files.forEach((file) => formData.append("files", file));
       formData.append("category", category);
       formData.append("description", description);
+      formData.append("isVisibleToClient", visibleToClient ? "true" : "false");
 
       const res = await fetch(`/api/cases/${caseId}/documents`, {
         method: "POST",
@@ -93,9 +88,10 @@ export default function DocumentUpload({ caseId, onSuccess }: DocumentUploadProp
         return;
       }
 
-      setFile(null);
+      setFiles([]);
       setCategory("documentos_caso");
       setDescription("");
+      setVisibleToClient(false);
       onSuccess();
     } catch {
       setError("Error de conexion");
@@ -104,21 +100,15 @@ export default function DocumentUpload({ caseId, onSuccess }: DocumentUploadProp
     }
   }
 
-  function formatFileSize(bytes: number) {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-
   return (
     <div className="space-y-4">
       {/* Drop zone */}
       <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
-        className={`cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
+        className={`cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
           dragOver
             ? "border-primary bg-primary/5"
             : "border-muted-foreground/25 hover:border-primary/50"
@@ -127,37 +117,45 @@ export default function DocumentUpload({ caseId, onSuccess }: DocumentUploadProp
         <input
           ref={inputRef}
           type="file"
+          multiple
+          accept={CASE_DOCUMENT_ACCEPT_ATTRIBUTE}
           className="hidden"
-          onChange={handleFileSelect}
+          onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
         />
-        {file ? (
-          <div className="flex items-center justify-center gap-3">
-            <FileIcon className="h-8 w-8 text-primary" />
-            <div className="text-left">
-              <p className="text-sm font-medium">{file.name}</p>
-              <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => { e.stopPropagation(); setFile(null); }}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <>
-            <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
-            <p className="mt-2 text-sm text-muted-foreground">
-              Arrastra un archivo o haz clic para seleccionar
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">Maximo {CASE_DOCUMENT_MAX_SIZE_MB}MB</p>
-          </>
-        )}
+        <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
+        <p className="mt-2 text-sm text-muted-foreground">
+          Arrastra uno o varios archivos o haz clic para seleccionar
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {CASE_DOCUMENT_ALLOWED_LABEL} · hasta {CASE_DOCUMENT_MAX_FILES_PER_UPLOAD} archivos de máximo {CASE_DOCUMENT_MAX_SIZE_MB} MB cada uno
+        </p>
       </div>
 
+      {files.length > 0 && (
+        <ul className="divide-y rounded-lg border">
+          {files.map((file) => (
+            <li key={`${file.name}-${file.size}`} className="flex items-center gap-3 px-3 py-2">
+              <FileIcon className="h-4 w-4 shrink-0 text-primary" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{file.name}</p>
+                <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={`Quitar ${file.name}`}
+                onClick={() => setFiles((prev) => prev.filter((item) => item !== file))}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {/* Category + Description */}
-      {file && (
+      {files.length > 0 && (
         <div className="space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -183,6 +181,13 @@ export default function DocumentUpload({ caseId, onSuccess }: DocumentUploadProp
               />
             </div>
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={visibleToClient} onCheckedChange={(value) => setVisibleToClient(value === true)} />
+            Visible para el cliente en su portal
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Lo que carga el equipo queda aprobado y, salvo que marques la casilla, oculto para el cliente.
+          </p>
 
           {error && (
             <p className="text-sm text-destructive">{error}</p>
@@ -192,17 +197,18 @@ export default function DocumentUpload({ caseId, onSuccess }: DocumentUploadProp
             {uploading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Subiendo...
+                Subiendo {files.length} archivo(s)...
               </>
             ) : (
               <>
                 <Upload className="mr-2 h-4 w-4" />
-                Subir Documento
+                Subir {files.length === 1 ? "documento" : `${files.length} documentos`}
               </>
             )}
           </Button>
         </div>
       )}
+      {error && files.length === 0 && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );
 }
