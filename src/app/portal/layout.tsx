@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { isPortalRole } from '@/lib/types';
 import { Briefcase, LogOut, UserCircle } from 'lucide-react';
 import InterAppScope from '@/components/layout/InterAppScope';
 import PortalNotificationsBell from '@/components/portal/PortalNotificationsBell';
@@ -22,11 +23,11 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 function PortalAuthLayout({ children, pathname }: { children: React.ReactNode; pathname: string }) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const authorized = !loading && user?.role === 'cliente' && !user.mustChangePassword;
+  const authorized = !loading && isPortalRole(user?.role) && !user?.mustChangePassword;
 
   useEffect(() => {
     if (loading) return;
-    if (!user || user.role !== 'cliente') {
+    if (!user || !isPortalRole(user.role)) {
       router.replace('/portal/login');
     } else if (user.mustChangePassword) {
       router.replace('/portal/change-password');
@@ -51,7 +52,7 @@ function PortalAuthLayout({ children, pathname }: { children: React.ReactNode; p
           <div className="flex items-center gap-3">
             <Image src="/images/favicon.png" alt="CNP" width={28} height={28} className="rounded" />
             <h1 className="text-lg font-bold tracking-tight" style={{ color: '#1b5697' }}>
-              CNP | Portal Cliente
+              CNP | {user?.role === 'abogado' ? 'Portal Abogado' : 'Portal Cliente'}
             </h1>
           </div>
           <nav className="order-3 flex w-full items-center gap-1 border-t pt-2 sm:order-none sm:w-auto sm:border-0 sm:pt-0" aria-label="Portal cliente">

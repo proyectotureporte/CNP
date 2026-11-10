@@ -12,14 +12,17 @@ export async function GET(
   if (!file) return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
   const access = await requireCaseAccess(request, file.caseId);
   if (access.response) return access.response;
-  if (!access.actor.allRoles && !['comercial_juridico', 'junta', 'perito_interno', 'perito', 'cliente'].includes(access.actor.role)) {
+  if (!access.actor.allRoles && !['comercial_juridico', 'junta', 'perito_interno', 'perito', 'cliente', 'abogado'].includes(access.actor.role)) {
     return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
   }
   if (['perito', 'perito_interno'].includes(access.actor.role) && file.category === 'comprobantes_pago') {
     return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
   }
-  if (access.actor.role === 'cliente' && (!file.isVisibleToClient || file.category === 'dictamen')) {
+  if ((access.actor.role === 'cliente' || access.actor.role === 'abogado') && (!file.isVisibleToClient || file.category === 'dictamen')) {
     return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
   }
-  return proxyStoredAsset(file, { inline: request.nextUrl.searchParams.get('inline') === '1' });
+  return proxyStoredAsset(file, {
+    inline: request.nextUrl.searchParams.get('inline') === '1',
+    officePreviewKey: `document:${id}:${file.fileUrl ?? ''}`,
+  });
 }

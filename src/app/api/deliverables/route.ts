@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const role = request.headers.get('x-user-role');
     const userId = request.headers.get('x-user-id') || '';
 
-    if (role === 'cliente') {
+    if (role === 'cliente' || role === 'abogado') {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 

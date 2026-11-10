@@ -28,13 +28,14 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
     }
     const isExpert = access.actor.role === 'perito' || access.actor.role === 'perito_interno';
-    if (!access.actor.allRoles && !['comercial_juridico', 'junta', 'perito_interno', 'perito', 'cliente'].includes(access.actor.role)) {
+    if (!access.actor.allRoles && !['comercial_juridico', 'junta', 'perito_interno', 'perito', 'cliente', 'abogado'].includes(access.actor.role)) {
       return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
     }
     if (isExpert && doc.category === 'comprobantes_pago') {
       return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
     }
-    if (access.actor.role === 'cliente' && (!doc.isVisibleToClient || doc.category === 'dictamen')) {
+    const externalView = access.actor.role === 'cliente' || access.actor.role === 'abogado';
+    if (externalView && (!doc.isVisibleToClient || doc.category === 'dictamen')) {
       return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
     }
     const safe = {
@@ -43,7 +44,7 @@ export async function GET(
       downloadUrl: doc.fileName ? `/api/documents/${id}/download` : undefined,
       viewUrl: doc.fileName ? `/api/documents/${id}/download?inline=1` : undefined,
     };
-    if (isExpert || access.actor.role === 'cliente') {
+    if (isExpert || externalView) {
       delete safe.uploadedBy;
       delete safe.uploadedByName;
     }

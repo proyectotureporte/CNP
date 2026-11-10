@@ -19,7 +19,7 @@ export const hashDeToken = (t: string): Buffer => createHash('sha256').update(t,
 
 /** Los clientes del portal y los peritos externos tienen sus propios accesos aislados: no entran por este enlace. */
 export function rolPuedeUsarEnlace(role: UserRole | null | undefined): boolean {
-  return !!role && role !== 'cliente' && role !== 'perito';
+  return !!role && role !== 'cliente' && role !== 'perito' && role !== 'abogado';
 }
 
 /** IP del visitante detrás de nginx: la que añade el proxy, nunca la que el cliente escribe primero. */

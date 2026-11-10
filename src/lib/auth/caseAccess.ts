@@ -22,7 +22,14 @@ export interface CaseAccessRow {
   associatedExpertIds: string[];
   assignedFinancieroId: string | null;
   assignedJuridicoId: string | null;
+  /** Abogados con acceso de supervisión (case_lawyer). */
+  lawyerIds: string[];
   brand: 'CNP' | 'Peritus';
+}
+
+/** Cliente final y abogado comparten la vista "exterior" del caso. */
+export function isExternalViewer(role: UserRole): boolean {
+  return role === 'cliente' || role === 'abogado';
 }
 
 export function actorFromRequest(request: Request): RequestActor | null {
@@ -48,7 +55,9 @@ export async function getCaseAccessRow(caseId: string): Promise<CaseAccessRow | 
        assigned_expert_id AS "assignedExpertId",
        ARRAY(SELECT cae.user_id FROM case_associated_expert cae WHERE cae.case_id = cases.id) AS "associatedExpertIds",
        assigned_financiero_id AS "assignedFinancieroId",
-       assigned_juridico_id AS "assignedJuridicoId", brand
+       assigned_juridico_id AS "assignedJuridicoId",
+       ARRAY(SELECT cl.user_id FROM case_lawyer cl WHERE cl.case_id = cases.id) AS "lawyerIds",
+       brand
      FROM cases WHERE id = $1`,
     [caseId],
   );
@@ -71,6 +80,7 @@ export async function canActorAccessCase(
     const clientId = await getClientIdForUser(actor.userId);
     return Boolean(clientId && row.clientId === clientId);
   }
+  if (actor.role === 'abogado') return row.lawyerIds.includes(actor.userId);
   return false;
 }
 
@@ -141,6 +151,19 @@ export function sanitizeCaseForRole(
     delete safe.technicalAnalyst;
     delete safe.commercial;
     delete safe.createdBy;
+  }
+
+  if (role === 'abogado') {
+    // Visibilidad sin intervención: ni perito, ni equipo interno, ni cifras.
+    delete safe.assignedExpert;
+    delete safe.associatedExperts;
+    delete safe.assignedFinanciero;
+    delete safe.technicalAnalyst;
+    delete safe.commercial;
+    delete safe.createdBy;
+    delete safe.estimatedAmount;
+    delete safe.commercialStatus;
+    delete safe.lossReason;
   }
 
   return safe;

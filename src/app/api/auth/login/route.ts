@@ -98,10 +98,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Block clients from logging in through the CRM login form
-      if (normalizedRole === 'cliente') {
+      // Block clients and lawyers from logging in through the CRM login form
+      if (normalizedRole === 'cliente' || normalizedRole === 'abogado') {
         return NextResponse.json(
-          { success: false, error: 'Acceso solo para personal interno. Los clientes deben usar el Portal Cliente.' },
+          { success: false, error: 'Acceso solo para personal interno. Clientes y abogados deben usar el Portal.' },
           { status: 403 }
         );
       }
@@ -171,11 +171,11 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Only allow clients through portal login
+      // Only allow clients and lawyers through portal login
       const normalizedRole = normalizeUserRole(user.role as string);
-      if (normalizedRole !== 'cliente') {
+      if (normalizedRole !== 'cliente' && normalizedRole !== 'abogado') {
         return NextResponse.json(
-          { success: false, error: 'Este acceso es solo para clientes. Use /crm/login para personal interno.' },
+          { success: false, error: 'Este acceso es solo para clientes y abogados. Use /crm/login para personal interno.' },
           { status: 403 }
         );
       }

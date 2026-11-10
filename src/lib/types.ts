@@ -9,6 +9,7 @@ export const USER_ROLES = [
   'perito_interno',
   'perito',
   'cliente',
+  'abogado',
 ] as const;
 
 export type UserRole = (typeof USER_ROLES)[number];
@@ -36,7 +37,14 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   perito_interno: 'Perito Interno',
   perito: 'Perito Externo',
   cliente: 'Cliente',
+  abogado: 'Abogado',
 };
+
+/** Roles que entran por el portal (cliente final y abogado que supervisa). */
+export const PORTAL_ROLES: readonly UserRole[] = ['cliente', 'abogado'];
+export function isPortalRole(role: string | null | undefined): role is 'cliente' | 'abogado' {
+  return role === 'cliente' || role === 'abogado';
+}
 
 export const ROLE_COLORS: Record<UserRole, { bg: string; text: string; dot: string }> = {
   admin: { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' },
@@ -45,6 +53,7 @@ export const ROLE_COLORS: Record<UserRole, { bg: string; text: string; dot: stri
   perito_interno: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
   perito: { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
   cliente: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+  abogado: { bg: 'bg-slate-100', text: 'text-slate-700', dot: 'bg-slate-500' },
 };
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
@@ -54,6 +63,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   perito_interno: ['dashboard', 'cases', 'work-plans', 'deliverables', 'notifications', 'profile'],
   perito: ['cases', 'work-plans', 'deliverables', 'notifications', 'profile'],
   cliente: ['cases', 'payments', 'notifications', 'profile', 'mensajes'],
+  // Abogado: visibilidad sin intervención (sin cotizaciones, pagos ni mensajería).
+  abogado: ['cases', 'notifications', 'profile'],
 };
 
 // ============================================
@@ -1274,6 +1285,7 @@ export const ROLE_CASE_TABS: Record<string, string[]> = {
   perito_interno: ['summary', 'documents', 'work-plan', 'deliverables', 'timeline'],
   perito: ['summary', 'documents', 'work-plan', 'deliverables', 'timeline'],
   cliente: ['summary', 'documents', 'quotes', 'deliverables', 'payments', 'messages', 'timeline'],
+  abogado: ['summary', 'documents', 'deliverables', 'timeline'],
 };
 
 /** Vista de supervisión individual: reúne las pestañas de todos los roles sin crear un rol nuevo. */

@@ -44,17 +44,18 @@ export async function GET(
     const { id } = await params;
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
-    if (!access.actor.allRoles && !['comercial_juridico', 'perito_interno', 'perito', 'cliente'].includes(access.actor.role)) {
+    if (!access.actor.allRoles && !['comercial_juridico', 'perito_interno', 'perito', 'cliente', 'abogado'].includes(access.actor.role)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 
     let items = await deliverable.listCaseDeliverables(id);
-    if (access.actor.role === 'cliente') {
+    const externalView = access.actor.role === 'cliente' || access.actor.role === 'abogado';
+    if (externalView) {
       items = items.filter((item) => item.status === 'aprobado');
     }
     return NextResponse.json({
       success: true,
-      data: items.map((item) => publicDeliverable(item, access.actor.role === 'cliente')),
+      data: items.map((item) => publicDeliverable(item, externalView)),
     });
   } catch (error) {
     console.error('[case-deliverables] GET error:', error);

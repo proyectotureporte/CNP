@@ -36,7 +36,7 @@ export async function GET(
     const access = await requireCaseAccess(request, id);
     if (access.response) return access.response;
 
-    if (access.actor.role === 'cliente') {
+    if (access.actor.role === 'cliente' || access.actor.role === 'abogado') {
       const events = await caseEvent.listClientVisibleEvents(id);
       return NextResponse.json({ success: true, data: events.map(sanitizeForClient) });
     }

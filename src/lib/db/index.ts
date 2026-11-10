@@ -32,3 +32,4 @@ export * as siteContent from './siteContent';
 export * as caseMessage from './caseMessage';
 export * as documentRequest from './documentRequest';
 export * as documentUploadLink from './documentUploadLink';
+export * as caseLawyer from './caseLawyer';

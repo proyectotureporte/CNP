@@ -204,7 +204,12 @@ export default function DeliverablesTab({ caseId, userRole = "admin", allRoles =
                     <div className="flex flex-wrap gap-2">
                       {item.downloadUrl && (
                         <Button variant="outline" size="sm" asChild>
-                          <a href={item.downloadUrl} target="_blank" rel="noopener noreferrer"><Download className="mr-2 h-4 w-4" />Dictamen</a>
+                          <a href={`${item.downloadUrl}?inline=1`} target="_blank" rel="noopener noreferrer"><Download className="mr-2 h-4 w-4" />Ver dictamen</a>
+                        </Button>
+                      )}
+                      {item.downloadUrl && (
+                        <Button variant="ghost" size="sm" asChild>
+                          <a href={item.downloadUrl}><Download className="mr-2 h-4 w-4" />Descargar</a>
                         </Button>
                       )}
                       {canReview && ["enviado", "en_revision"].includes(item.status) && (

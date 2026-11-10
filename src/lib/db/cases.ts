@@ -240,6 +240,28 @@ export async function listCasesForClient(clientId: string): Promise<CaseExpanded
   );
 }
 
+/** Portal abogado: casos donde figura en case_lawyer; sin cifras ni equipo interno. */
+export async function listCasesForLawyer(userId: string): Promise<CaseExpanded[]> {
+  return query<CaseExpanded>(
+    `SELECT
+       c.id AS "_id", c.created_at AS "_createdAt", c.updated_at AS "_updatedAt",
+       c.brand, c.case_code AS "caseCode", c.title, c.description, c.dictamen_object AS "dictamenObject",
+       c.discipline, c.status, c.complexity, c.priority,
+       c.has_hearing AS "hasHearing",
+       c.hearing_date AS "hearingDate", c.deadline_date AS "deadlineDate",
+       c.city, c.court_name AS "courtName", c.case_number AS "caseNumber",
+       ${nestedObj('cl', { _id: 'cl.id', name: 'cl.name', company: 'cl.company' })} AS "client",
+       ${userContact('aj')} AS "assignedJuridico"
+     FROM cases c
+     JOIN case_lawyer lw ON lw.case_id = c.id AND lw.user_id = $1
+     LEFT JOIN crm_client cl ON cl.id = c.client_id
+     LEFT JOIN crm_user aj ON aj.id = c.assigned_juridico_id
+     WHERE c.status <> 'archivado'
+     ORDER BY c.created_at DESC`,
+    [userId],
+  );
+}
+
 /** Portal perito: solo asignaciones propias y sin JOIN alguno a crm_client. */
 export async function listCasesForExpert(userId: string): Promise<CaseExpanded[]> {
   return query<CaseExpanded>(

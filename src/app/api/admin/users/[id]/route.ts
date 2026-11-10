@@ -40,8 +40,8 @@ export async function PUT(
     if (!USER_ROLES.includes(role)) {
       return NextResponse.json({ success: false, error: 'Rol no válido' }, { status: 400 });
     }
-    const protectedAccountRole = current.role === 'admin' || current.role === 'cliente';
-    if ((protectedAccountRole && role !== current.role) || (!protectedAccountRole && (role === 'admin' || role === 'cliente'))) {
+    const protectedAccountRole = current.role === 'admin' || current.role === 'cliente' || current.role === 'abogado';
+    if ((protectedAccountRole && role !== current.role) || (!protectedAccountRole && (role === 'admin' || role === 'cliente' || role === 'abogado'))) {
       return NextResponse.json(
         { success: false, error: 'Las cuentas admin y cliente conservan su rol para no romper sus vínculos de acceso' },
         { status: 400 },

@@ -37,6 +37,7 @@ import DocumentUploadLinkManager from "./DocumentUploadLinkManager";
 import DocumentReviewControls, { ReviewBadge } from "./DocumentReviewControls";
 import DocumentVersionHistory from "./DocumentVersionHistory";
 import { CASE_DOCUMENT_ACCEPT_ATTRIBUTE, validateDocumentFiles } from "@/lib/files/uploadLimits";
+import { canPreviewDocument } from "@/lib/files/previewTypes";
 
 interface DocumentListProps {
   caseId: string;
@@ -60,13 +61,9 @@ function getFileIcon(mimeType?: string) {
   return "📎";
 }
 
-function canPreviewInBrowser(mimeType?: string) {
-  return Boolean(mimeType && (
-    mimeType === "application/pdf"
-    || mimeType === "text/plain"
-    || mimeType.startsWith("image/")
-  ));
-}
+// PDF, texto e imágenes se muestran directamente; Word/Excel/PowerPoint se
+// convierten a PDF en el servidor (LibreOffice) al pedir la vista en línea.
+const canPreviewInBrowser = (doc: { mimeType?: string; fileName?: string }) => canPreviewDocument(doc.fileName, doc.mimeType);
 
 export default function DocumentList({ caseId, userRole = "admin", allRoles = false }: DocumentListProps) {
   const [documents, setDocuments] = useState<CaseDocument[]>([]);
@@ -494,7 +491,7 @@ export default function DocumentList({ caseId, userRole = "admin", allRoles = fa
             {previewDocument?.viewUrl && previewDocument.mimeType?.startsWith("image/") ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={previewDocument.viewUrl} alt={previewDocument.fileName || "Documento"} className="h-full w-full object-contain" />
-            ) : previewDocument?.viewUrl && canPreviewInBrowser(previewDocument.mimeType) ? (
+            ) : previewDocument?.viewUrl && canPreviewInBrowser(previewDocument) ? (
               <iframe src={previewDocument.viewUrl} title={previewDocument.fileName || "Documento"} className="h-full w-full" />
             ) : (
               <div className="flex h-full items-center justify-center p-8 text-center text-sm text-muted-foreground">

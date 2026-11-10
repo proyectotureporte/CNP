@@ -39,7 +39,7 @@ export default function PortalCasesPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight">Mis Casos</h1>
         <p className="text-sm text-muted-foreground">
-          Seguimiento de tus dictamenes periciales
+          Seguimiento de los dictámenes periciales en los que participas
         </p>
       </div>
 

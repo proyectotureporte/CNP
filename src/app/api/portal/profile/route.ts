@@ -5,7 +5,7 @@ import { crmClient, crmUser, query, systemSetting } from '@/lib/db';
 
 function clientActor(request: NextRequest) {
   const actor = actorFromRequest(request);
-  return actor?.role === 'cliente' ? actor : null;
+  return actor?.role === 'cliente' || actor?.role === 'abogado' ? actor : null;
 }
 
 function publicAccount(value?: string | null): Record<string, string> {

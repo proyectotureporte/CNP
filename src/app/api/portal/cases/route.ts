@@ -6,8 +6,14 @@ import { getClientIdForUser } from '@/lib/auth/clientAccess';
 export async function GET(request: NextRequest) {
   try {
     const actor = actorFromRequest(request);
-    if (!actor || actor.role !== 'cliente') {
+    if (!actor || (actor.role !== 'cliente' && actor.role !== 'abogado')) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
+    }
+
+    if (actor.role === 'abogado') {
+      const data = (await cases.listCasesForLawyer(actor.userId))
+        .map((item) => sanitizeCaseForRole(item, 'abogado'));
+      return NextResponse.json({ success: true, data });
     }
 
     const clientId = await getClientIdForUser(actor.userId);

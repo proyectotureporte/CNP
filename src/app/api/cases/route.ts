@@ -44,6 +44,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'El admin técnico no tiene acceso al listado operativo de casos' }, { status: 403 });
     }
 
+    // Abogados: solo los casos donde fueron autorizados (portal).
+    if (userRole === 'abogado') {
+      const list = await cases.listCasesForLawyer(userId);
+      const total = list.length;
+      const safeList = list.slice(offset, offset + limit).map((item) => sanitizeCaseForRole(item, 'abogado'));
+      return NextResponse.json({ success: true, data: safeList, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } });
+    }
+
     // Portal clients can only see their own cases
     if (userRole === 'cliente') {
       const clientId = await getClientIdForUser(userId);

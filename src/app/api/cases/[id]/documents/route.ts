@@ -43,7 +43,7 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Categoría no válida' }, { status: 400 });
     }
 
-    if (access.actor.role === 'cliente') {
+    if (access.actor.role === 'cliente' || access.actor.role === 'abogado') {
       // Los dictámenes se entregan únicamente desde deliverables tras aprobación.
       const documents = (await caseDocument.listClientVisibleDocuments(id))
         .filter((document) => document.category !== 'dictamen')
@@ -157,7 +157,7 @@ export async function POST(
       return NextResponse.json({ success: true, data: placeholder }, { status: 201 });
     }
 
-    if (!access.actor.allRoles && !['comercial_juridico', 'cliente'].includes(access.actor.role)) {
+    if (!access.actor.allRoles && !['comercial_juridico', 'cliente', 'abogado'].includes(access.actor.role)) {
       return NextResponse.json({ success: false, error: 'Acceso denegado' }, { status: 403 });
     }
 
@@ -165,7 +165,7 @@ export async function POST(
     const files = [...form.getAll('files'), ...form.getAll('file')]
       .filter((value): value is File => value instanceof File && value.size > 0);
     const targetDocumentId = String(form.get('documentId') || '');
-    const isClientUpload = access.actor.role === 'cliente';
+    const isClientUpload = access.actor.role === 'cliente' || access.actor.role === 'abogado';
     const category = (isClientUpload ? 'documentos_caso' : String(form.get('category') || 'documentos_caso')) as DocumentCategory;
     const description = String(form.get('description') || '').trim();
     const isVisibleToClient = isClientUpload || form.get('isVisibleToClient') === 'true';
@@ -243,9 +243,9 @@ export async function POST(
     logCaseEvent({
       caseId: id,
       eventType: 'document_uploaded',
-      title: isClientUpload ? 'Documentación recibida del cliente' : 'Documento agregado al expediente',
+      title: isClientUpload ? (access.actor.role === 'abogado' ? 'Documentación recibida del abogado' : 'Documentación recibida del cliente') : 'Documento agregado al expediente',
       description: isClientUpload
-        ? `El cliente envió ${stored.length} archivo(s) desde su portal: ${names}`
+        ? `${access.actor.role === 'abogado' ? 'El abogado' : 'El cliente'} envió ${stored.length} archivo(s) desde su portal: ${names}`
         : `Documento recibido: ${names} (${categoryLabel})`,
       userId: access.actor.userId,
       userName: access.actor.displayName,
@@ -257,14 +257,14 @@ export async function POST(
         after: {
           fileName: item.fileName, category: item.category, version: item.version,
           isVisibleToClient: item.isVisibleToClient, reviewStatus: item.reviewStatus,
-          origen: isClientUpload ? 'portal del cliente' : 'CRM',
+          origen: access.actor.role === 'abogado' ? 'portal del abogado' : isClientUpload ? 'portal del cliente' : 'CRM',
         },
       });
     }
     if (isClientUpload) {
       notifyUsers({
         userIds: [access.row.assignedJuridicoId, await commercialIdForCase(id)],
-        title: 'El cliente cargó documentación',
+        title: access.actor.role === 'abogado' ? 'El abogado cargó documentación' : 'El cliente cargó documentación',
         message: `${access.actor.displayName} envió ${stored.length} archivo(s) desde el portal: ${names}. Pendiente de revisión.`,
         linkUrl: `/crm/cases/${id}?tab=documents`,
         priority: 'alta',

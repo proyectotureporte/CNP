@@ -21,6 +21,8 @@ import DeliverablesTab from '@/components/cases/DeliverablesTab';
 import CasePaymentsTab from '@/components/cases/CasePaymentsTab';
 import CaseMessages from '@/components/cases/CaseMessages';
 import { usePusher } from '@/hooks/usePusher';
+import { useAuth } from '@/hooks/useAuth';
+import { canPreviewDocument } from '@/lib/files/previewTypes';
 import {
   CASE_DOCUMENT_REVIEW_COLORS,
   CASE_DOCUMENT_REVIEW_LABELS,
@@ -73,9 +75,7 @@ function formatFileSize(bytes?: number) {
   return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-function canPreviewInBrowser(mimeType?: string) {
-  return Boolean(mimeType && (mimeType === 'application/pdf' || mimeType === 'text/plain' || mimeType.startsWith('image/')));
-}
+const canPreviewInBrowser = (doc: { mimeType?: string; fileName?: string }) => canPreviewDocument(doc.fileName, doc.mimeType);
 
 /** Etapa del caso en lenguaje del cliente (combina estado técnico, ejecución y dictamen). */
 function stageLabel(caseData: CaseExpanded) {
@@ -107,6 +107,8 @@ function pendingFromDocuments(documents: CaseDocument[]): ClientPendingDocument[
 
 export default function PortalCaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { user } = useAuth();
+  const isLawyer = user?.role === 'abogado';
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(requestedTab && PORTAL_TABS.includes(requestedTab) ? requestedTab : 'info');
@@ -134,14 +136,15 @@ export default function PortalCaseDetailPage({ params }: { params: Promise<{ id:
     if (showLoading) setLoading(true);
     setError('');
     try {
-      const [caseResponse, quotesResponse, eventsResponse, documentsResponse] = await Promise.all([
+      const [caseResponse, eventsResponse, documentsResponse] = await Promise.all([
         fetch(`/api/cases/${id}`),
-        fetch(`/api/cases/${id}/quotes`),
         fetch(`/api/cases/${id}/events`),
         fetch(`/api/cases/${id}/documents`),
       ]);
+      // Las cotizaciones son del cliente; al abogado le devolverían 403.
+      const quotesResponse = await fetch(`/api/cases/${id}/quotes`);
       const [casePayload, quotesPayload, eventsPayload, documentsPayload] = await Promise.all([
-        caseResponse.json(), quotesResponse.json(), eventsResponse.json(), documentsResponse.json(),
+        caseResponse.json(), quotesResponse.json().catch(() => ({ success: false })), eventsResponse.json(), documentsResponse.json(),
       ]);
       if (!casePayload.success) throw new Error(casePayload.error || 'Caso no encontrado');
       setCaseData(casePayload.data);
@@ -243,11 +246,11 @@ export default function PortalCaseDetailPage({ params }: { params: Promise<{ id:
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="h-auto flex-wrap justify-start">
           <TabsTrigger value="info">Información</TabsTrigger>
-          <TabsTrigger value="quotes">Cotizaciones ({quotes.length})</TabsTrigger>
+          {!isLawyer && <TabsTrigger value="quotes">Cotizaciones ({quotes.length})</TabsTrigger>}
           <TabsTrigger value="documents">Documentos ({receivedDocuments.length}{pendingDocuments.length ? ` · ${pendingDocuments.length} pendientes` : ''})</TabsTrigger>
           <TabsTrigger value="deliverables">Dictamen</TabsTrigger>
-          <TabsTrigger value="payments">Pagos</TabsTrigger>
-          <TabsTrigger value="messages">Mensajes</TabsTrigger>
+          {!isLawyer && <TabsTrigger value="payments">Pagos</TabsTrigger>}
+          {!isLawyer && <TabsTrigger value="messages">Mensajes</TabsTrigger>}
           <TabsTrigger value="timeline">Seguimiento ({events.length})</TabsTrigger>
         </TabsList>
 
@@ -267,7 +270,7 @@ export default function PortalCaseDetailPage({ params }: { params: Promise<{ id:
                 {caseData.hearingDate && <Info icon={<Calendar className="h-4 w-4" />} label="Audiencia" value={formatDateTime(caseData.hearingDate)} />}
               </div>
             </CardContent></Card>
-            <Card><CardContent className="space-y-3 p-6"><h3 className="font-semibold">Contacto jurídico</h3>{caseData.assignedJuridico ? <><p className="text-sm font-medium">{caseData.assignedJuridico.displayName}</p>{caseData.assignedJuridico.email && <p className="break-all text-sm text-muted-foreground">{caseData.assignedJuridico.email}</p>}{caseData.assignedJuridico.phone && <p className="text-sm text-muted-foreground">{caseData.assignedJuridico.phone}</p>}<p className="rounded-md bg-blue-50 p-2 text-xs text-blue-800">Este es tu único contacto dentro del proceso.</p></> : <p className="text-sm text-muted-foreground">Pendiente de asignar.</p>}</CardContent></Card>
+            <Card><CardContent className="space-y-3 p-6"><h3 className="font-semibold">Contacto jurídico</h3>{caseData.assignedJuridico ? <><p className="text-sm font-medium">{caseData.assignedJuridico.displayName}</p>{caseData.assignedJuridico.email && <p className="break-all text-sm text-muted-foreground">{caseData.assignedJuridico.email}</p>}{caseData.assignedJuridico.phone && <p className="text-sm text-muted-foreground">{caseData.assignedJuridico.phone}</p>}<p className="rounded-md bg-blue-50 p-2 text-xs text-blue-800">{isLawyer ? 'La gestión técnica del especialista es coordinada por CNP; este es tu contacto para cualquier consulta.' : 'Este es tu único contacto dentro del proceso.'}</p></> : <p className="text-sm text-muted-foreground">Pendiente de asignar.</p>}{isLawyer && caseData.client && <p className="text-xs text-muted-foreground">Cliente: {caseData.client.name}{caseData.client.company ? ` · ${caseData.client.company}` : ''}</p>}</CardContent></Card>
           </div>
         </TabsContent>
 
@@ -318,7 +321,7 @@ export default function PortalCaseDetailPage({ params }: { params: Promise<{ id:
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
-                          {document.viewUrl && canPreviewInBrowser(document.mimeType) && (
+                          {document.viewUrl && canPreviewInBrowser(document) && (
                             <Button variant="ghost" size="icon" title="Ver" onClick={() => setPreviewDocument(document)}><Eye className="h-4 w-4" /></Button>
                           )}
                           {document.downloadUrl && (
@@ -335,8 +338,8 @@ export default function PortalCaseDetailPage({ params }: { params: Promise<{ id:
         </TabsContent>
 
         <TabsContent value="deliverables"><DeliverablesTab caseId={id} userRole="cliente" /></TabsContent>
-        <TabsContent value="payments"><CasePaymentsTab caseId={id} userRole="cliente" /></TabsContent>
-        <TabsContent value="messages"><CaseMessages caseId={id} userRole="cliente" /></TabsContent>
+        {!isLawyer && <TabsContent value="payments"><CasePaymentsTab caseId={id} userRole="cliente" /></TabsContent>}
+        {!isLawyer && <TabsContent value="messages"><CaseMessages caseId={id} userRole="cliente" /></TabsContent>}
         <TabsContent value="timeline">
           {events.length === 0 ? <Empty text="Sin actuaciones registradas todavía." /> : (
             <div className="relative space-y-0">

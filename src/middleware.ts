@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyToken } from '@/lib/auth/jwt';
 import { canAccessRoute } from '@/lib/auth/permissions';
+import { isPortalRole } from '@/lib/types';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -40,14 +41,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Protect /portal routes - cliente role only
+  // Protect /portal routes - cliente y abogado
   if (pathname.startsWith('/portal')) {
     const token = request.cookies.get('crm-token')?.value;
     if (!token) {
       return NextResponse.redirect(new URL('/portal/login', request.url));
     }
     const payload = await verifyToken(token);
-    if (!payload || payload.role !== 'cliente') {
+    if (!payload || !isPortalRole(payload.role)) {
       const response = NextResponse.redirect(new URL('/portal/login', request.url));
       response.cookies.delete('crm-token');
       return response;
@@ -74,8 +75,8 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
-    // Clients must use /portal, not /crm
-    if (payload.role === 'cliente') {
+    // Clients and lawyers must use /portal, not /crm
+    if (isPortalRole(payload.role)) {
       return NextResponse.redirect(new URL('/portal', request.url));
     }
 

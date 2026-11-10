@@ -33,6 +33,7 @@ const STORED_ROLE_ALIASES: Record<UserRole, string[]> = {
   perito_interno: ['perito_interno', 'financiero', 'tecnico'],
   perito: ['perito'],
   cliente: ['cliente'],
+  abogado: ['abogado'],
 };
 
 /** Para login: incluye passwordHash. Solo usuarios activos. */

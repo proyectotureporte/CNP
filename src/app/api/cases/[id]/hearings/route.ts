@@ -14,7 +14,7 @@ export async function GET(
     const hearings = await hearing.listCaseHearings(id);
     const data = hearings.map((item) => ({
       ...item,
-      ...(access.actor.role === 'cliente' ? { expertAttended: undefined } : {}),
+      ...(access.actor.role === 'cliente' || access.actor.role === 'abogado' ? { expertAttended: undefined } : {}),
       ...(access.actor.role === 'perito' ? { clientAttended: undefined } : {}),
     }));
     return NextResponse.json({ success: true, data });

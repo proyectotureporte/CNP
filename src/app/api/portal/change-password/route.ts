@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = await verifyToken(token);
-    if (!payload || payload.role !== 'cliente') {
+    if (!payload || (payload.role !== 'cliente' && payload.role !== 'abogado')) {
       return NextResponse.json({ success: false, error: 'Token invalido' }, { status: 401 });
     }
 

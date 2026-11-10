@@ -23,6 +23,7 @@ import CasePaymentsTab from "@/components/cases/CasePaymentsTab";
 import ExecutionClockCard from "@/components/cases/ExecutionClockCard";
 import CommitteeTab from "@/components/cases/CommitteeTab";
 import CaseTimelineTab from "@/components/cases/CaseTimelineTab";
+import CaseLawyersCard from "@/components/cases/CaseLawyersCard";
 import ContractTab from "@/components/cases/ContractTab";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -522,6 +523,9 @@ export default function CrmCaseDetailPage({
           </div>
 
           <ExecutionClockCard caseId={id} userRole={userRole} allRoles={user?.allRoles} />
+          {!isCaseExpert && (
+            <CaseLawyersCard caseId={id} canEdit={canEditCase(userRole as Parameters<typeof canEditCase>[0], user?.allRoles)} />
+          )}
 
           {/* Details */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const users = await crmUser.listActiveUsersBasic();
     return NextResponse.json({
       success: true,
-      data: users.filter((user) => user.role !== 'cliente'),
+      data: users.filter((user) => user.role !== 'cliente' && user.role !== 'abogado'),
     });
   } catch {
     return NextResponse.json({ success: false, error: 'Error obteniendo usuarios' }, { status: 500 });

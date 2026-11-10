@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getOfficePreviewPdf, isOfficeDocument } from './officePreview';
 
 const ALLOWED_ASSET_HOSTS = new Set(['cdn.sanity.io']);
 
@@ -20,7 +21,11 @@ export async function proxyStoredAsset(input: {
   fileUrl: string | null;
   fileName?: string | null;
   mimeType?: string | null;
-}, options: { inline?: boolean } = {}): Promise<Response> {
+}, options: {
+  inline?: boolean;
+  /** Con `inline`, un Word/Excel/PowerPoint se convierte a PDF (LibreOffice) y se muestra en línea. */
+  officePreviewKey?: string;
+} = {}): Promise<Response> {
   if (!input.fileUrl) {
     return NextResponse.json({ success: false, error: 'Archivo no disponible' }, { status: 404 });
   }
@@ -34,6 +39,33 @@ export async function proxyStoredAsset(input: {
 
   if (url.protocol !== 'https:' || !ALLOWED_ASSET_HOSTS.has(url.hostname)) {
     return NextResponse.json({ success: false, error: 'Origen de archivo no permitido' }, { status: 403 });
+  }
+
+  if (options.inline && options.officePreviewKey && isOfficeDocument(input.fileName, input.mimeType)) {
+    try {
+      const pdf = await getOfficePreviewPdf({
+        cacheKey: options.officePreviewKey,
+        fileName: input.fileName || 'documento.bin',
+        fetchSource: async () => {
+          const source = await fetch(url, { redirect: 'error', cache: 'no-store' });
+          if (!source.ok) throw new Error(`upstream ${source.status}`);
+          return Buffer.from(await source.arrayBuffer());
+        },
+      });
+      const pdfName = safeDownloadName((input.fileName || 'documento').replace(/\.[^.]+$/, '') + '.pdf');
+      return new Response(new Uint8Array(pdf), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `inline; filename="${pdfName}"; filename*=UTF-8''${encodeURIComponent(pdfName)}`,
+          'Cache-Control': 'private, no-store, max-age=0',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      });
+    } catch (err) {
+      console.error('[preview] Conversión a PDF fallida, se entrega el original:', err);
+      // Sin vista previa posible: cae a la descarga normal del original.
+    }
   }
 
   const upstream = await fetch(url, { redirect: 'error', cache: 'no-store' });

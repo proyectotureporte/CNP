@@ -17,7 +17,7 @@ export async function GET(
 
     const current = await caseDocument.getCaseDocumentById(id);
     if (!current) return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });
-    const isClient = access.actor.role === 'cliente';
+    const isClient = access.actor.role === 'cliente' || access.actor.role === 'abogado';
     const isExpert = access.actor.role === 'perito' || access.actor.role === 'perito_interno';
     if (isClient && (!current.isVisibleToClient || current.category === 'dictamen')) {
       return NextResponse.json({ success: false, error: 'Documento no encontrado' }, { status: 404 });

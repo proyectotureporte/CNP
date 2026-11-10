@@ -13,7 +13,7 @@ Consulta `docs/PROJECT-MAP.md` antes de cualquier cambio no trivial; es el mapa 
 
 ## Reglas críticas
 
-- Roles definitivos: `admin`, `comercial_juridico`, `junta`, `perito_interno`, `perito`, `cliente`.
+- Roles definitivos: `admin`, `comercial_juridico`, `junta`, `perito_interno`, `perito`, `cliente`, `abogado` (portal, solo lectura + documentos; acceso por `case_lawyer`).
 - Cambiar permisos siempre desde `src/lib/types.ts` y `src/lib/auth/permissions.ts`; nunca confiar solo en ocultar UI.
 - El acceso combinado de `ferneyolicas@gmail.com` usa la bandera JWT firmada `allRoles`; no es un séptimo rol.
 - Peritos y clientes deben conservar su aislamiento de casos y datos privados mediante `src/lib/auth/caseAccess.ts`.
