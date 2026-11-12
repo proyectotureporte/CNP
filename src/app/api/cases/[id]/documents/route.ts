@@ -247,6 +247,8 @@ export async function POST(
       description: isClientUpload
         ? `${access.actor.role === 'abogado' ? 'El abogado' : 'El cliente'} envió ${stored.length} archivo(s) desde su portal: ${names}`
         : `Documento recibido: ${names} (${categoryLabel})`,
+      // La actuación solo es visible si el documento lo es: no revelar archivos internos.
+      isVisibleToClient: isClientUpload || stored.some((item) => item.isVisibleToClient),
       userId: access.actor.userId,
       userName: access.actor.displayName,
       documentId: stored[0]?._id ?? null,
